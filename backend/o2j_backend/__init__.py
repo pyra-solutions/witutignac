@@ -1,4 +1,4 @@
-"""Backend platformy Odwołania2json: baza PostgreSQL, API i wydania konfiguracji.
+"""Backend platformy Odwołania2json: API i wydania konfiguracji zapisane w plikach.
 
 Silnik ekstrakcji (`engine/odwolania2json`) nie jest instalowanym pakietem, więc dołączamy
 jego katalog do ścieżki importu. Backend używa modeli konfiguracji silnika (Pydantic)

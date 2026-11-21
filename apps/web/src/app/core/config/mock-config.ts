@@ -8,8 +8,8 @@ import {
 } from '../models/config.model';
 
 /**
- * Konfiguracja przykładowa dla makiety. Docelowo te dane zwraca API NestJS z bazy
- * (tabele document_type, field_definition, extraction_group itd.).
+ * Konfiguracja przykładowa dla makiety. Docelowo te dane zwraca API backendu (FastAPI)
+ * z plików config/seed/*.yaml i wydań w config/releases/.
  * Struktura pól odpowiada wzorcom z repozytorium organizatora (oczekiwane-json/).
  */
 

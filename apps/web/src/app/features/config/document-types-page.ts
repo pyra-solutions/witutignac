@@ -12,7 +12,7 @@ import { PageHeader } from '../../shared/ui/page-header';
     <div class="page">
       <app-page-header
         heading="Typy dokumentów"
-        description="Każdy typ to definicja w bazie: reguły klasyfikacji, pola, grupy ekstrakcji i profil Docling. Nowy typ nie wymaga zmian w kodzie."
+        description="Każdy typ to plik konfiguracyjny YAML: reguły klasyfikacji, pola, grupy ekstrakcji i profil Docling. Nowy typ nie wymaga zmian w kodzie."
       />
       <app-notice>
         Makieta pokazuje konfigurację w trybie odczytu. Edycja, szkic i publikacja wydania będą dostępne po podłączeniu API.

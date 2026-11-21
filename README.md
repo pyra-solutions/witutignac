@@ -79,7 +79,7 @@ Opcje dodatkowe przekazywane do skryptu, np. `start.bat --trace-dir slady`:
 | [docs/silnik.md](docs/silnik.md) | działanie silnika i dodawanie nowych rodzajów dokumentów samą konfiguracją |
 | [docs/raport-jakosci.md](docs/raport-jakosci.md) | wyniki własnych testów jakości (F1) |
 | [docs/plan.md](docs/plan.md) | plan rozwiązania i architektura |
-| [backend/README.md](backend/README.md) | platforma: API, baza PostgreSQL, wydania konfiguracji |
+| [backend/README.md](backend/README.md) | platforma: API i wydania konfiguracji |
 
 Nowy rodzaj dokumentu to nowy plik YAML w `config/seed/document_types/`, bez zmian w kodzie.
 
@@ -88,8 +88,9 @@ Nowy rodzaj dokumentu to nowy plik YAML w `config/seed/document_types/`, bez zmi
 | Katalog | Zawartość |
 | --- | --- |
 | `engine/` | silnik ekstrakcji w Pythonie (CLI `odwolania2json`) i jego konfiguracja `engine/config/release.json` |
-| `config/seed/` | definicje rodzajów dokumentów, słowniki i profile modeli (YAML) |
+| `config/seed/` | definicje rodzajów dokumentów, słowniki i profile modeli (YAML); jedyne źródło konfiguracji |
+| `config/releases/` | opublikowane, niezmienne wydania konfiguracji (historia `release.json`) |
 | `input/`, `output/` | pliki wejściowe i wyniki |
-| `backend/` | API (FastAPI) i baza PostgreSQL w Dockerze; niepotrzebne do uruchomienia ekstrakcji |
+| `backend/` | API (FastAPI) dla interfejsu graficznego, działa na plikach; niepotrzebne do uruchomienia ekstrakcji |
 | `apps/web/` | interfejs graficzny (Angular) |
 | `docs/` | dokumentacja |

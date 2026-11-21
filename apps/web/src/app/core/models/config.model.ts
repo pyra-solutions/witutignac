@@ -1,7 +1,7 @@
 /**
- * Model konfiguracji: odpowiada tabelom konfiguracyjnym z planu
- * (document_type, field_definition, extraction_group, dictionary, llm_*, conversion_profile, config_release).
- * W makiecie dane pochodzą z core/config/mock-config.ts; docelowo z API NestJS.
+ * Model konfiguracji: odpowiada elementom plików config/seed/*.yaml (typy dokumentów, pola, grupy
+ * ekstrakcji, słowniki, profile LLM i Docling) oraz wydaniom w config/releases/.
+ * W makiecie dane pochodzą z core/config/mock-config.ts; docelowo z API backendu (FastAPI).
  */
 
 export type ExtractionStrategy = 'llm' | 'regex' | 'slownik' | 'regula';

@@ -1,4 +1,4 @@
-# Dostawcy API LLM: metadane platformy (tabela llm_provider). Silnik tego pliku nie czyta.
+# Dostawcy API LLM: metadane dla GUI (API backendu: /api/llm-providers). Silnik tego pliku nie czyta.
 # Profile LLM z release.yaml są przypisywane do dostawcy po base_url.
 providers:
   - code: ovhcloud

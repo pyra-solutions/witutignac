@@ -1,8 +1,8 @@
 """Model konfiguracji (wydania) i jego wczytywanie.
 
-Źródłem konfiguracji jest baza danych platformy; silnik dostaje z niej
-niezmienne wydanie w postaci JSON (`release.json`). Do czasu powstania bazy
-wydanie budujemy z plików YAML w `config/seed/` (`build-release`).
+Źródłem konfiguracji są pliki YAML w `config/seed/`. Silnik dostaje z nich
+wydanie w postaci JSON (`release.json`): poleceniem `build-release` albo przez
+publikację wydania w backendzie (`backend/manage.py publish`).
 """
 
 import hashlib

@@ -1,6 +1,6 @@
 """Punkt wejścia backendu, działa z dowolnego katalogu: python backend/manage.py <polecenie>.
 
-Polecenia: migrate, seed, export, publish, activate, releases, serve (szczegóły: --help).
+Polecenia: publish, activate, releases, serve (szczegóły: --help).
 """
 
 import sys

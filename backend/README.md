@@ -1,86 +1,64 @@
 # Backend Odwołania2json (Python)
 
-API (FastAPI), baza PostgreSQL (SQLAlchemy 2, migracje Alembic) i wydania konfiguracji silnika.
-Backend korzysta z modeli konfiguracji silnika (`engine/odwolania2json/config.py`). Format wydania
-i wartości domyślne pól definiuje więc wyłącznie silnik.
+API (FastAPI) dla interfejsu graficznego i wydania konfiguracji silnika. Backend nie ma bazy danych:
+pracuje na plikach w repozytorium, więc nie wymaga Dockera ani żadnej usługi w tle. Korzysta z modeli
+konfiguracji silnika (`engine/odwolania2json/config.py`), więc format wydania i wartości domyślne pól
+definiuje wyłącznie silnik.
+
+Do uruchomienia ekstrakcji (`start.sh`, `start.bat`) backend nie jest potrzebny.
 
 ## Uruchomienie
 
 ```bash
-docker compose up -d db                     # PostgreSQL 18 na 127.0.0.1:5432
 python3 -m venv backend/.venv               # bez ensurepip: python3 -m venv --without-pip backend/.venv
 python3 -m pip --python backend/.venv/bin/python install -r backend/requirements-dev.txt
-backend/.venv/bin/python backend/manage.py migrate   # schemat bazy
-backend/.venv/bin/python backend/manage.py seed      # konfiguracja z config/seed/*.yaml + wydanie startowe
 backend/.venv/bin/python backend/manage.py serve --reload   # API: http://127.0.0.1:8000/docs
 ```
 
-Adres bazy pochodzi z `DATABASE_URL` (zmienna środowiskowa albo `.env` w katalogu repozytorium).
-Domyślnie backend łączy się z `postgresql://o2j:o2j@localhost:5432/odwolania2json`, czyli z kontenerem
-z `docker-compose.yml`. Dane bazy są w wolumenie `pgdata`; `docker compose down -v` je usuwa.
+## Gdzie jest konfiguracja
+
+| Ścieżka | Rola |
+| --- | --- |
+| `config/seed/*.yaml` | konfiguracja robocza (szkic) i jedyne źródło prawdy: typy dokumentów, słowniki, profile Docling i LLM |
+| `config/seed/llm_providers.yaml` | metadane dostawców LLM dla GUI (lokalizacja danych, opis); silnik ich nie czyta |
+| `config/releases/<wersja>.json` | opublikowane wydanie: wersja, SHA-256, autor, data, opis zmian i snapshot `release.json` |
+| `engine/config/release.json` | aktywne wydanie, które czyta CLI silnika |
+
+```
+config/seed/*.yaml ──publish──▶ config/releases/<wersja>.json ──activate──▶ engine/config/release.json
+  (edycja: plik lub GUI)          (niezmienne, SHA-256)                       (CLI oceniane przez organizatora)
+```
+
+- **Publikacja** buduje wydanie z YAML tak samo jak `odwolania2json build-release` i sprawdza je modelami
+  silnika. Plik wydania powstaje tylko wtedy, gdy jeszcze nie istnieje, więc opublikowanej wersji nie da
+  się nadpisać.
+- **Aktywacja** zapisuje snapshot wydania do `engine/config/release.json` w formacie bajt w bajt zgodnym
+  z `build-release`. Wycofanie zmian to aktywacja poprzedniej wersji. Wydanie, którego plik zmieniono po
+  publikacji (niezgodny SHA-256), nie zostanie aktywowane.
+- **Status.** Aktywne jest wydanie o tym samym SHA-256 co `engine/config/release.json`. Gdy ten plik
+  zbudowano poleceniem `build-release` bez publikacji, żadne wydanie nie jest aktywne.
+
+Pliki wydań trafiają do repozytorium, więc historia konfiguracji jest też w historii git.
 
 ## Polecenia `manage.py`
 
 | Polecenie | Co robi |
 | --- | --- |
-| `migrate [rewizja]` | stosuje migracje (domyślnie do `head`) |
-| `downgrade <rewizja>` | cofa migracje; `base` usuwa cały schemat |
-| `seed [--seed-dir DIR] [--no-publish]` | zastępuje konfigurację w bazie treścią `config/seed/*.yaml`; przy pustej liście wydań publikuje wydanie startowe |
-| `export [--version V] [--out PLIK]` | bieżąca konfiguracja z bazy jako `release.json`, bez publikacji |
-| `publish --version V [--summary] [--no-activate] [--out PLIK]` | zapisuje niezmienne wydanie i domyślnie je aktywuje |
-| `activate --version V [--out PLIK]` | aktywuje istniejące wydanie, także przy wycofaniu zmian |
-| `releases` | lista wydań |
+| `publish --version V [--summary] [--author] [--no-activate]` | zapisuje konfigurację z `config/seed` jako niezmienne wydanie i domyślnie je aktywuje |
+| `activate --version V` | aktywuje istniejące wydanie, także przy wycofaniu zmian |
+| `releases` | lista wydań ze statusem |
 | `serve [--host] [--port] [--reload]` | uruchamia API (uvicorn) |
 
-Aby CLI silnika używał konfiguracji z bazy:
-`manage.py publish --version 2026.11.22 --summary "…" --out engine/config/release.json`.
+## API
 
-## Jak konfiguracja przechodzi przez bazę
-
-```
-config/seed/*.yaml ──seed──▶ tabele konfiguracji ──publish──▶ config_release.snapshot ──▶ engine/config/release.json
-                           (edycja przez API/UI)            (niezmienne, SHA-256)          (CLI oceniane przez organizatora)
-```
-
-- **Import** (`seed`) waliduje YAML modelami silnika, zapisuje komplet wartości i usuwa z bazy elementy,
-  których nie ma w plikach. Potem eksportuje konfigurację z powrotem i porównuje ją ze źródłem. Jeśli
-  silnik dostanie nowe pole, a baza nie będzie miała na nie kolumny, import zatrzyma się z komunikatem,
-  zamiast to pole po cichu zgubić.
-- **Eksport** daje plik bajt w bajt identyczny z `odwolania2json build-release`. Profile i słowniki są
-  posortowane po kodzie, a typy dokumentów zachowują kolejność ze źródła, bo przy remisie klasyfikacji
-  silnik wybiera typ wcześniejszy.
-- **Wydania** są niezmienne: trigger `config_release_immutable` blokuje zmianę wersji, treści i skrótu.
-  Częściowy indeks unikalny pozwala na tylko jedno aktywne wydanie.
-
-## Schemat
-
-Konfiguracja (kolumny nazwane jak pola silnika):
-
-| Tabela | Zawartość |
+| Metoda i ścieżka | Wynik |
 | --- | --- |
-| `engine_settings` | ustawienia wydania (jeden wiersz): wynik dla nieobsługiwanych dokumentów, domyślny profil LLM, równoległość |
-| `conversion_profile` | ustawienia Docling (OCR, tabele, limity) |
-| `llm_provider` | dostawca API: adres, lokalizacja danych, opis (`config/seed/llm_providers.yaml`) |
-| `llm_profile` | model i parametry wywołań; nazwa zmiennej z kluczem API (samego klucza baza nie przechowuje) |
-| `dictionary`, `dictionary_entry` | słowniki, np. powody czynności 1–12 |
-| `document_type` | typ dokumentu i reguły klasyfikacji |
-| `document_section`, `list_definition`, `extraction_group`, `field_definition` | sekcje tekstu, listy, grupy wywołań LLM, pola z regułami, normalizatorami i walidatorami |
-| `config_release` | niezmienne wydania: snapshot `release.json`, SHA-256, status `draft`/`active`/`archived` |
-
-Dane robocze, przygotowane pod sprawy, weryfikację i ewaluację (API jeszcze ich nie obsługuje):
-`case_file`, `document`, `conversion_artifact`, `processing_job`, `document_result`, `field_result`,
-`correction`, `evaluation_run`, `audit_log`.
-
-Struktury należące do silnika (reguły, normalizatory, walidatory, wzorce klasyfikacji) oraz snapshot
-wydania i wynikowy JSON dokumentu mają typ `json`. Zachowuje on kolejność kluczy, więc pliki odtworzone
-z bazy są identyczne ze źródłem. Pozostałe dokumenty JSON mają typ `jsonb`.
-
-## Zmiana schematu
-
-1. Zmień `o2j_backend/models.py`.
-2. `cd backend && .venv/bin/alembic revision --autogenerate -m "opis"`. Przejrzyj wygenerowany plik w
-   `migrations/versions/`; autogenerate nie obsługuje triggerów ani usuwania typów enum.
-3. `manage.py migrate`, potem `cd backend && .venv/bin/alembic check` (schemat zgodny z modelami).
+| `GET /api/health` | stan usługi |
+| `GET /api/releases` | lista wydań (bez snapshotu) |
+| `GET /api/releases/active` | aktywne wydanie ze snapshotem; 404, gdy `release.json` nie odpowiada żadnemu wydaniu |
+| `GET /api/releases/{wersja}` | wydanie ze snapshotem |
+| `GET /api/config/draft` | bieżąca konfiguracja z YAML w formacie `release.json`; 409, gdy pliki nie przechodzą walidacji |
+| `GET /api/llm-providers` | dostawcy LLM z `config/seed/llm_providers.yaml` |
 
 ## Testy
 
@@ -88,6 +66,4 @@ z bazy są identyczne ze źródłem. Pozostałe dokumenty JSON mają typ `jsonb`
 cd backend && .venv/bin/python -m pytest -q
 ```
 
-Testy działają na osobnej bazie `odwolania2json_test`, którą kontener tworzy przy pierwszym starcie
-(`deploy/postgres/initdb/`). Każdy test działa w transakcji wycofywanej po zakończeniu, a całość
-zaczyna się od pełnego cyklu migracji w dół i w górę. Gdy baza jest niedostępna, testy są pomijane.
+Testy działają na kopii `config/seed` w katalogu tymczasowym i nie zmieniają plików repozytorium.
