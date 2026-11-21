@@ -1,7 +1,7 @@
-"""Klient LLM dla API zgodnego z OpenAI (Eden AI, OVHcloud, IONOS, vLLM, Ollama, Gemini compat).
+"""Klient LLM dla API zgodnego z OpenAI (Eden AI, IONOS, vLLM, Ollama).
 
 Klucz API pochodzi wyłącznie ze zmiennej środowiskowej wskazanej w profilu.
-Nigdy nie trafia do logów, cache ani śladu ekstrakcji.
+Nigdy nie trafia do logów, cache ani śladu ekstrakcji; log podaje tylko jego źródło i długość.
 """
 
 import hashlib
@@ -19,6 +19,9 @@ import httpx
 from odwolania2json.config import LlmProfile
 
 log = logging.getLogger(__name__)
+
+# Zmienne wczytane z pliku .env (nazwa -> ścieżka pliku). Pozostałe pochodzą ze środowiska systemu.
+DOTENV_KEYS: dict[str, Path] = {}
 
 DEFAULT_SYSTEM_PROMPT = (
     "Jesteś systemem ekstrakcji danych z polskich dokumentów postępowań odwoławczych "
@@ -85,7 +88,11 @@ class LlmClient:
         self.profile = profile
         self.base_url = (os.environ.get("LLM_BASE_URL") or profile.base_url or "").rstrip("/")
         self.model = os.environ.get("LLM_MODEL") or profile.model
-        self._key = os.environ.get(profile.api_key_env) or os.environ.get("LLM_API_KEY")
+        self._key_var, self._key = next(
+            ((n, os.environ[n].strip()) for n in (profile.api_key_env, "LLM_API_KEY") if os.environ.get(n, "").strip()),
+            (None, ""),
+        )
+        self._auth_error: str | None = None
         self.cache_dir = cache_dir
         self._http: httpx.Client | None = None
         self._limiter = RateLimiter(profile.tokens_per_minute, profile.requests_per_minute)
@@ -95,7 +102,19 @@ class LlmClient:
         return bool(self.base_url and self.model and self._key)
 
     def describe(self) -> str:
-        return f"{self.model} @ {self.base_url}" if self.enabled else "wyłączony (brak adresu, modelu lub klucza)"
+        if not self.enabled:
+            return "wyłączony (brak adresu, modelu lub klucza)"
+        return f"{self.model} @ {self.base_url}; klucz {self.key_source()}"
+
+    def key_source(self) -> str:
+        """Skąd pochodzi klucz, bez jego wartości: nazwa zmiennej, źródło i długość."""
+        if self._key_var is None:
+            return "brak"
+        if self._key_var in DOTENV_KEYS:
+            src = f"z pliku {DOTENV_KEYS[self._key_var]}"
+        else:
+            src = "ze zmiennej środowiskowej systemu (ma pierwszeństwo przed plikiem .env)"
+        return f"{self._key_var} {src}, liczba znaków: {len(self._key)}"
 
     def _client(self) -> httpx.Client:
         if self._http is None:
@@ -132,6 +151,8 @@ class LlmClient:
         cached = self._cache_get(key)
         if cached is not None:
             return cached["result"], {**cached["meta"], "from_cache": True}
+        if self._auth_error:  # klucz już odrzucony: bez kolejnych zapytań
+            raise LlmError(self._auth_error)
 
         t0 = time.perf_counter()
         est = estimate_tokens(*(m["content"] for m in messages), json.dumps(schema, ensure_ascii=False))
@@ -175,11 +196,18 @@ class LlmClient:
             try:
                 r = self._client().post(url, json=body, headers=headers)
             except httpx.HTTPError as e:
-                last = f"{type(e).__name__}: {e}"
+                # np. "Illegal header value b'Bearer <klucz>'": klucz nie może trafić do komunikatu
+                last = f"{type(e).__name__}: {e}".replace(self._key, "***")
             else:
                 if r.status_code == 200:
                     return r.json()
                 last = f"HTTP {r.status_code}: {r.text[:300]}"
+                if r.status_code in (401, 403):
+                    if self._auth_error is None:
+                        log.error("LLM: API odrzuciło klucz (%s); klucz %s. Pozostałe dokumenty tylko z reguł.",
+                                  last, self.key_source())
+                    self._auth_error = f"API odrzuciło klucz ({last})"
+                    raise LlmError(self._auth_error)
                 if r.status_code not in (408, 409, 425, 429, 500, 502, 503, 504):
                     raise LlmError(last)
                 if r.status_code == 429:
@@ -235,11 +263,28 @@ def parse_json_object(content: Any) -> dict[str, Any]:
     return obj
 
 
+def read_env_text(path: Path) -> tuple[str, str]:
+    """Treść pliku .env i nazwa jego kodowania.
+
+    Na Windows plik bywa zapisany różnie: Notatnik w UTF-8 (w starszym Windows 10 ze znacznikiem BOM),
+    PowerShell 5 przez `echo ... > .env` w UTF-16, starsze edytory w ANSI (cp1250).
+    """
+    raw = path.read_bytes()
+    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return raw.decode("utf-16", errors="replace"), "UTF-16"
+    if raw.startswith(b"\xef\xbb\xbf"):
+        return raw[3:].decode("utf-8", errors="replace"), "UTF-8 z BOM"
+    try:
+        return raw.decode("utf-8"), "UTF-8"
+    except UnicodeDecodeError:
+        return raw.decode("cp1250", errors="replace"), "ANSI (cp1250)"
+
+
 def load_dotenv(path: Path) -> None:
     """Minimalny odczyt pliku .env (KLUCZ=wartość); nie nadpisuje istniejących zmiennych."""
     if not path.is_file():
         return
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in read_env_text(path)[0].splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
@@ -248,3 +293,4 @@ def load_dotenv(path: Path) -> None:
         v = v.strip().strip('"').strip("'")
         if k and k not in os.environ:
             os.environ[k] = v
+            DOTENV_KEYS[k] = path

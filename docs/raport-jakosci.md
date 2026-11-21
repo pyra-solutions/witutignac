@@ -92,8 +92,26 @@ Organizator dołączył dokumenty, które nie należą do żadnej klasy i mają 
 
 - Wszystkie 16 dokumentów negatywnych dostaje `{}`. Wcześniej poradnik „prowadzenie postępowania odwoławczego” był rozpoznawany jako odwołanie po samym nagłówku „ODWOŁANIE”.
 - Klasyfikacja nie korzysta z nazw plików. Przy wzorcach nazw orzeczenie KIO nazwane `odwolanie.pdf` było rozpoznawane jako odwołanie.
-- Wszystkie 198 dokumentów (180 treningowych, 16 negatywnych i 2 z `szablon-aplikacja`) jest klasyfikowanych poprawnie z zapasem co najmniej 1 punktu względem progu. Dotyczy to także zeskanowanego odwołania z szablonu, w którym OCR zapisał nagłówek jako „ODWOLANIE”.
+- Wszystkie 198 dokumentów (180 treningowych, 16 negatywnych i 2 z `szablon-aplikacja`) jest klasyfikowanych poprawnie z zapasem co najmniej 1 punktu względem progu (od wydania 2026.11.21-dev.9 przy pełnomocnictwie 0,5 punktu: próg 3,5, najsłabsze pełnomocnictwo 4,0). Dotyczy to także zeskanowanego odwołania z szablonu, w którym OCR zapisał nagłówek jako „ODWOLANIE”.
 - Słownik powodów odpowiada `oczekiwane-json/czynnosc_powod_id_dict.md`: opis 6 to „Odpowiedzi/wyjaśnienia do SWZ”, a 12 to „Projektowane postanowienia umowy”. Słowa kluczowe dla 12 nie są sprawdzone na danych, bo zbiór treningowy nie ma takiej sprawy.
+
+### Ogłoszenia z BZP (wydanie 2026.11.21-dev.9)
+
+Test fałszywych trafień na ogłoszeniach z Biuletynu Zamówień Publicznych (API `ezamowienia.gov.pl/mo-board/api/v1/notice`, wrzesień–listopad 2026, wszystkie 8 typów ogłoszeń). Każde ogłoszenie powinno dostać `{}`.
+
+| Zbiór | Co uruchomione | Dokumentów | Błędne przed dev.9 | Błędne po zmianie |
+| --- | --- | ---: | ---: | ---: |
+| Tekst ogłoszeń z HTML | reguły klasyfikacji | 3562 | 51 (1,4%) | 0 |
+| PDF z ogłoszeń o zamówieniu i zmian ogłoszeń, pierwsze 6 stron | reguły klasyfikacji na warstwie tekstowej | 1200 | 10 (0,8%) | 0 |
+| PDF, próbka z najtrudniejszymi przypadkami | pełny silnik bez LLM (przerwany) | 67 | 7 | nie mierzono |
+
+Błędy dotyczyły ogłoszeń o zamówieniu (47 z 600 na tekście HTML) i zmian ogłoszeń (4 z 600); pozostałe typy ogłoszeń dawały 0. Przyczyny i zmiany:
+
+- **Przelew.** Informacja o wadium („przelewem na rachunek… nr …”, „tytułem”, „zł”) dawała 3,5 punktu przy progu 3, bez słowa „przelew” na początku dokumentu. Zmiana: „wadium” z wagą −2.
+- **Pełnomocnictwo.** Pouczenie o pełnomocniku konsorcjum („mocodawcy”, „umocowanie”, „do reprezentowania”) dawało równo próg 3. Zmiana: próg 3,5, więc potrzebny jest nagłówek PEŁNOMOCNICTWO i co najmniej dwa zwroty.
+- **Wszystkie typy.** Tytuł ogłoszenia BZP („Ogłoszenie o zamówieniu / o zmianie ogłoszenia / …”) na samym początku dokumentu ma wagę −3.
+
+Kolumna „po zmianie” była mierzona z regułą tytułu ogłoszenia szukaną w każdej linii pierwszych 600 znaków; wydanie ma ją zawężoną do samego początku dokumentu (`\A`), żeby nie trafiała w linię „Ogłoszenie o zamówieniu nr …” w nagłówku odwołania. Na dokumentach treningowych, skanach i negatywach organizatora klasyfikacja się nie zmieniła. Ryzyko: prawdziwe pełnomocnictwo z nagłówkiem i tylko jednym z trzech zwrotów (np. „udzielam pełnomocnictwa… do występowania przed KIO”) dostanie teraz `{}`.
 
 ## Skany
 

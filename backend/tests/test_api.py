@@ -54,5 +54,5 @@ def test_draft(client, files):
 
 def test_llm_providers(client):
     providers = client.get("/api/llm-providers").json()
-    assert {p["code"] for p in providers} >= {"ovhcloud"}
+    assert {p["code"] for p in providers} >= {"edenai"}
     assert all(p["base_url"].startswith("https://") for p in providers)

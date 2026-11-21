@@ -1,6 +1,6 @@
 # Ustawienia wydania konfiguracji. Pliki w config/seed/ są jedynym źródłem konfiguracji;
 # do silnika trafiają jako engine/config/release.json (build-release albo backend: manage.py publish).
-version: "2026.11.21-dev.7"
+version: "2026.11.21-dev.9"
 
 settings:
   # Wynik dla dokumentu spoza obsługiwanych typów (README: "pusty plik .json").
@@ -43,21 +43,6 @@ llm_profiles:
     max_retries: 3
     structured_output: json_schema
 
-  - id: eden-qwen3.5-9b-ovh
-    base_url: https://api.eu.edenai.run/v3
-    extra_headers: {x-edenai-metadata: enabled}
-    model: ovhcloud/Qwen3.5-9B
-    api_key_env: EDEN_AI_API_KEY
-    temperature: 0
-    # Qwen3.5 zawsze rozumuje przed odpowiedzią; "low" skraca rozumowanie, a większy limit
-    # tokenów chroni przed ucięciem odpowiedzi.
-    reasoning_effort: low
-    max_tokens: 8192
-    seed: 42
-    timeout_s: 180
-    max_retries: 3
-    structured_output: json_schema
-
   - id: eden-ministral-8b
     base_url: https://api.eu.edenai.run/v3
     extra_headers: {x-edenai-metadata: enabled}
@@ -75,18 +60,6 @@ llm_profiles:
     extra_headers: {x-edenai-metadata: enabled}
     model: mistral/ministral-3b-2512
     api_key_env: EDEN_AI_API_KEY
-    temperature: 0
-    max_tokens: 2048
-    seed: 42
-    timeout_s: 120
-    max_retries: 3
-    structured_output: json_schema
-
-  # Bezpośrednio OVHcloud AI Endpoints (Francja), bez Eden AI. Wymaga własnego tokenu OVHcloud.
-  - id: ovh-qwen3.5-9b
-    base_url: https://oai.endpoints.kepler.ai.cloud.ovh.net/v1
-    model: Qwen3.5-9B
-    api_key_env: OVH_AI_ENDPOINTS_ACCESS_TOKEN
     temperature: 0
     max_tokens: 2048
     seed: 42

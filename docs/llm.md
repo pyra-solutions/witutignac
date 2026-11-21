@@ -13,7 +13,7 @@ Silnik używa małego, otwartego modelu językowego przez API dostawcy z serwera
 | Parametry | temperatura 0, `seed` 42, `max_tokens` 2048, odpowiedź wymuszona schematem (`response_format: json_schema`) |
 | Cena (katalog Eden AI) | 0,10 USD za 1 mln tokenów wejścia, 0,15 USD za 1 mln tokenów wyjścia; 15 spraw kontrolnych kosztowało około 0,01 USD |
 
-Profil `eden-qwen3.5-9b` jest zapisany w konfiguracji (`config/seed/release.yaml`) i ustawiony jako domyślny. Zmianę modelu albo dostawcy wykonuje się w konfiguracji albo zmiennymi `LLM_BASE_URL`, `LLM_MODEL` i `LLM_API_KEY`, bez zmian w kodzie. Konfiguracja zawiera też profile porównawcze z tabeli poniżej oraz `ovh-qwen3.5-9b`, czyli bezpośredni dostęp do OVHcloud AI Endpoints bez Eden AI.
+Profil `eden-qwen3.5-9b` jest zapisany w konfiguracji (`config/seed/release.yaml`) i ustawiony jako domyślny. Zmianę modelu albo dostawcy wykonuje się w konfiguracji albo zmiennymi `LLM_BASE_URL`, `LLM_MODEL` i `LLM_API_KEY`, bez zmian w kodzie. Konfiguracja zawiera też profile porównawcze Ministral 3B i 8B z tabeli poniżej.
 
 ## Przetwarzanie danych
 
@@ -36,7 +36,7 @@ Pomiar z 21.11.2026 na 15 sprawach kontrolnych (04, 08, …, 60): 47 plików PDF
 | Profil | Model i dostawca | Parametry (mld) | F1 | Błędy wywołań | Czas | Koszt |
 | --- | --- | --- | --- | --- | --- | --- |
 | `eden-qwen3.5-9b` (domyślny) | Qwen3.5-9B, FlexAI | 9,7 | **0,993** | 0 z 45 | 31 s | 0,010 USD |
-| `eden-qwen3.5-9b-ovh` | Qwen3.5-9B, OVHcloud | 9,7 | 0,986 | 17 z 45 | 672 s | 0,033 USD |
+| `eden-qwen3.5-9b-ovh` (usunięty od wydania 2026.11.21-dev.8) | Qwen3.5-9B, OVHcloud | 9,7 | 0,986 | 17 z 45 | 672 s | 0,033 USD |
 | `eden-ministral-3b` | Ministral 3 3B, Mistral AI | 3 | 0,966 | 0 z 45 | 26 s | 0,011 USD |
 | `eden-ministral-8b` | Ministral 3 8B, Mistral AI | 8 | 0,939 | 0 z 45 | 46 s | 0,017 USD |
 | bez LLM (`--no-llm`) | same reguły | — | 0,971 | — | 25 s | 0 |

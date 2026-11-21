@@ -1,4 +1,4 @@
-"""Interfejs wiersza poleceń: run, evaluate, build-release, validate-config, plugins."""
+"""Interfejs wiersza poleceń: run, evaluate, build-release, validate-config, plugins, doctor."""
 
 import argparse
 import json
@@ -155,6 +155,12 @@ def cmd_plugins(_a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_doctor(a: argparse.Namespace) -> int:
+    from odwolania2json.doctor import run
+
+    return run(REPO_DIR, Path(a.report), api=not a.no_api, convert=not a.no_convert)
+
+
 def main(argv: list[str] | None = None) -> int:
     from odwolania2json.llm import load_dotenv
 
@@ -172,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--cache", help="katalog cache ('none' wyłącza); domyślnie .o2j-cache")
     r.add_argument("--trace-dir", help="katalog na ślady ekstrakcji (*.trace.json)")
     r.add_argument("--no-llm", action="store_true", help="tylko reguły, bez wywołań LLM")
-    r.add_argument("--llm-profile", help="profil LLM z konfiguracji zamiast domyślnego (np. ovh-qwen3.5-9b)")
+    r.add_argument("--llm-profile", help="profil LLM z konfiguracji zamiast domyślnego (np. eden-ministral-8b)")
     r.set_defaults(fn=cmd_run)
 
     e = sub.add_parser("evaluate", help="F1 względem plików wzorcowych")
@@ -195,6 +201,12 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("plugins", help="lista normalizatorów i walidatorów")
     p.set_defaults(fn=cmd_plugins)
+
+    d = sub.add_parser("doctor", help="diagnostyka środowiska, klucza API i Docling (raport bez wartości klucza)")
+    d.add_argument("--report", default=str(REPO_DIR / "diagnoza.txt"), help="plik raportu")
+    d.add_argument("--no-api", action="store_true", help="bez próbnego zapytania do API LLM")
+    d.add_argument("--no-convert", action="store_true", help="bez próbnej konwersji PDF przez Docling")
+    d.set_defaults(fn=cmd_doctor)
 
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if a.verbose else logging.INFO,

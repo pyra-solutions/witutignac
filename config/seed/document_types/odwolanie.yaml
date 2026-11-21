@@ -19,6 +19,9 @@ classification:
     # Orzeczenia KIO (spoza klas) zaczynają się sygnaturą i nazwą rozstrzygnięcia.
     - {pattern: 'Sygn\.\s*akt', weight: -2, first_chars: 300}
     - {pattern: '^\W*(?:WYROK|POSTANOWIENIE|UCHWAŁA)\b', weight: -2, first_chars: 800}
+    # Ogłoszenia BZP (negatywny przykład organizatora: 2025_BZP 00143067_01) zaczynają się tytułem ogłoszenia.
+    # \A: tylko sam początek dokumentu, żeby nie trafić w linię "Ogłoszenie o zamówieniu nr ..." w nagłówku odwołania.
+    - {pattern: '\A\W*Ogłoszenie\s+o\s+(?:zamówieniu|zmianie\s+ogłoszenia|wyniku\s+postępowania|wykonaniu\s+umowy|zamiarze\s+zawarcia\s+umowy|konkursie|wynikach\s+konkursu)', weight: -3, first_chars: 300}
 
 sections:
   - name: odwolujacy

@@ -6,13 +6,18 @@ conversion_profile: default
 classification:
   description: Dokument, w którym mocodawca (wykonawca) udziela pełnomocnictwa adwokatowi lub radcy prawnemu.
   # Klasyfikujemy wyłącznie po treści: README organizatora zastrzega, że nazwa pliku może być dowolna.
-  min_score: 3
+  # Same zwroty z treści dają maks. 3 (np. pouczenie o pełnomocniku konsorcjum w ogłoszeniu BZP),
+  # więc próg 3.5 wymaga nagłówka PEŁNOMOCNICTWO i co najmniej dwóch zwrotów.
+  min_score: 3.5
   patterns:
     # Nagłówek na początku linii (nie wzmianka w zdaniu odwołania); [ŁL]: OCR gubi polskie znaki.
     - {pattern: '^\W*P\s?E\s?[ŁL]\s?N\s?O\s?M\s?O\s?C\s?N\s?I\s?C\s?T\s?W\s?O\b', weight: 2, first_chars: 2500}
     - {pattern: 'Mocodawc', weight: 1, first_chars: null}
     - {pattern: 'ustanawiam|udzielam\s+pełnomocnictwa|upoważniam|umocowan', weight: 1, first_chars: null}
     - {pattern: 'do\s+reprezentowania', weight: 1, first_chars: null}
+    # Ogłoszenia BZP (negatywny przykład organizatora: 2025_BZP 00143067_01) zaczynają się tytułem ogłoszenia.
+    # \A: tylko sam początek dokumentu, żeby nie trafić w linię "Ogłoszenie o zamówieniu nr ..." w nagłówku odwołania.
+    - {pattern: '\A\W*Ogłoszenie\s+o\s+(?:zamówieniu|zmianie\s+ogłoszenia|wyniku\s+postępowania|wykonaniu\s+umowy|zamiarze\s+zawarcia\s+umowy|konkursie|wynikach\s+konkursu)', weight: -3, first_chars: 300}
 
 sections:
   - name: mocodawca

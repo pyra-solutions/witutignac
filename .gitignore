@@ -30,5 +30,6 @@ __screenshots__/
 
 # Silnik: cache konwersji i LLM, wyniki lokalne
 .o2j-cache/
+diagnoza.txt
 output/*
 !output/.gitkeep

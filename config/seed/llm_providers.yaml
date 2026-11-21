@@ -6,9 +6,3 @@ providers:
     base_url: https://api.eu.edenai.run/v3
     data_location: UE; Eden AI SAS (Francja), hosting AWS Paryż; endpoint UE nie przekazuje treści zapytań poza UE (DPA §12.2)
     note: Dostawca do oceny. Bramka API zgodna z OpenAI; model Qwen3.5-9B u dostawcy FlexAI w regionie eu.
-
-  - code: ovhcloud
-    name: OVHcloud AI Endpoints
-    base_url: https://oai.endpoints.kepler.ai.cloud.ovh.net/v1
-    data_location: Francja (UE)
-    note: Dostawca do oceny. Otwarte modele, API zgodne z OpenAI.

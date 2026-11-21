@@ -46,7 +46,24 @@ Klucz musi być w pliku `.env` w katalogu głównym, na wzór `.env.example`:
 EDEN_AI_API_KEY=...
 ```
 
+Zmienna `EDEN_AI_API_KEY` ustawiona w systemie albo poleceniem `set` ma pierwszeństwo przed plikiem `.env`.
+Na starcie program podaje, skąd wziął klucz i ile ma on znaków (bez samej wartości). Gdy API odrzuci klucz
+(HTTP 401), program pisze to raz i resztę dokumentów przetwarza samymi regułami.
+
 Bez klucza program działa na samych regułach i nadal zapisuje wszystkie pliki JSON, ale odczytuje mniej pól.
+
+### Diagnoza, gdy coś nie działa
+
+```bat
+diagnoza.bat
+```
+
+Na Linuksie i macOS: `./diagnoza.sh`. Skrypt wymaga środowiska założonego wcześniej przez `start.bat`.
+Sprawdza po kolei Pythona i zależności, konfigurację, plik `.env` i klucz API, próbne zapytanie do API,
+dane wejściowe, zapis wyników i konwersję jednego PDF-a przez Docling. Każdy problem ma podpowiedź,
+co zrobić. Raport trafia do `diagnoza.txt` i można go przesłać: nie zawiera klucza, tylko jego źródło, długość
+i odcisk SHA-256 (8 znaków). Po odcisku można porównać klucze na dwóch komputerach.
+Opcje `--no-api` i `--no-convert` pomijają zapytanie do API i konwersję PDF-a.
 Zmienne `LLM_BASE_URL`, `LLM_MODEL` i `LLM_API_KEY` pozwalają podłączyć inny serwer zgodny z API OpenAI
 bez zmian w plikach.
 

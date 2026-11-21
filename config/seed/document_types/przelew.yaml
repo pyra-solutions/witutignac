@@ -20,6 +20,11 @@ classification:
     - {pattern: '\bPLN\b|\bzł\b', weight: 0.5, first_chars: null}
     # Faktura (np. z formą płatności "przelew" i numerem rachunku) nie jest potwierdzeniem przelewu.
     - {pattern: '^\W*FAKTURA\b', weight: -3, first_chars: 600}
+    # Informacja o wadium (ogłoszenia BZP, SWZ) ma numer rachunku, "przelewem na rachunek" i "tytułem".
+    - {pattern: '\bwadi(?:um|ów|a|em)\b', weight: -2, first_chars: null}
+    # Ogłoszenia BZP (negatywny przykład organizatora: 2025_BZP 00143067_01) zaczynają się tytułem ogłoszenia.
+    # \A: tylko sam początek dokumentu, żeby nie trafić w linię "Ogłoszenie o zamówieniu nr ..." w nagłówku odwołania.
+    - {pattern: '\A\W*Ogłoszenie\s+o\s+(?:zamówieniu|zmianie\s+ogłoszenia|wyniku\s+postępowania|wykonaniu\s+umowy|zamiarze\s+zawarcia\s+umowy|konkursie|wynikach\s+konkursu)', weight: -3, first_chars: 300}
 
 lists: []
 

@@ -1,5 +1,5 @@
 {
-  "version": "2026.11.21-dev.7",
+  "version": "2026.11.21-dev.9",
   "settings": {
     "unsupported_output": "{}",
     "default_llm_profile": "eden-qwen3.5-9b",
@@ -45,25 +45,6 @@
       "requests_per_minute": null
     },
     {
-      "id": "eden-qwen3.5-9b-ovh",
-      "base_url": "https://api.eu.edenai.run/v3",
-      "model": "ovhcloud/Qwen3.5-9B",
-      "api_key_env": "EDEN_AI_API_KEY",
-      "temperature": 0.0,
-      "max_tokens": 8192,
-      "seed": 42,
-      "timeout_s": 180.0,
-      "max_retries": 3,
-      "reasoning_effort": "low",
-      "structured_output": "json_schema",
-      "system_prompt": "",
-      "extra_headers": {
-        "x-edenai-metadata": "enabled"
-      },
-      "tokens_per_minute": null,
-      "requests_per_minute": null
-    },
-    {
       "id": "eden-ministral-8b",
       "base_url": "https://api.eu.edenai.run/v3",
       "model": "mistral/ministral-8b-2512",
@@ -98,23 +79,6 @@
       "extra_headers": {
         "x-edenai-metadata": "enabled"
       },
-      "tokens_per_minute": null,
-      "requests_per_minute": null
-    },
-    {
-      "id": "ovh-qwen3.5-9b",
-      "base_url": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1",
-      "model": "Qwen3.5-9B",
-      "api_key_env": "OVH_AI_ENDPOINTS_ACCESS_TOKEN",
-      "temperature": 0.0,
-      "max_tokens": 2048,
-      "seed": 42,
-      "timeout_s": 120.0,
-      "max_retries": 3,
-      "reasoning_effort": null,
-      "structured_output": "json_schema",
-      "system_prompt": "",
-      "extra_headers": {},
       "tokens_per_minute": null,
       "requests_per_minute": null
     }
@@ -276,6 +240,11 @@
             "pattern": "^\\W*(?:WYROK|POSTANOWIENIE|UCHWAŁA)\\b",
             "weight": -2.0,
             "first_chars": 800
+          },
+          {
+            "pattern": "\\A\\W*Ogłoszenie\\s+o\\s+(?:zamówieniu|zmianie\\s+ogłoszenia|wyniku\\s+postępowania|wykonaniu\\s+umowy|zamiarze\\s+zawarcia\\s+umowy|konkursie|wynikach\\s+konkursu)",
+            "weight": -3.0,
+            "first_chars": 300
           }
         ],
         "filename_patterns": [],
@@ -1248,10 +1217,15 @@
             "pattern": "do\\s+reprezentowania",
             "weight": 1.0,
             "first_chars": null
+          },
+          {
+            "pattern": "\\A\\W*Ogłoszenie\\s+o\\s+(?:zamówieniu|zmianie\\s+ogłoszenia|wyniku\\s+postępowania|wykonaniu\\s+umowy|zamiarze\\s+zawarcia\\s+umowy|konkursie|wynikach\\s+konkursu)",
+            "weight": -3.0,
+            "first_chars": 300
           }
         ],
         "filename_patterns": [],
-        "min_score": 3.0,
+        "min_score": 3.5,
         "description": "Dokument, w którym mocodawca (wykonawca) udziela pełnomocnictwa adwokatowi lub radcy prawnemu."
       },
       "conversion_profile": "default",
@@ -1789,6 +1763,16 @@
             "pattern": "^\\W*FAKTURA\\b",
             "weight": -3.0,
             "first_chars": 600
+          },
+          {
+            "pattern": "\\bwadi(?:um|ów|a|em)\\b",
+            "weight": -2.0,
+            "first_chars": null
+          },
+          {
+            "pattern": "\\A\\W*Ogłoszenie\\s+o\\s+(?:zamówieniu|zmianie\\s+ogłoszenia|wyniku\\s+postępowania|wykonaniu\\s+umowy|zamiarze\\s+zawarcia\\s+umowy|konkursie|wynikach\\s+konkursu)",
+            "weight": -3.0,
+            "first_chars": 300
           }
         ],
         "filename_patterns": [],

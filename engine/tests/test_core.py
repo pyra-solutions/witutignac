@@ -189,3 +189,82 @@ def test_evaluate_input_names_and_nested_dirs(tmp_path: Path) -> None:
     assert (rep.total.tp, rep.total.fp, rep.total.fn) == (3, 0, 0)
     assert rep.negatives == 0 and rep.missing_pred == []
     assert set(rep.by_type) == {"przelew"}
+
+
+def test_dotenv_bom_and_key_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from odwolania2json import llm
+    from odwolania2json.config import LlmProfile
+
+    monkeypatch.setattr(llm, "DOTENV_KEYS", {})
+    monkeypatch.delenv("O2J_TEST_KEY", raising=False)
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    env = tmp_path / ".env"
+    # Notatnik ze znacznikiem BOM i końcami linii CRLF, klucz w pierwszej linii
+    env.write_bytes("O2J_TEST_KEY= abc123 \r\n".encode("utf-8-sig"))
+    llm.load_dotenv(env)
+    prof = LlmProfile(base_url="http://localhost", model="m", api_key_env="O2J_TEST_KEY")
+    src = llm.LlmClient(prof, None).key_source()
+    assert "z pliku" in src and "liczba znaków: 6" in src and "abc123" not in src
+
+    # zmienna ustawiona w systemie ma pierwszeństwo przed .env i log to mówi
+    monkeypatch.setattr(llm, "DOTENV_KEYS", {})
+    monkeypatch.setenv("O2J_TEST_KEY", "inny-klucz")
+    llm.load_dotenv(env)
+    assert "zmiennej środowiskowej systemu" in llm.LlmClient(prof, None).key_source()
+
+
+def test_rejected_key_stops_further_calls(monkeypatch: pytest.MonkeyPatch) -> None:
+    import httpx
+
+    from odwolania2json import llm
+    from odwolania2json.config import LlmProfile
+
+    monkeypatch.setenv("O2J_TEST_KEY", "zly")
+    calls = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        calls.append(req)
+        return httpx.Response(401, json={"detail": "Invalid token"})
+
+    c = llm.LlmClient(LlmProfile(base_url="http://localhost", model="m", api_key_env="O2J_TEST_KEY"), None)
+    c._http = httpx.Client(transport=httpx.MockTransport(handler))
+    for text in ("a", "b"):
+        with pytest.raises(llm.LlmError, match="odrzuciło klucz"):
+            c.extract("", text, {"type": "object"}, "t")
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("data,enc", [
+    ("EDEN_AI_API_KEY=abc\n".encode("utf-16"), "UTF-16"),  # PowerShell 5: echo ... > .env
+    ("# zażółć\nEDEN_AI_API_KEY=abc\n".encode("cp1250"), "ANSI (cp1250)"),
+    ("EDEN_AI_API_KEY=abc\n".encode("utf-8-sig"), "UTF-8 z BOM"),
+])
+def test_read_env_text_windows_encodings(tmp_path: Path, data: bytes, enc: str) -> None:
+    from odwolania2json.llm import read_env_text
+
+    p = tmp_path / ".env"
+    p.write_bytes(data)
+    text, found = read_env_text(p)
+    assert found == enc and "EDEN_AI_API_KEY=abc" in text
+
+
+def test_doctor_key_problems() -> None:
+    from odwolania2json.doctor import ERR, describe_key, key_problems
+
+    assert not [s for s, _ in key_problems(' "abc-123_x" ') if s == ERR]
+    assert [s for s, _ in key_problems("abc​def") if s == ERR]
+    assert [s for s, _ in key_problems("abc # komentarz") if s == ERR]
+    assert [s for s, _ in key_problems("twoj_klucz") if s == ERR]
+    assert "abc" not in describe_key("abc-123")
+
+
+def test_doctor_report_without_secrets(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from odwolania2json.cli import REPO_DIR
+    from odwolania2json.doctor import run
+
+    monkeypatch.setenv("EDEN_AI_API_KEY", "tajny-klucz-123")
+    report = tmp_path / "diagnoza.txt"
+    run(REPO_DIR, report, api=False, convert=False)
+    text = report.read_text(encoding="utf-8")
+    assert "== Plik .env i klucz API ==" in text and "Podsumowanie" in text
+    assert "tajny-klucz-123" not in text
