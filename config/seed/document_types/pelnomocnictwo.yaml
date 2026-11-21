@@ -1,0 +1,147 @@
+# Pełnomocnictwo. Struktura wyniku zgodna z oczekiwane-json/pelnomocnictwo.json.
+code: pelnomocnictwo
+name: Pełnomocnictwo do reprezentowania wykonawcy w postępowaniu odwoławczym
+conversion_profile: default
+
+classification:
+  description: Dokument, w którym mocodawca (wykonawca) udziela pełnomocnictwa adwokatowi lub radcy prawnemu.
+  # Klasyfikujemy wyłącznie po treści: README organizatora zastrzega, że nazwa pliku może być dowolna.
+  min_score: 3
+  patterns:
+    # Nagłówek na początku linii (nie wzmianka w zdaniu odwołania); [ŁL]: OCR gubi polskie znaki.
+    - {pattern: '^\W*P\s?E\s?[ŁL]\s?N\s?O\s?M\s?O\s?C\s?N\s?I\s?C\s?T\s?W\s?O\b', weight: 2, first_chars: 2500}
+    - {pattern: 'Mocodawc', weight: 1, first_chars: null}
+    - {pattern: 'ustanawiam|udzielam\s+pełnomocnictwa|upoważniam|umocowan', weight: 1, first_chars: null}
+    - {pattern: 'do\s+reprezentowania', weight: 1, first_chars: null}
+
+sections:
+  - name: mocodawca
+    start: ['Mocodawc\w*\s+jest', 'MOCODAWCA', 'niżej\s+podpisan', 'Mocodawca\s*:']
+    end: ['PEŁNOMOCNIK\b', 'ustanawiam', 'udzielam', 'niniejszym']
+    max_chars: 1500
+  - name: pelnomocnicy
+    start: ['ustanawiam', 'udzielam\s+pełnomocnictwa', 'PEŁNOMOCNIK\b', 'Pełnomocnik\s*:']
+    end: ['do\s+reprezentowania', 'Pełnomocnictwo\s+dotyczy', '§\s*3', 'w\s+postępowaniu', 'Pełnomocnictwo\s+udzielone']
+    max_chars: 1200
+  - name: podpisy
+    # blok podpisów: od pierwszej linii kropek do końca dokumentu, bez części "Pełnomocnictwo przyjmuję"
+    start: ['\.{8,}']
+    end: ['Pełnomocnictwo\s+przyjmuję', 'Przyjmuję\s+pełnomocnictwo']
+
+lists:
+  - path: mocodawca
+    min_items: 1
+    instruction: Mocodawcy, czyli podmioty udzielające pełnomocnictwa (więcej niż jeden przy konsorcjum udzielającym wspólnie).
+  - path: 'mocodawca[].podpisujacy'
+    min_items: 0
+    instruction: Osoby podpisujące pełnomocnictwo w imieniu tego mocodawcy.
+  - path: pelnomocnicy
+    min_items: 1
+    instruction: Osoby otrzymujące pełnomocnictwo, każda jako osobny element.
+
+groups:
+  - name: pelnomocnictwo
+    instruction: Odczytaj mocodawców, osoby podpisujące w ich imieniu i ustanowionych pełnomocników.
+    sections: []
+    max_chars: 12000
+
+fields:
+  - path: 'mocodawca[].data.imie_nazwisko'
+    group: pelnomocnictwo
+    instruction: Imię i nazwisko mocodawcy, tylko gdy jest osobą fizyczną (np. jednoosobowa działalność gospodarcza). Dla osoby prawnej null.
+    strategy: llm_first
+    grounding: token_prefix
+    rules:
+      - pattern: 'niżej\s+podpisan\w*\s+([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)'
+        ignore_case: false
+    normalizers: [{name: collapse_ws}]
+
+  - path: 'mocodawca[].data.krs'
+    group: pelnomocnictwo
+    instruction: Numer KRS mocodawcy będącego osobą prawną (10 cyfr).
+    strategy: rules_first
+    rules:
+      - {pattern: 'KRS\W{0,3}(\d{10})', section: mocodawca}
+      - {pattern: 'KRS\W{0,3}(\d{10})'}
+    normalizers: [{name: digits_only}]
+    validators: [{name: krs}]
+
+  - path: 'mocodawca[].data.nazwa'
+    group: pelnomocnictwo
+    instruction: Pełna nazwa mocodawcy (firma), bez adresu.
+    strategy: llm_first
+    rules:
+      - pattern: 'pod\s+firmą\s+([\s\S]{3,160}?),\s*(?:ul\.|al\.|pl\.|os\.|z\s+siedzibą)'
+      - pattern: 'Mocodawc\w*\s+jest\s+([\s\S]{3,160}?),\s*(?:ul\.|al\.|pl\.|os\.|z\s+siedzibą)'
+      - pattern: 'MOCODAWCA\s+([^\n|]{3,160}?)\s+(?:ul\.|al\.|pl\.|os\.)\s'
+        ignore_case: false
+      # tabela: | Mocodawca | Nazwa ul. ... |
+      - pattern: 'Mocodawca\s*\|\s*([^|\n]{3,160}?)\s*,?\s+(?:ul\.|al\.|pl\.|os\.)\s'
+      # "osoba upoważniona do reprezentacji Nazwa (KRS ...)"
+      - pattern: 'do\s+reprezentacji\s+([\s\S]{3,160}?)\s*(?:\(|,|z\s+siedzibą)'
+      # "Działając w imieniu Nazwa (dalej: ...)" — pierwsze wystąpienie w dokumencie
+      - pattern: '(?:w\s+imieniu|imieniem)\s+((?!Mocodawcy|Wykonawcy)[\s\S]{3,160}?)\s*(?:,|\(|z\s+siedzibą)'
+      # nagłówek firmowy: nazwa w pierwszej linii, adres w następnej
+      - pattern: '\A\s*(?:#+[ \t]*)?((?!P\s?E\s?Ł|[A-ZŁŚŻŹĆ]\w+,\s)[^\n]{3,120}?)[ \t]*\n\s*(?:ul\.|al\.|pl\.|os\.)\s'
+    normalizers: [{name: collapse_ws}, {name: strip_quotes}, {name: strip_punct, args: {chars: ' ,;:'}}]
+
+  - path: 'mocodawca[].data.nip'
+    group: pelnomocnictwo
+    instruction: NIP mocodawcy, same cyfry.
+    strategy: rules_first
+    rules:
+      - {pattern: 'NIP\W{0,3}(\d[\d\- ]{8,12}\d)', section: mocodawca}
+      - {pattern: 'NIP\W{0,3}(\d[\d\- ]{8,12}\d)'}
+    normalizers: [{name: digits_only}]
+    validators: [{name: nip}]
+
+  - path: 'mocodawca[].data.typ'
+    derive:
+      kind: present
+      source: 'mocodawca[].data.imie_nazwisko'
+      if_true: osoba_fizyczna
+      if_false: osoba_prawna
+
+  - path: 'mocodawca[].podpisujacy[].imie_nazwisko'
+    group: pelnomocnictwo
+    instruction: Imię i nazwisko osoby podpisującej w imieniu mocodawcy (np. członek zarządu, prokurent, właściciel), w mianowniku. Nie wpisuj tu pełnomocnika przyjmującego pełnomocnictwo.
+    strategy: llm_first
+    grounding: token_prefix
+    rules:
+      - pattern: '([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)\s*[,–-]?\s*(?:Prezes|Wiceprezes|Członek|Dyrektor|Prokurent|Właściciel|Wspólnik|Pełnomocnik\s+Zarządu)'
+        occurrence: all
+        unique: true
+        ignore_case: false
+      # podpis w tabeli albo w osobnej linii pod kropkami: imię i nazwisko jako cała komórka/linia
+      - pattern: '(?:^|\|)[ \t]*([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?[ \t]+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)[ \t]*(?:\||$)'
+        section: podpisy
+        occurrence: all
+        unique: true
+        ignore_case: false
+    normalizers: [{name: collapse_ws}]
+
+  - path: 'pelnomocnicy[].imie_nazwisko'
+    group: pelnomocnictwo
+    instruction: Imię i nazwisko pełnomocnika w mianowniku, bez tytułu (adw., r. pr.).
+    strategy: llm_first
+    grounding: token_prefix
+    rules:
+      - pattern: '(?:adw\.|adwokat\w*|r\.\s*pr\.|radc\w+\s+prawn\w+|mec\.|apl\.\s*adw\.)\s*([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)'
+        section: pelnomocnicy
+        occurrence: all
+        unique: true
+        ignore_case: false
+      - pattern: '(?:adw\.|adwokat\w*|r\.\s*pr\.|radc\w+\s+prawn\w+|mec\.|apl\.\s*adw\.)\s*([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)'
+        occurrence: all
+        unique: true
+        ignore_case: false
+    normalizers: [{name: collapse_ws}]
+
+  - path: 'pelnomocnicy[].pesel'
+    group: pelnomocnictwo
+    instruction: PESEL pełnomocnika (11 cyfr), jeśli podany.
+    strategy: rules_first
+    rules:
+      - {pattern: 'PESEL\W{0,3}(\d{11})', occurrence: all}
+    normalizers: [{name: digits_only}]
+    validators: [{name: pesel}]

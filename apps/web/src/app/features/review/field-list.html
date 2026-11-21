@@ -1,0 +1,84 @@
+@for (group of groups(); track group.id) {
+  <section class="group" [attr.aria-labelledby]="group.id">
+    <h3 [id]="group.id">{{ group.section }}</h3>
+    <ul>
+      @for (field of group.fields; track field.key) {
+        @let selected = field.key === selectedKey();
+        <li class="field" [class.selected]="selected">
+          @if (editingKey() === field.key) {
+            <form class="edit" (submit)="save($event, field)">
+              <mat-form-field>
+                <mat-label>{{ field.label }}</mat-label>
+                <input #editInput matInput [value]="draft()" (input)="onDraft($event)" autocomplete="off" />
+                <mat-hint>{{ hint(field) }}</mat-hint>
+              </mat-form-field>
+              <div class="edit-actions">
+                <button mat-flat-button type="submit">
+                  <mat-icon svgIcon="save" aria-hidden="true" />Zapisz
+                </button>
+                <button mat-button type="button" (click)="cancel()">Anuluj</button>
+              </div>
+            </form>
+          } @else {
+            <div class="main">
+              <button
+                type="button"
+                class="select"
+                [attr.aria-pressed]="selected"
+                [attr.aria-describedby]="field.warnings.length ? field.key + '-warn' : null"
+                (click)="selectField.emit(field.key)"
+              >
+                <span class="label">{{ field.label }}</span>
+                @if (display(field); as text) {
+                  <span class="value" [class.mono]="isIdentifier(field)">{{ text }}</span>
+                } @else {
+                  <span class="value value--empty">brak wartości</span>
+                }
+              </button>
+              @if (!locked()) {
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="edit-button"
+                  [attr.aria-label]="'Popraw pole: ' + group.section + ', ' + field.label"
+                  (click)="startEdit(field)"
+                >
+                  <mat-icon svgIcon="edit" aria-hidden="true" />
+                </button>
+              }
+            </div>
+
+            <div class="meta">
+              <span class="chip"><span class="visually-hidden">Metoda: </span>{{ method(field) }}</span>
+              @if (field.confidence !== null) {
+                <span class="chip"><span class="visually-hidden">Pewność: </span>{{ confidence(field) }}</span>
+              }
+              @if (field.corrected) {
+                <span class="chip chip--corrected">poprawione ręcznie</span>
+              }
+            </div>
+
+            @if (field.warnings.length) {
+              <ul class="warnings" [id]="field.key + '-warn'">
+                @for (warning of field.warnings; track warning) {
+                  <li><mat-icon svgIcon="warning" aria-hidden="true" />{{ warning }}</li>
+                }
+              </ul>
+            }
+
+            @if (selected) {
+              <p class="source-note">
+                @if (!field.candidates.length) {
+                  Wartość wyliczona (słownik, reguła albo flaga), bez fragmentu do podświetlenia.
+                } @else if (sourceFound() === false) {
+                  Nie znaleziono tej wartości dosłownie w tekście PDF.
+                }
+                <span class="instruction">Reguła pola: {{ instruction(field) }}</span>
+              </p>
+            }
+          }
+        </li>
+      }
+    </ul>
+  </section>
+}

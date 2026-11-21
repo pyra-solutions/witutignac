@@ -1,0 +1,113 @@
+<div class="page">
+  @if (store.loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Wczytywanie dokumentu" />
+  } @else if (doc(); as d) {
+    <app-page-header
+      [heading]="typeName() + ': ' + d.fileName"
+      description="Wybierz pole, żeby zobaczyć jego źródło w dokumencie. Popraw wartości przed zatwierdzeniem."
+      [breadcrumbs]="breadcrumbs()"
+    >
+      <button actions mat-stroked-button type="button" (click)="download()">
+        <mat-icon svgIcon="download" aria-hidden="true" />Pobierz {{ d.outputFileName }}
+      </button>
+      <button actions mat-flat-button type="button" [disabled]="d.status === 'zatwierdzony'" (click)="approve()">
+        <mat-icon svgIcon="task_alt" aria-hidden="true" />
+        {{ d.status === 'zatwierdzony' ? 'Zatwierdzony' : 'Zatwierdź dokument' }}
+      </button>
+    </app-page-header>
+
+    <div class="summary" aria-live="polite">
+      <app-status-badge [status]="d.status" />
+      <span>Pola: <strong>{{ stats().fields }}</strong></span>
+      <span>Z ostrzeżeniami: <strong>{{ stats().warnings }}</strong></span>
+      <span>Poprawione: <strong>{{ stats().corrected }}</strong></span>
+    </div>
+
+    <app-notice>
+      Makieta: wartości pól pochodzą ze wzorcowego pliku JSON organizatora, a metoda i pewność są przykładowe.
+      Ostrzeżenia liczą prawdziwe walidatory. Zakładka Markdown pokazuje rzeczywisty wynik konwersji Docling.
+    </app-notice>
+
+    <ng-template #fieldsTpl>
+      <app-field-list
+        [fields]="d.fields"
+        [definitions]="definition()?.fields ?? []"
+        [selectedKey]="selectedKey()"
+        [sourceFound]="sourceFound()"
+        [locked]="d.status === 'zatwierdzony'"
+        (selectField)="select($event)"
+        (saveField)="save($event)"
+      />
+    </ng-template>
+
+    <ng-template #pdfTpl>
+      <app-pdf-viewer [src]="d.pdfUrl" [highlight]="candidates()" (matched)="sourceFound.set($event)" />
+    </ng-template>
+
+    <ng-template #markdownTpl>
+      <p class="tab-note muted">
+        Wynik Docling 2.151.1 dla oryginalnego PDF (profil „PDF – domyślny”). Ten tekst trafia do LLM.
+      </p>
+      @if (markdown() === null) {
+        <mat-progress-bar mode="indeterminate" aria-label="Wczytywanie Markdown" />
+      } @else if (markdown()) {
+        <pre class="code" tabindex="0" aria-label="Markdown z Docling">{{ markdown() }}</pre>
+      } @else {
+        <p>Brak pliku Markdown dla tego dokumentu.</p>
+      }
+    </ng-template>
+
+    <ng-template #jsonTpl>
+      <p class="tab-note muted">Plik wynikowy {{ d.outputFileName }} z uwzględnieniem poprawek.</p>
+      <pre class="code" tabindex="0" aria-label="JSON wynikowy">{{ json() }}</pre>
+    </ng-template>
+
+    @if (isWide()) {
+      <div class="split">
+        <section class="pane pane--pdf card card--flush" aria-label="Dokument PDF">
+          <ng-container [ngTemplateOutlet]="pdfTpl" />
+        </section>
+        <section class="pane card card--flush" aria-label="Wynik ekstrakcji">
+          <mat-tab-group mat-stretch-tabs="false" animationDuration="0ms">
+            <mat-tab label="Pola">
+              <div class="tab-body"><ng-container [ngTemplateOutlet]="fieldsTpl" /></div>
+            </mat-tab>
+            <mat-tab label="Markdown">
+              <div class="tab-body"><ng-container [ngTemplateOutlet]="markdownTpl" /></div>
+            </mat-tab>
+            <mat-tab label="JSON">
+              <div class="tab-body"><ng-container [ngTemplateOutlet]="jsonTpl" /></div>
+            </mat-tab>
+          </mat-tab-group>
+        </section>
+      </div>
+    } @else {
+      <section class="card card--flush" aria-label="Weryfikacja dokumentu">
+        <mat-tab-group
+          mat-stretch-tabs="false"
+          animationDuration="0ms"
+          [selectedIndex]="tabIndex()"
+          (selectedIndexChange)="tabIndex.set($event)"
+        >
+          <mat-tab label="Pola">
+            <div class="tab-body"><ng-container [ngTemplateOutlet]="fieldsTpl" /></div>
+          </mat-tab>
+          <mat-tab label="Dokument">
+            <div class="tab-body tab-body--pdf"><ng-container [ngTemplateOutlet]="pdfTpl" /></div>
+          </mat-tab>
+          <mat-tab label="Markdown">
+            <div class="tab-body"><ng-container [ngTemplateOutlet]="markdownTpl" /></div>
+          </mat-tab>
+          <mat-tab label="JSON">
+            <div class="tab-body"><ng-container [ngTemplateOutlet]="jsonTpl" /></div>
+          </mat-tab>
+        </mat-tab-group>
+      </section>
+    }
+  } @else {
+    <app-empty-state icon="search" heading="Nie znaleziono dokumentu">
+      Dokument „{{ documentId() }}” w sprawie „{{ caseId() }}” nie istnieje.
+      <a [routerLink]="['/sprawy', caseId()]">Wróć do sprawy</a>.
+    </app-empty-state>
+  }
+</div>

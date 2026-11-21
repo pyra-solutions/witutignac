@@ -1,0 +1,57 @@
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  color: var(--app-text-muted);
+
+  strong {
+    color: var(--app-text);
+  }
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(400px, 0.85fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.pane--pdf {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100dvh - 68px - 32px);
+  overflow: auto;
+}
+
+.tab-body {
+  padding: 16px 20px 24px;
+
+  @media (max-width: 767px) {
+    padding: 12px;
+  }
+}
+
+.tab-body--pdf {
+  padding: 0;
+}
+
+.tab-note {
+  margin-bottom: 12px;
+  font-size: 0.875rem;
+}
+
+.code {
+  margin: 0;
+  padding: 16px;
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--mat-sys-surface-container-low);
+  font-family: var(--app-mono);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

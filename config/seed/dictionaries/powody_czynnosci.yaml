@@ -1,0 +1,44 @@
+# Powody odwołania (zaskarżona czynność). Opisy dokładnie jak w oczekiwane-json/czynnosc_powod_id_dict.md
+# i w danych wzorcowych (stan repozytorium organizatora z 21.11.2026, 14:17).
+# Wartość 12 nie występuje w danych treningowych, więc jej słowa kluczowe nie są sprawdzone na danych.
+# keywords: wzorce (regex) do dopasowania regułowego, sprawdzane w zdaniu o czynności.
+code: powody_czynnosci
+name: Powód odwołania (czynność zamawiającego)
+entries:
+  - id: 1
+    opis: Decyzja o odrzuceniu oferty
+    keywords: ['o odrzuceniu ofert', '(?<!nie )(?<!zaniechał )odrzucił\w* ofert', 'odrzuceni\w+ ofert']
+  - id: 2
+    opis: Ogłoszenie wyboru oferty
+    keywords: ['wyb[óo]r\w* ofert', 'dokonał\w* wyboru']
+  - id: 3
+    opis: Decyzja o wykluczeniu wykonawcy
+    keywords: ['o wykluczeniu', '(?<!nie )wykluczył']
+  - id: 4
+    opis: Publikacja specyfikacji warunków zamówienia (SWZ)
+    keywords: ['opublikował\w* Specyfikacj', 'publikacj\w* (?:SWZ|Specyfikacj)']
+  - id: 5
+    opis: Modyfikacja treści SWZ
+    keywords: ['zmodyfikował', 'modyfikacj\w* treści', 'zmienił\w* treść SWZ']
+  - id: 6
+    opis: Odpowiedzi/wyjaśnienia do SWZ
+    keywords: ['odpowiedzi i wyjaśnieni', 'udzielił\w* odpowiedzi', 'wyjaśnie\w+ treści (?:SWZ|Specyfikacj)']
+  - id: 7
+    opis: Zaniechanie odrzucenia oferty
+    keywords: ['nie odrzucił', 'zaniechał\w* odrzucenia', 'zaniechani\w+ odrzucenia']
+  - id: 8
+    opis: Zaniechanie wykluczenia wykonawcy
+    keywords: ['nie wykluczył', 'zaniechał\w* wykluczenia', 'zaniechani\w+ wykluczenia']
+  - id: 9
+    opis: Decyzja o unieważnieniu postępowania
+    # 'unieważni+ł' obejmuje też literówkę 'unieważniił' występującą w dokumentach
+    keywords: ['(?<!nie )unieważni+[łl]\w*', 'o unieważnieniu']
+  - id: 10
+    opis: Zaniechanie unieważnienia postępowania
+    keywords: ['zaniechał\w* unieważnienia', 'nie unieważnił', 'zaniechani\w+ unieważnienia']
+  - id: 11
+    opis: Opis przedmiotu zamówienia (OPZ)
+    keywords: ['Opis\w* Przedmiotu Zamówienia', '\bOPZ\b']
+  - id: 12
+    opis: Projektowane postanowienia umowy
+    keywords: ['projektowan\w* postanowie\w* umow', 'istotn\w* postanowie\w* umow', 'wzor\w* umowy']

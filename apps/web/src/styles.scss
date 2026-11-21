@@ -1,0 +1,278 @@
+@use '@angular/material' as mat;
+
+// Motyw: Material 3 w stonowanej, urzędowej palecie. Jeden kolor akcentu (granat),
+// kolory statusów tylko tam, gdzie niosą znaczenie. Tylko jasny motyw.
+html {
+  color-scheme: light;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+        theme-type: light,
+      ),
+      typography: (
+        plain-family: ('Source Sans 3', system-ui, sans-serif),
+        brand-family: ('Source Sans 3', system-ui, sans-serif),
+        bold-weight: 700,
+        medium-weight: 600,
+        regular-weight: 400,
+      ),
+      density: 0,
+    )
+  );
+
+  @include mat.theme-overrides(
+    (
+      primary: #1b3a6b,
+      on-primary: #ffffff,
+      primary-container: #dde6f4,
+      on-primary-container: #0d2347,
+      secondary-container: #dde6f4,
+      on-secondary-container: #0d2347,
+      surface: #ffffff,
+      on-surface: #1a1f29,
+      on-surface-variant: #4b5565,
+      surface-container-lowest: #ffffff,
+      surface-container-low: #f7f8fa,
+      surface-container: #f1f3f6,
+      surface-container-high: #e9edf2,
+      surface-container-highest: #e2e7ee,
+      outline: #6b7686,
+      outline-variant: #d3d9e1,
+      corner-small: 6px,
+      corner-medium: 8px,
+      corner-large: 12px,
+    )
+  );
+
+  // Menu boczne bez zaokrągleń Material 3: płaska kolumna pod nagłówkiem.
+  @include mat.sidenav-overrides(
+    (
+      container-shape: 0,
+    )
+  );
+
+  // Tokeny aplikacji (kontrast tekstu ≥ 4.5:1 na białym tle, WCAG 2.1 AA).
+  --app-bg: #f4f6f9;
+  --app-surface: #ffffff;
+  --app-border: #d3d9e1;
+  --app-text: #1a1f29;
+  --app-text-muted: #4b5565;
+  --app-accent: #1b3a6b;
+  --app-accent-soft: #e8eef8;
+  --app-focus: #1b5fd1;
+  --app-success: #1d6b3a;
+  --app-success-bg: #e6f2ea;
+  --app-warning: #7a4b00;
+  --app-warning-bg: #fff4dc;
+  --app-error: #a4161a;
+  --app-error-bg: #fde8e8;
+  --app-highlight: rgba(255, 196, 0, 0.38);
+  --app-highlight-border: #b07d00;
+  --app-radius: 8px;
+  --app-mono: ui-monospace, 'SFMono-Regular', 'DejaVu Sans Mono', Menlo, Consolas, monospace;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: 'Source Sans 3', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+h1 {
+  font-size: 1.75rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+}
+
+h3 {
+  font-size: 1.0625rem;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--app-accent);
+}
+
+// Widoczny fokus dla klawiatury we wszystkich elementach interaktywnych.
+:focus-visible {
+  outline: 3px solid var(--app-focus);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// Układ stron
+.page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  @media (max-width: 767px) {
+    padding: 16px 16px 32px;
+    gap: 16px;
+  }
+}
+
+.card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  padding: 20px 24px;
+
+  @media (max-width: 767px) {
+    padding: 16px;
+  }
+
+  > h2,
+  > h3 {
+    margin-bottom: 12px;
+  }
+}
+
+.card--flush {
+  padding: 0;
+  overflow: hidden;
+}
+
+.muted {
+  color: var(--app-text-muted);
+}
+
+.mono {
+  font-family: var(--app-mono);
+  font-size: 0.9375em;
+  overflow-wrap: anywhere;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+
+  @media (max-width: 1023px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// Tabele: przewijane w poziomie na wąskich ekranach, nigdy cała strona.
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+table.app-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+
+  th,
+  td {
+    text-align: left;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--app-border);
+    vertical-align: top;
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--app-text-muted);
+    background: var(--mat-sys-surface-container-low);
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  td.num,
+  th.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.definition-list {
+  display: grid;
+  grid-template-columns: minmax(140px, max-content) 1fr;
+  gap: 8px 24px;
+  margin: 0;
+
+  dt {
+    color: var(--app-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 599px) {
+    grid-template-columns: 1fr;
+    gap: 2px;
+
+    dd {
+      margin-bottom: 8px;
+    }
+  }
+}
+
+mat-icon.mat-icon {
+  flex-shrink: 0;
+}

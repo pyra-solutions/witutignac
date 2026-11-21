@@ -1,0 +1,4 @@
+# Zależności rozwiązania (Python 3.13+): pip install -r requirements.txt
+# Właściwa lista jest w engine/requirements.txt (PyTorch w wersji tylko na CPU, bez GPU).
+# start.bat i start.sh instalują ją automatycznie przy pierwszym uruchomieniu.
+-r engine/requirements.txt

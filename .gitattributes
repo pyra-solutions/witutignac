@@ -1,0 +1,3 @@
+# Skrypty startowe: CRLF dla cmd.exe (etykiety i goto), LF dla powłoki POSIX.
+*.bat text eol=crlf
+*.sh text eol=lf

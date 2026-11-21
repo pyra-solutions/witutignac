@@ -1,0 +1,69 @@
+<a class="skip-link" href="#main" (click)="skipToContent($event)">Przejdź do treści</a>
+
+<header class="app-header">
+  @if (isHandset()) {
+    <button
+      mat-icon-button
+      type="button"
+      class="nav-toggle"
+      aria-label="Menu nawigacji"
+      aria-controls="app-nav"
+      [attr.aria-expanded]="nav.opened"
+      (click)="toggleNav()"
+    >
+      <mat-icon svgIcon="menu" aria-hidden="true" />
+    </button>
+  }
+  <a class="brand" routerLink="/pulpit">
+    <span class="brand-mark" aria-hidden="true"><mat-icon svgIcon="gavel" /></span>
+    <span class="brand-text">
+      <span class="brand-name">Odwołania2json</span>
+      <span class="brand-sub">Ekstrakcja danych z odwołań do KIO</span>
+    </span>
+  </a>
+  <span class="spacer"></span>
+  <span class="env-badge">Prototyp · dane przykładowe</span>
+</header>
+
+<mat-sidenav-container class="app-body">
+  <mat-sidenav
+    #nav
+    id="app-nav"
+    class="app-nav"
+    [mode]="isHandset() ? 'over' : 'side'"
+    [opened]="!isHandset()"
+  >
+    <nav aria-label="Nawigacja główna">
+      @for (section of sections; track section.id) {
+        <p class="nav-section" [id]="section.id">{{ section.label }}</p>
+        <mat-nav-list [attr.aria-labelledby]="section.id">
+          @for (item of section.items; track item.link) {
+            <a
+              mat-list-item
+              [routerLink]="item.link"
+              [activated]="isActive(item)"
+              [attr.aria-current]="isActive(item) ? 'page' : null"
+            >
+              <mat-icon matListItemIcon [svgIcon]="item.icon" aria-hidden="true" />
+              <span matListItemTitle>{{ item.label }}</span>
+            </a>
+          }
+        </mat-nav-list>
+      }
+    </nav>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="app-content">
+    <main id="main" #main tabindex="-1">
+      <router-outlet />
+    </main>
+    <footer class="app-footer">
+      <span>Odwołania2json · prototyp przygotowany na HackNation 2026</span>
+      <a routerLink="/deklaracja-dostepnosci">Deklaracja dostępności</a>
+      <a href="https://github.com/Urzad-Zamowien-Publicznych/hacknation-2026" target="_blank" rel="noopener noreferrer">
+        Dane przykładowe: repozytorium organizatora
+        <span class="visually-hidden">(otwiera się w nowej karcie)</span>
+      </a>
+    </footer>
+  </mat-sidenav-content>
+</mat-sidenav-container>

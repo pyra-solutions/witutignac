@@ -1,0 +1,32 @@
+# Usługi platformy Odwołania2json uruchamiane lokalnie.
+# Start bazy: docker compose up -d db   (dane zostają w wolumenie pgdata)
+# Zmienne POSTGRES_* można nadpisać w pliku .env w katalogu głównym repozytorium.
+name: odwolania2json
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-odwolania2json}
+      POSTGRES_USER: ${POSTGRES_USER:-o2j}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-o2j}
+      # Polskie sortowanie tekstu (ICU), UTF-8.
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale-provider=icu --icu-locale=pl-PL
+      TZ: Europe/Warsaw
+    ports:
+      # Tylko localhost: baza nie jest widoczna w sieci.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Od PostgreSQL 18 obraz trzyma dane w podkatalogu wersji, więc montujemy cały /var/lib/postgresql.
+      - pgdata:/var/lib/postgresql
+      # Skrypty wykonywane tylko przy pierwszym utworzeniu wolumenu (np. baza testowa).
+      - ./deploy/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:

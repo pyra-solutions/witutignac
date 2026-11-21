@@ -1,0 +1,9 @@
+# Backend platformy Odwołania2json (API, baza danych, wydania konfiguracji) — Python 3.13+.
+# Zawiera zależności silnika, bo backend używa jego modeli konfiguracji i uruchamia ten sam kod ekstrakcji.
+-r ../engine/requirements.txt
+
+fastapi>=0.165,<1
+uvicorn[standard]>=0.54,<1
+SQLAlchemy>=2.1,<2.2
+alembic>=1.20,<2
+psycopg[binary]>=3.3,<4

@@ -1,0 +1,266 @@
+# Odwołanie do Prezesa KIO. Struktura wyniku zgodna z oczekiwane-json/odwolanie.json.
+code: odwolanie
+name: Odwołanie do Prezesa Krajowej Izby Odwoławczej
+conversion_profile: default
+
+classification:
+  description: Pismo wykonawcy wnoszące odwołanie od czynności lub zaniechania zamawiającego.
+  # Klasyfikujemy wyłącznie po treści: README organizatora zastrzega, że nazwa pliku może być dowolna.
+  # Sam nagłówek "ODWOŁANIE" nie wystarcza (ma go też np. poradnik o postępowaniu odwoławczym).
+  min_score: 3
+  patterns:
+    # [ŁL]: OCR skanów gubi polskie znaki ("ODWOLANIE")
+    - {pattern: '^\W*ODWO[ŁL]ANIE\W*$', weight: 2, first_chars: 6000}
+    - {pattern: 'Odwołując\w*\s*:', weight: 1, first_chars: 4000}
+    - {pattern: 'Zamawiając\w*\s*:', weight: 1, first_chars: 4000}
+    - {pattern: 'Prezes\w*\s+Krajowej\s+Izby\s+Odwoławczej', weight: 1, first_chars: 6000}
+    - {pattern: 'wnoszę\s+(?:o|odwołanie)', weight: 1, first_chars: 8000}
+    - {pattern: 'Zarzut\w*\s+nr', weight: 1, first_chars: null}
+    # Orzeczenia KIO (spoza klas) zaczynają się sygnaturą i nazwą rozstrzygnięcia.
+    - {pattern: 'Sygn\.\s*akt', weight: -2, first_chars: 300}
+    - {pattern: '^\W*(?:WYROK|POSTANOWIENIE|UCHWAŁA)\b', weight: -2, first_chars: 800}
+
+sections:
+  - name: odwolujacy
+    start: ['Odwołując\w*\s*:']
+    end: ['Zamawiając\w*\s*:', '^\W*dotyczy\s*:?', '^\W*ODWOŁANIE\W*$', 'Działając\s+w\s+imieniu', 'Wartość\s+zamówienia']
+    max_chars: 2500
+  - name: zamawiajacy
+    start: ['Zamawiając\w*\s*:']
+    end: ['Odwołując\w*\s*:', '^\W*dotyczy\s*:?', '^\W*ODWOŁANIE\W*$', 'Działając\s+w\s+imieniu', 'Wartość\s+zamówienia']
+    max_chars: 2500
+  - name: dotyczy
+    start: ['dotyczy\s*:']
+    end: ['Działając\s+w\s+imieniu', 'Wartość\s+zamówienia', 'Wpis\s+od\s+odwołania', '^\W*ODWOŁANIE\W*$', 'Prezes\w*\s+Krajowej', 'wnoszę']
+    max_chars: 1500
+  - name: czynnosc
+    # Zdanie "Zamawiający w dniu ... [czynność]." – do pierwszej kropki kończącej zdanie.
+    start: ['Zamawiający\s+w\s+dniu']
+    end: ['(?<!\sr)(?<!\sust)(?<!\sart)(?<!\spkt)\.(?=\s|$)']
+    max_chars: 300
+  - name: zarzuty
+    start: ['Zarzut\w*\s+nr\s*1', 'zarzucam', '^\W*ZARZUTY']
+    max_chars: 1500
+
+lists:
+  - path: Odwolujacy
+    min_items: 1
+    max_items: 1
+    instruction: Dokładnie jeden element - Odwołujący. Przy konsorcjum tylko Lider konsorcjum, bez partnerów.
+  - path: Zamawiajacy
+    min_items: 1
+    instruction: Zamawiający, każdy jako osobny element (zwykle jeden).
+
+# Jedna grupa = jedno wywołanie LLM na dokument (mniej tokenów; ten sam kontekst).
+# Dla mniejszych modeli grupy można rozdzielić, przypisując polom inne nazwy grup.
+groups:
+  - name: odwolanie
+    instruction: >-
+      Odczytaj nagłówek pisma, strony postępowania (Odwołujący, Zamawiający) i dane zamówienia.
+      Ustal też zaskarżoną czynność zamawiającego na podstawie PIERWSZEGO zarzutu albo zdania
+      opisującego czynność, której dotyczy odwołanie, oraz datę tej czynności.
+    sections: []
+    max_chars: 14000
+
+fields:
+  - path: OdwolanieKIO.data
+    type: date
+    group: odwolanie
+    instruction: Data pisma z nagłówka pierwszej strony, z linii typu 'Miejscowość, dnia DD.MM.RRRR' albo 'Miejscowość, D miesiąca RRRR'. Nie bierz innych dat z treści. Brak takiej linii = null.
+    strategy: rules_first
+    grounding: none
+    rules:
+      - pattern: '(?<![\w.])[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+|\s+(?:nad|pod|na)\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?,\s*(?:dnia\s+)?(\d{1,2}(?:\.\d{1,2}\.|\s+[a-ząćęłńóśźż]+\s+)\d{4})'
+        ignore_case: false
+    normalizers: [{name: date_iso}]
+
+  - path: OdwolanieKIO.czynnosc_dzien
+    type: date
+    group: odwolanie
+    instruction: Data czynności zamawiającego, której dotyczy PIERWSZY zarzut (np. data publikacji SWZ, odrzucenia oferty, unieważnienia). Brak wiarygodnej daty = null.
+    strategy: llm_first
+    grounding: none
+    rules:
+      - pattern: '(\d{1,2}\s+[a-ząćęłńóśźż]+\s+\d{4}|\d{1,2}\.\d{1,2}\.\d{4}|\d{4}-\d{2}-\d{2})'
+        section: czynnosc
+    normalizers: [{name: date_iso}]
+
+  - path: OdwolanieKIO.czynnosc_powod_id
+    type: integer
+    group: odwolanie
+    instruction: Identyfikator powodu odwołania (1-12) ustalony WYŁĄCZNIE na podstawie pierwszego zarzutu, według słownika poniżej.
+    dictionary: powody_czynnosci
+    enum: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    strategy: rules_first
+    grounding: none
+    rules:
+      - kind: dictionary_match
+        dictionary: powody_czynnosci
+        section: czynnosc
+
+  - path: OdwolanieKIO.czynnosc_opis
+    derive: {kind: dictionary_lookup, source: OdwolanieKIO.czynnosc_powod_id, dictionary: powody_czynnosci, key: id, value: opis}
+
+  - path: OdwolanieKIO.miejscowosc
+    group: odwolanie
+    instruction: Miejscowość z nagłówka pierwszej strony, z linii typu 'Miejscowość, dnia ...' albo 'Miejscowość DD.MM.RRRR'. Brak takiej linii = null.
+    strategy: rules_first
+    rules:
+      - pattern: '(?<![\w.])([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+|\s+(?:nad|pod|na)\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?),\s*(?:dnia\s+)?\d{1,2}(?:\.\d{1,2}\.|\s+[a-ząćęłńóśźż]+\s+)\d{4}'
+        ignore_case: false
+    normalizers: [{name: collapse_ws}]
+
+  - path: Odwolujacy[].krs
+    group: odwolanie
+    instruction: Numer KRS Odwołującego albo Lidera konsorcjum (10 cyfr), jeśli występuje.
+    strategy: rules_first
+    rules:
+      - {pattern: 'KRS\W{0,3}(\d{10})', section: odwolujacy}
+    normalizers: [{name: digits_only}]
+    validators: [{name: krs}]
+
+  - path: Odwolujacy[].nazwa
+    group: odwolanie
+    instruction: Pełna nazwa Odwołującego (wykonawcy wnoszącego odwołanie). Przy konsorcjum nazwa Lidera konsorcjum. Bez adresu.
+    strategy: llm_first
+    rules:
+      - pattern: 'Lider\w*\s+Konsorcjum\s*:\s*(?:#+\s*)?([^\n]+?)\s*(?:,?\s+(?:ul\.|al\.|pl\.|os\.)\s|\s+\d{2}-\d{3}\s|\n|$)'
+        section: odwolujacy
+      # nazwa w tej samej linii co etykieta
+      - pattern: 'Odwołując\w*[ \t]*:[ \t]*(?:#+[ \t]*)?((?!Prezes|Konsorcj)[^\n]+?)[ \t]*(?:,?[ \t]+(?:ul\.|al\.|pl\.|os\.)\s|[ \t]+\d{2}-\d{3}\s|\n|$)'
+        section: odwolujacy
+      # pierwsza linia z nazwą, po której następuje adres (pomija przestawione nagłówki, np. adres KIO)
+      - pattern: '(?:^|\n)[ \t]*(?:#+[ \t]*)?((?!Prezes|adres|tel\.|reprezent|KRS|NIP|REGON|ul\.|al\.|Odwołując|Zamawiając|[A-ZŁŚŻŹĆ]\w+,\s*dnia)[^\n]{3,150}?)[ \t]*,?\s*(?:ul\.|al\.|pl\.|os\.)\s'
+        section: odwolujacy
+    normalizers: [{name: collapse_ws}, {name: strip_punct, args: {chars: ' ,;:'}}]
+
+  - path: Odwolujacy[].nip
+    group: odwolanie
+    instruction: NIP Odwołującego albo Lidera konsorcjum, same cyfry.
+    strategy: rules_first
+    rules:
+      - {pattern: 'NIP\W{0,3}(\d[\d\- ]{8,12}\d)', section: odwolujacy}
+    normalizers: [{name: digits_only}]
+    validators: [{name: nip}]
+
+  - path: Odwolujacy[].regon
+    group: odwolanie
+    instruction: REGON Odwołującego albo Lidera konsorcjum, same cyfry.
+    strategy: rules_first
+    rules:
+      - {pattern: 'REGON\W{0,3}(\d{9}(?:\d{5})?)', section: odwolujacy}
+    normalizers: [{name: digits_only}]
+    validators: [{name: regon}]
+
+  - path: Odwolujacy[].przez-pelnomocnika
+    derive: {kind: present, source: 'Odwolujacy[].pelnomocnik.imie_nazwisko', if_true: 1, if_false: 0}
+
+  - path: Odwolujacy[].pelnomocnik.imie_nazwisko
+    group: odwolanie
+    instruction: Imię i nazwisko pierwszego pełnomocnika Odwołującego, w mianowniku, bez tytułu (adw., r. pr.).
+    strategy: llm_first
+    grounding: token_prefix
+    rules:
+      - pattern: '(?:reprezentowan\w*|działając\w*)\s+przez\s*:?\s*(?:adw\.|adwokat\w*|r\.\s*pr\.|radc\w+\s+prawn\w+|mec\.|apl\.\s*adw\.)?\s*([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)'
+        section: odwolujacy
+        ignore_case: false
+    normalizers: [{name: collapse_ws}]
+
+  - path: Odwolujacy[].pelnomocnik.nazwa
+    group: odwolanie
+    instruction: Nazwa podmiotu zatrudniającego pełnomocnika (np. kancelarii) z adresu do korespondencji. Bez adresu.
+    strategy: llm_first
+    rules:
+      - pattern: 'adres\w*\s+do\s+korespondencji\s*:\s*([\s\S]{3,160}?),\s*(?:ul\.|al\.|pl\.|os\.)'
+        section: odwolujacy
+    normalizers: [{name: collapse_ws}, {name: strip_punct, args: {chars: ' ,;:'}}]
+
+  - path: Odwolujacy[].pelnomocnik.mail
+    group: odwolanie
+    instruction: Adres e-mail kontaktowy pełnomocnika Odwołującego.
+    strategy: rules_first
+    rules:
+      - {pattern: '([\w.+-]+@[\w-]+(?:\.[\w-]+)+)', section: odwolujacy}
+    normalizers: [{name: strip}]
+
+  - path: Zamawiajacy[].krs
+    group: odwolanie
+    instruction: Numer KRS Zamawiającego, tylko jeśli jawnie podany przy Zamawiającym.
+    strategy: rules_first
+    rules:
+      - {pattern: 'KRS\W{0,3}(\d{10})', section: zamawiajacy}
+    normalizers: [{name: digits_only}]
+    validators: [{name: krs}]
+
+  - path: Zamawiajacy[].nazwa
+    group: odwolanie
+    instruction: Pełna nazwa Zamawiającego. Bez adresu.
+    strategy: llm_first
+    rules:
+      - pattern: 'Zamawiając\w*[ \t]*:[ \t]*(?:#+[ \t]*)?((?!Prezes)[^\n]+?)[ \t]*(?:,?[ \t]+(?:ul\.|al\.|pl\.|os\.)\s|[ \t]+\d{2}-\d{3}\s|\n|$)'
+        section: zamawiajacy
+      - pattern: '(?:^|\n)[ \t]*(?:#+[ \t]*)?((?!Prezes|adres|tel\.|KRS|NIP|REGON|ul\.|al\.|Odwołując|Zamawiając|[A-ZŁŚŻŹĆ]\w+,\s*dnia)[^\n]{3,150}?)[ \t]*,?\s*(?:ul\.|al\.|pl\.|os\.)\s'
+        section: zamawiajacy
+    normalizers: [{name: collapse_ws}, {name: strip_punct, args: {chars: ' ,;:'}}]
+
+  - path: Zamawiajacy[].nip
+    group: odwolanie
+    instruction: NIP Zamawiającego, tylko jeśli jawnie podany przy Zamawiającym. Same cyfry.
+    strategy: rules_first
+    rules:
+      - {pattern: 'NIP\W{0,3}(\d[\d\- ]{8,12}\d)', section: zamawiajacy}
+    normalizers: [{name: digits_only}]
+    validators: [{name: nip}]
+
+  - path: Zamawiajacy[].regon
+    group: odwolanie
+    instruction: REGON Zamawiającego, tylko jeśli jawnie podany przy Zamawiającym. Same cyfry.
+    strategy: rules_first
+    rules:
+      - {pattern: 'REGON\W{0,3}(\d{9}(?:\d{5})?)', section: zamawiajacy}
+    normalizers: [{name: digits_only}]
+    validators: [{name: regon}]
+
+  - path: Zamawiajacy[].prowadzacy_postepowanie
+    type: integer
+    group: odwolanie
+    instruction: null gdy jest jeden zamawiający; przy kilku zamawiających 1 dla oznaczonego jako prowadzący postępowanie lub lider, 0 dla pozostałych.
+    enum: [0, 1]
+    strategy: llm_only
+    grounding: none
+    only_if_list_size_at_least: 2
+
+  - path: ZamowieniePubliczne.numer_bzp
+    group: odwolanie
+    instruction: Numer ogłoszenia w Biuletynie Zamówień Publicznych w formacie 'RRRR/BZP ########'. Nie wpisuj tu numeru TED.
+    strategy: rules_first
+    grounding: tokens
+    rules:
+      - {pattern: '(\d{4}\s*/\s*BZP\s*\d{5,10}(?:\s*/\s*\d{1,2})?)', section: dotyczy}
+    normalizers: [{name: bzp_number}]
+
+  - path: ZamowieniePubliczne.numer_postepowania
+    group: odwolanie
+    instruction: Numer referencyjny / numer postępowania / znak sprawy nadany przez zamawiającego, np. 'ZP.039.2025', 'DZP.260.11.2025'.
+    strategy: rules_first
+    rules:
+      - pattern: '(?:nr|numer|znak)\w*\s+(?:referencyjn\w*|postępowania|sprawy)(?:\s+sprawy)?\s*:?\s*([A-Za-z0-9][\w./\-]*\d[\w./\-]*)'
+        section: dotyczy
+    normalizers: [{name: strip_punct, args: {chars: ' .,;:'}}]
+
+  - path: ZamowieniePubliczne.numer_ted
+    group: odwolanie
+    instruction: Numer ogłoszenia w Dzienniku Urzędowym UE (TED) w formacie 'NNNNNN-RRRR'. Zapis 'RRRR/S ###-NNNNNN' zamień na 'NNNNNN-RRRR'.
+    strategy: rules_first
+    grounding: tokens
+    rules:
+      - {pattern: '(\d{4}\s*/\s*S\s*\d{1,3}\s*-\s*\d{4,7}|(?<![\d/])\d{5,7}-20\d{2}(?!\d))', section: dotyczy}
+    normalizers: [{name: ted_number}]
+
+  - path: ZamowieniePubliczne.tytul
+    group: odwolanie
+    instruction: Tytuł (nazwa) zamówienia lub postępowania, bez cudzysłowów.
+    strategy: rules_first
+    rules:
+      - {pattern: 'pn\.?\s*["„“”]([^"„“”]{5,400})["”“]', section: dotyczy}
+    normalizers: [{name: collapse_ws}, {name: strip_quotes}, {name: strip_punct, args: {chars: ' ,;:'}}]

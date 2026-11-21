@@ -1,0 +1,101 @@
+# Potwierdzenie przelewu (wpis od odwołania albo opłata skarbowa od pełnomocnictwa).
+# Struktura wyniku zgodna z oczekiwane-json/przelew.json.
+code: przelew
+name: Potwierdzenie przelewu bankowego
+conversion_profile: default
+
+classification:
+  description: Potwierdzenie wykonania przelewu bankowego wygenerowane przez bank.
+  # Klasyfikujemy wyłącznie po treści: README organizatora zastrzega, że nazwa pliku może być dowolna.
+  # Słowo "przelew" na początku i 26-cyfrowy numer rachunku są we wszystkich 60 przelewach
+  # treningowych i w żadnym innym dokumencie; same "tytułem" i "zł" (np. w ogłoszeniach) nie wystarczą.
+  min_score: 3
+  patterns:
+    - {pattern: 'PRZELEW', weight: 2, first_chars: 1500}
+    - {pattern: 'potwierdzeni\w*\s+(?:wykonania\s+|realizacji\s+)?(?:przelewu|operacji|transakcji|płatności|zlecenia)', weight: 1, first_chars: 1500}
+    - {pattern: '(?:PL)?\s?\d{2}(?:\s?\d{4}){6}', weight: 1, first_chars: null}
+    - {pattern: 'Rachun\w+\s+(?:odbiorcy|beneficjenta|obciążany|zleceniodawcy|nadawcy)|na\s+rachunek', weight: 1, first_chars: null}
+    - {pattern: 'Tytuł\w*|Tytułem|OPIS\s*:', weight: 1, first_chars: null}
+    - {pattern: 'data\s+(?:transakcji|wykonania|operacji|realizacji|księgowania|zlecenia)', weight: 0.5, first_chars: null}
+    - {pattern: '\bPLN\b|\bzł\b', weight: 0.5, first_chars: null}
+    # Faktura (np. z formą płatności "przelew" i numerem rachunku) nie jest potwierdzeniem przelewu.
+    - {pattern: '^\W*FAKTURA\b', weight: -3, first_chars: 600}
+
+lists: []
+
+groups:
+  - name: przelew
+    instruction: Odczytaj dane wykonanego przelewu bankowego.
+    sections: []
+    max_chars: 8000
+
+fields:
+  - path: przelew_bankowy.data_operacji
+    type: date
+    group: przelew
+    instruction: Data wykonania (realizacji) operacji przelewu.
+    strategy: rules_first
+    grounding: none
+    rules:
+      - pattern: '(?:data\s+(?:transakcji|wykonania|operacji|realizacji|księgowania|zlecenia)|w\s+dniu)[\s:.|…]*(\d{4}-\d{2}-\d{2}|\d{1,2}[.\-/]\d{1,2}[.\-/]\d{4}|\d{1,2}\s+[a-ząćęłńóśźż]+\s+\d{4})'
+      - pattern: '\b(20\d{2}-\d{2}-\d{2})\b'
+    normalizers: [{name: date_iso}]
+
+  - path: przelew_bankowy.kwota
+    type: number
+    group: przelew
+    instruction: Kwota przelewu jako liczba (np. 10000.00), bez waluty.
+    strategy: rules_first
+    grounding: none
+    rules:
+      # etykieta i kwota (waluta bywa w osobnym polu, więc jest opcjonalna)
+      - pattern: '(?:kwot\w*(?:\s+(?:operacji|przelewu))?|wartość)[ \t:.|…]*(\d[\d  .,]*\d)'
+      # pierwsza kwota z walutą, z pominięciem zerowych opłat bankowych
+      - pattern: '((?!0+[.,]00\b)\d[\d  ]*[.,]\d{2})\s*(?:PLN|zł)'
+    normalizers: [{name: amount_decimal}]
+
+  - path: przelew_bankowy.na_rachunek
+    group: przelew
+    instruction: Numer rachunku odbiorcy (beneficjenta), same cyfry bez prefiksu PL.
+    strategy: rules_first
+    grounding: tokens
+    rules:
+      - pattern: '(?:rachun\w+\s+(?:odbiorcy|beneficjenta|adresata)|na\s+rachunek(?:\s+nr)?)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
+      - pattern: '(?:Beneficjent\w*|Odbiorc\w*|Adresat\w*)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
+    normalizers: [{name: iban_digits}]
+    validators: [{name: iban_pl}]
+
+  - path: przelew_bankowy.numer_transakcji
+    group: przelew
+    instruction: Numer referencyjny / identyfikator transakcji nadany przez bank.
+    strategy: rules_first
+    rules:
+      - pattern: '(?:nr\.?\s*ref\w*\.?|numer\s+(?:referencyjny|transakcji)(?:\s+operacji)?|identyfikator\s+(?:operacji|transakcji)|id\s+transakcji)[\s:.|…]*([A-Z]{2,}[A-Z0-9]{6,}|\d{8,})'
+    normalizers: [{name: strip}]
+
+  - path: przelew_bankowy.tytul
+    group: przelew
+    instruction: Tytuł przelewu dokładnie jak w dokumencie, bez cudzysłowów.
+    strategy: rules_first
+    rules:
+      - pattern: 'Tytuł\w*(?:\s+przelewu)?\s*:\s*["„“]([^"”“]{3,400})["”“]'
+      - pattern: '(?:Tytuł\w*(?:\s+przelewu)?|Tytułem|OPIS|Opis)\s*[:|]?\s*\|?\s*\n*\s*([^\n|]{3,400})'
+    normalizers:
+      - {name: collapse_ws}
+      # w części układów przed tytułem wpada sąsiednia etykieta tabeli
+      - {name: remove_prefix, args: {patterns: ['Typ\s+operacji', 'Status', 'Kanał', 'Tytuł\s+przelewu', 'Tytułem']}}
+      # odcina doklejone dalsze pola wydruku, np. 'IDENTYFIKATOR OPERACJI ......... X'
+      - {name: regex_replace, args: {pattern: '\s+[A-ZŁŚŻŹĆĘĄÓŃ]{3,}(?:\s+[A-ZŁŚŻŹĆĘĄÓŃ]{3,})*\s*[.…]{3,}.*$', repl: '', ignore_case: false}}
+      - {name: strip_quotes}
+      - {name: strip_punct, args: {chars: ' ,;:|'}}
+
+  - path: przelew_bankowy.z_rachunku
+    group: przelew
+    instruction: Numer rachunku zleceniodawcy (płatnika), same cyfry bez prefiksu PL.
+    strategy: rules_first
+    grounding: tokens
+    rules:
+      - pattern: '(?:rachun\w+\s+(?:obciążany|zleceniodawcy|nadawcy|płatnika|źródłowy)|z\s+rachunku(?:\s+nr)?)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
+      - pattern: '(?:Płatnik\w*|Zleceniodawc\w*|Nadawc\w*)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
+    normalizers: [{name: iban_digits}]
+    validators: [{name: iban_pl}]

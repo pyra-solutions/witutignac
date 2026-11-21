@@ -1,0 +1,34 @@
+# Node / Nx / Angular
+node_modules/
+dist/
+tmp/
+coverage/
+.angular/
+.nx/cache/
+.nx/workspace-data/
+.nx/polygraph/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Sekrety i lokalne ustawienia
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+.claude/worktrees/
+
+# Edytory i system
+.DS_Store
+.idea/
+*.swp
+__screenshots__/
+
+# Silnik: cache konwersji i LLM, wyniki lokalne
+.o2j-cache/
+output/*
+!output/.gitkeep

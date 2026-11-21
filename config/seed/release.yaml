@@ -1,0 +1,50 @@
+# Ustawienia wydania konfiguracji. Docelowo te dane żyją w bazie (PostgreSQL)
+# i trafiają do silnika jako engine/config/release.json (polecenie build-release).
+version: "2026.11.21-dev.2"
+
+settings:
+  # Wynik dla dokumentu spoza obsługiwanych typów (README: "pusty plik .json").
+  unsupported_output: "{}"
+  default_llm_profile: default
+  llm_concurrency: 4
+
+conversion_profiles:
+  - id: default
+    ocr_engine: rapidocr
+    ocr_lang: [pl]
+    ocr_mode: default
+    scanned_ocr_mode: full_page
+    replace_broken_text_layer: true
+    table_structure: true
+    max_pages: 6
+    num_threads: 4
+    document_timeout_s: 180
+
+llm_profiles:
+  # Docelowy profil oceny: otwarty model u dostawcy z UE (OVHcloud AI Endpoints, Francja).
+  - id: default
+    base_url: https://oai.endpoints.kepler.ai.cloud.ovh.net/v1
+    model: Qwen3.5-9B
+    api_key_env: OVH_AI_ENDPOINTS_ACCESS_TOKEN
+    temperature: 0
+    max_tokens: 2048
+    seed: 42
+    timeout_s: 120
+    max_retries: 3
+    structured_output: json_schema
+
+  # Tylko do prac deweloperskich na syntetycznych danych treningowych.
+  # Gemma 4 26B-A4B to ten sam otwarty model (Apache 2.0), który OVHcloud oferuje we Francji,
+  # ale API Google nie gwarantuje przetwarzania w UE, więc ten profil nie służy do oceny.
+  - id: gemini-dev
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    model: gemma-4-26b-a4b-it
+    api_key_env: GEMINI_API_KEY
+    temperature: 0
+    max_tokens: 2048
+    seed: null
+    timeout_s: 90
+    max_retries: 4
+    structured_output: json_schema
+    # darmowy limit Google dla Gemmy: 16 000 tokenów wejścia na minutę
+    tokens_per_minute: 15000
