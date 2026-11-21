@@ -5,6 +5,7 @@ Silnik zamienia PDF-y odwołań KIO na pliki JSON. Działa lokalnie na CPU: Docl
 ## Uruchomienie
 
 ```bash
+./start_linux.sh      # Linux (to samo co ./start.sh)
 ./start.sh            # Linux/macOS
 start.bat             # Windows
 ```

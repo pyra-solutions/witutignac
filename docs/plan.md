@@ -35,7 +35,7 @@ Rdzeń oceniany przez organizatora musi być w Pythonie, a o wyniku etapu 1 decy
 | Komponent | Rola | Stan |
 | --- | --- | --- |
 | Silnik (`engine/`) | potok ekstrakcji; polecenia `run`, `evaluate`, `build-release`, `validate-config`, `plugins` | gotowy, F1 0,960 na samych regułach (60 spraw) |
-| CLI (`start.bat`, `start.sh`) | przy pierwszym uruchomieniu tworzy środowisko i instaluje zależności, potem przetwarza `./input` do `./output` | gotowy |
+| CLI (`start.bat`, `start_linux.sh`, `start.sh`) | przy pierwszym uruchomieniu tworzy środowisko i instaluje zależności, potem przetwarza `./input` do `./output` | gotowy |
 | Konfiguracja (`config/seed/`, `config/releases/`, `engine/config/release.json`) | definicje typów dokumentów, słowniki, profile Docling i LLM; niezmienne wydania | gotowa dla trzech typów: odwołanie, pełnomocnictwo, potwierdzenie przelewu |
 | Backend FastAPI (`backend/`) | API dla GUI: wydania, podgląd szkicu konfiguracji, dostawcy LLM; publikacja i aktywacja wydań | API do odczytu gotowe; edycja konfiguracji przez API do zrobienia |
 | GUI w Angularze (`apps/web/`) | sprawy, weryfikacja pól z podglądem PDF, konfiguracja, wydania, jakość | wszystkie ekrany jako makieta na danych przykładowych; podłączenie do API do zrobienia |
@@ -278,7 +278,7 @@ Pełne wyniki, poprawki i pozostałe błędy są w [raporcie jakości](raport-ja
 ├── apps/web/                     # Angular (Nx)
 ├── input/  output/               # wymagane przez organizatora
 ├── requirements.txt              # zależności ekstrakcji (wskazuje engine/requirements.txt)
-├── start.sh  start.bat           # python -m odwolania2json run --input input --output output
+├── start.bat  start_linux.sh  start.sh   # python -m odwolania2json run --input input --output output
 └── docs/                         # plan, silnik, LLM, raport jakości
 ```
 

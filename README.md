@@ -21,7 +21,7 @@ Wymagany jest Python 3.13 lub nowszy.
    start.bat
    ```
 
-   Na Linuksie i macOS: `./start.sh`.
+   Na Linuksie: `./start_linux.sh` (albo `./start.sh`, który działa też na macOS).
 
 3. Wyniki znajdziesz w `output/<sprawa>/<nazwa pliku>.json`.
 
