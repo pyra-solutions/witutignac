@@ -15,7 +15,7 @@ Stan na 21.11.2026. Miara: F1 liczone pole po polu względem plików wzorcowych 
 | Same reguły, wydanie 2026.11.21-dev.3 | 15 spraw kontrolnych i 2 dokumenty negatywne | 0,971 | 0,990 | 0,953 |
 | **Reguły + LLM docelowy (Qwen3.5-9B przez Eden AI, FlexAI, UE), wydanie 2026.11.21-dev.3** | 15 spraw kontrolnych i 2 dokumenty negatywne | **0,993** | 0,990 | 0,996 |
 
-Sprawy kontrolne to co czwarta sprawa: 04, 08, …, 60, w tym 6 bardziej zróżnicowanych spraw z drugiej połowy zbioru. Wcześniejsze pomiary z LLM wykonano na profilu deweloperskim (`gemini-dev`). Docelowy model Qwen3.5-9B przez Eden AI zmierzyliśmy na tym samym zbiorze kontrolnym; porównanie z innymi modelami jest w [`llm.md`](llm.md).
+Sprawy kontrolne to co czwarta sprawa: 04, 08, …, 60, w tym 6 bardziej zróżnicowanych spraw z drugiej połowy zbioru. Wcześniejsze pomiary z LLM wykonano na profilu deweloperskim z modelem gemma-4-26b-a4b przez API Google (profil usunięty od wydania 2026.11.21-dev.7). Docelowy model Qwen3.5-9B przez Eden AI zmierzyliśmy na tym samym zbiorze kontrolnym; porównanie z innymi modelami jest w [`llm.md`](llm.md).
 
 ## Wydanie 2026.11.21-dev.6: skany
 

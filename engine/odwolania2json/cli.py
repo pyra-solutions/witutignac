@@ -172,7 +172,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--cache", help="katalog cache ('none' wyłącza); domyślnie .o2j-cache")
     r.add_argument("--trace-dir", help="katalog na ślady ekstrakcji (*.trace.json)")
     r.add_argument("--no-llm", action="store_true", help="tylko reguły, bez wywołań LLM")
-    r.add_argument("--llm-profile", help="profil LLM z konfiguracji zamiast domyślnego (np. gemini-dev)")
+    r.add_argument("--llm-profile", help="profil LLM z konfiguracji zamiast domyślnego (np. ovh-qwen3.5-9b)")
     r.set_defaults(fn=cmd_run)
 
     e = sub.add_parser("evaluate", help="F1 względem plików wzorcowych")

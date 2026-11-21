@@ -18,7 +18,7 @@ Dodatkowe argumenty trafiają do polecenia `run`:
 | --- | --- |
 | `--no-llm` | tylko reguły deterministyczne, bez wywołań LLM |
 | `--trace-dir DIR` | zapisuje ślad ekstrakcji `*.trace.json` dla każdego dokumentu |
-| `--llm-profile ID` | inny profil LLM z konfiguracji (np. `gemini-dev`) |
+| `--llm-profile ID` | inny profil LLM z konfiguracji (np. `ovh-qwen3.5-9b`) |
 | `--config PATH` | inny `release.json` albo katalog YAML (`config/seed`) |
 | `--cache DIR` | katalog cache konwersji i LLM (`none` wyłącza) |
 

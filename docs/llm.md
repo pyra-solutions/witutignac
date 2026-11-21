@@ -56,7 +56,3 @@ Pomiar z 21.11.2026 na 15 sprawach kontrolnych (04, 08, …, 60): 47 plików PDF
 - **Bezpieczeństwo.** Treść dokumentu jest w znacznikach `<dokument>` i traktowana jako dane. Klucz API nie trafia do logów, cache ani śladu ekstrakcji.
 - **Limity dostawcy.** Klient pilnuje limitu tokenów na minutę, respektuje czas oczekiwania podany przez API (błąd 429) i ponawia zapytania po błędach serwera.
 - **Powtarzalność i koszt.** Odpowiedzi są zapisywane w cache po skrócie treści zapytania, więc ponowne przetworzenie tych samych dokumentów nie wywołuje modelu.
-
-## Profil deweloperski
-
-Do prac nad silnikiem na syntetycznych danych treningowych służy profil `gemini-dev`: model `gemma-4-26b-a4b-it` przez API Google. To otwarty model (Apache 2.0), ale API Google nie gwarantuje przetwarzania w UE, więc ten profil nie jest używany do oceny.

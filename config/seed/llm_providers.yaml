@@ -12,9 +12,3 @@ providers:
     base_url: https://oai.endpoints.kepler.ai.cloud.ovh.net/v1
     data_location: Francja (UE)
     note: Dostawca do oceny. Otwarte modele, API zgodne z OpenAI.
-
-  - code: google-gemini
-    name: Google Gemini API (zgodność z OpenAI)
-    base_url: https://generativelanguage.googleapis.com/v1beta/openai
-    data_location: bez gwarancji przetwarzania w UE
-    note: Tylko do prac deweloperskich na syntetycznych danych treningowych.

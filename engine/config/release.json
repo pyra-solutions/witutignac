@@ -1,5 +1,5 @@
 {
-  "version": "2026.11.21-dev.6",
+  "version": "2026.11.21-dev.7",
   "settings": {
     "unsupported_output": "{}",
     "default_llm_profile": "eden-qwen3.5-9b",
@@ -116,23 +116,6 @@
       "system_prompt": "",
       "extra_headers": {},
       "tokens_per_minute": null,
-      "requests_per_minute": null
-    },
-    {
-      "id": "gemini-dev",
-      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
-      "model": "gemma-4-26b-a4b-it",
-      "api_key_env": "GEMINI_API_KEY",
-      "temperature": 0.0,
-      "max_tokens": 2048,
-      "seed": null,
-      "timeout_s": 90.0,
-      "max_retries": 4,
-      "reasoning_effort": null,
-      "structured_output": "json_schema",
-      "system_prompt": "",
-      "extra_headers": {},
-      "tokens_per_minute": 15000,
       "requests_per_minute": null
     }
   ],

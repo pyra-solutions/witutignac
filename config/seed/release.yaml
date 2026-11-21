@@ -1,6 +1,6 @@
 # Ustawienia wydania konfiguracji. Pliki w config/seed/ są jedynym źródłem konfiguracji;
 # do silnika trafiają jako engine/config/release.json (build-release albo backend: manage.py publish).
-version: "2026.11.21-dev.6"
+version: "2026.11.21-dev.7"
 
 settings:
   # Wynik dla dokumentu spoza obsługiwanych typów (README: "pusty plik .json").
@@ -93,19 +93,3 @@ llm_profiles:
     timeout_s: 120
     max_retries: 3
     structured_output: json_schema
-
-  # Tylko do prac deweloperskich na syntetycznych danych treningowych.
-  # Gemma 4 26B-A4B to ten sam otwarty model (Apache 2.0), który OVHcloud oferuje we Francji,
-  # ale API Google nie gwarantuje przetwarzania w UE, więc ten profil nie służy do oceny.
-  - id: gemini-dev
-    base_url: https://generativelanguage.googleapis.com/v1beta/openai
-    model: gemma-4-26b-a4b-it
-    api_key_env: GEMINI_API_KEY
-    temperature: 0
-    max_tokens: 2048
-    seed: null
-    timeout_s: 90
-    max_retries: 4
-    structured_output: json_schema
-    # darmowy limit Google dla Gemmy: 16 000 tokenów wejścia na minutę
-    tokens_per_minute: 15000
