@@ -58,6 +58,25 @@ def test_email_and_ocr_fix() -> None:
     assert fix_ocr_pl("PAÑSTWOWEJ ZAMÓWIEÑ") == "PAŃSTWOWEJ ZAMÓWIEŃ"
 
 
+def test_ocr_tolerant_grounding() -> None:
+    ocr = "Kalinex Logistyka Sp. z 0.0. ul. Leśna\nLódź 05.06.2026r.\nnr 2026/BZP 00692455/03opublikowane"
+    for value, mode in (("Kalinex Logistyka Sp. z o.o.", "required"), ("Łódź", "tokens"), ("2026/BZP 00692455/03", "tokens")):
+        assert not grounded(value, ocr, mode)
+        assert grounded(value, ocr, mode, ocr_tolerant=True)
+    # wartości spoza tekstu nadal są odrzucane, także krótkie (poniżej 4 znaków po złożeniu)
+    assert not grounded("Orbisol Budownictwo", ocr, "tokens", ocr_tolerant=True)
+    assert not grounded("Ul", "u1", "tokens", ocr_tolerant=True)
+
+
+def test_profile_cache_key_ignores_default_ocr_options() -> None:
+    from odwolania2json.config import ConversionProfile
+    from odwolania2json.convert import _profile_key
+
+    p = ConversionProfile()
+    assert "ocr_scale" not in _profile_key(p) and "ocr_model_size" not in _profile_key(p)
+    assert "ocr_scale" in _profile_key(p.model_copy(update={"ocr_scale": 4.0}))
+
+
 def test_candidates_follow_strategy_and_grounding() -> None:
     from odwolania2json.pipeline import Engine
     from odwolania2json.rules import Candidate

@@ -17,6 +17,24 @@ Stan na 21.11.2026. Miara: F1 liczone pole po polu względem plików wzorcowych 
 
 Sprawy kontrolne to co czwarta sprawa: 04, 08, …, 60, w tym 6 bardziej zróżnicowanych spraw z drugiej połowy zbioru. Wcześniejsze pomiary z LLM wykonano na profilu deweloperskim (`gemini-dev`). Docelowy model Qwen3.5-9B przez Eden AI zmierzyliśmy na tym samym zbiorze kontrolnym; porównanie z innymi modelami jest w [`llm.md`](llm.md).
 
+## Wydanie 2026.11.21-dev.6: skany
+
+Dwa eksperymenty na 30 skanach organizatora (profil domyślny, wydanie dev.5 jako punkt wyjścia):
+
+| OCR (RapidOCR, PP-OCRv6 `pl`) | Porównanie ze źródłem | F1 skanów | Czas OCR |
+| --- | --- | --- | --- |
+| model `small`, skala 3 (216 dpi), dotychczasowy | dokładne | 0,926 | 1× |
+| **model `small`, skala 3** | **tolerancyjne** | **0,935** | **1×** |
+| model `small`, skala 4 (288 dpi) | tolerancyjne | 0,938 | 1,2× |
+| model `medium` | — | przerwane | ok. 15× |
+
+- **Tolerancyjne porównanie** (`settings.ocr_tolerant_grounding`, tylko dla skanów): wartość z LLM, której nie ma dosłownie w tekście OCR, przechodzi, jeśli występuje w nim w całości po pominięciu polskich znaków, spacji i znaków interpunkcyjnych oraz utożsamieniu pomyłek OCR 0/o i 1/l/i. Odzyskuje 5 wartości (np. „Sp. z o.o.” zapisane przez OCR jako „Sp. z 0.0.”, „Łódź” jako „Lódź”), bez nowych błędnych trafień. Włączone od wydania dev.6.
+- **Wyższa rozdzielczość OCR** daje +0,003 przy mieszanym wpływie (odwołania lepiej, przelewy gorzej) i nie odzyskuje polskich znaków. Zostaje skala 3.
+- **Model `medium`** przetwarzał jedną stronę 150–190 s zamiast około 10 s, a jedno zeskanowane odwołanie po jego OCR nie zostało rozpoznane. Odrzucony.
+- Pozostałe 5 błędów w polskich znakach („odwolania” zamiast „odwołania”) wynika z samego OCR i bez zmiany silnika OCR ich nie usuniemy.
+
+Wynik wydania dev.6 na pełnym zbiorze: 60 spraw i 16 dokumentów negatywnych F1 0,999 (bez zmian), skany 0,935, całość 0,991.
+
 ## Wydanie 2026.11.21-dev.5: poprawki krok po kroku
 
 Każdą zmianę mierzyliśmy osobno na całym zbiorze organizatora (226 plików), z profilem domyślnym (Qwen3.5-9B przez endpoint UE Eden AI).

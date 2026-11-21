@@ -1,9 +1,10 @@
 {
-  "version": "2026.11.21-dev.5",
+  "version": "2026.11.21-dev.6",
   "settings": {
     "unsupported_output": "{}",
     "default_llm_profile": "eden-qwen3.5-9b",
-    "llm_concurrency": 4
+    "llm_concurrency": 4,
+    "ocr_tolerant_grounding": true
   },
   "conversion_profiles": [
     {
@@ -18,7 +19,9 @@
       "max_pages": 6,
       "num_threads": 4,
       "document_timeout_s": 180.0,
-      "scanned_ocr_mode": "full_page"
+      "scanned_ocr_mode": "full_page",
+      "ocr_scale": 3.0,
+      "ocr_model_size": "small"
     }
   ],
   "llm_profiles": [

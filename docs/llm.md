@@ -43,7 +43,7 @@ Pomiar z 21.11.2026 na 15 sprawach kontrolnych (04, 08, …, 60): 47 plików PDF
 
 - **Qwen3.5-9B przez OVHcloud zawsze rozumuje przed odpowiedzią.** Parametry wyłączające rozumowanie nie działają, a `reasoning_effort: low` tylko je skraca. Mediana odpowiedzi to 5 345 tokenów i 48 s. W 17 dokumentach model przekroczył limit 8 192 tokenów, więc silnik użył samych reguł. Ten sam model u FlexAI odpowiada od razu, w medianie w 2 s.
 - **Ministral 3B i 8B obniżają F1 poniżej samych reguł.** Wpisują wartości tam, gdzie wzorzec ma null: 23 i 36 fałszywych trafień wobec 5 przy samych regułach. Mniejszy model daje więcej punktów w etapie 2, ale nie rekompensuje to spadku F1.
-- **Na pełnym zbiorze organizatora** (60 spraw, 16 dokumentów negatywnych, 30 skanów) wydanie 2026.11.21-dev.5 daje F1 0,999 dla spraw i 0,926 dla skanów. Ten sam model bez reguł (każde pole tylko z LLM) daje 0,975 dla spraw, a większa Gemma 4 26B bez reguł 0,972 ([raport jakości](raport-jakosci.md)).
+- **Na pełnym zbiorze organizatora** (60 spraw, 16 dokumentów negatywnych, 30 skanów) wydanie 2026.11.21-dev.6 daje F1 0,999 dla spraw i 0,935 dla skanów. Ten sam model bez reguł (każde pole tylko z LLM) daje 0,975 dla spraw, a większa Gemma 4 26B bez reguł 0,972 ([raport jakości](raport-jakosci.md)).
 - **Pozostałe błędy profilu domyślnego (6 wartości) to znane problemy reguł**, a nie modelu: osoby podpisujące pełnomocnictwo, KRS wskazany bez wzorca, przestawiony nagłówek dwukolumnowy i jeden nieodczytany rachunek ([raport jakości](raport-jakosci.md)).
 
 ## Jak LLM jest używany

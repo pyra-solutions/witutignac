@@ -160,7 +160,8 @@ class Engine:
             f = fdefs.get(generic(p))
             if f is None or f.derive:
                 continue
-            cands, warn = self._candidates(f, prep.rules.get(p), prep.llm.get(p), text)
+            tolerant = self.release.settings.ocr_tolerant_grounding and prep.conv.scanned
+            cands, warn = self._candidates(f, prep.rules.get(p), prep.llm.get(p), text, tolerant)
             # Pierwszy kandydat (w kolejności strategii), który przejdzie normalizację i walidację.
             # Wartość odrzucona przez walidator z poziomem 'error' oddaje miejsce następnemu źródłu.
             source, raw, val = None, (cands[0][1] if cands else None), None
@@ -225,12 +226,12 @@ class Engine:
                         f"lista {top} ma {size} el., pole wymaga co najmniej {f.only_if_list_size_at_least}")
 
     @staticmethod
-    def _candidates(f: FieldDef, cand: Candidate | None, llm_val: Any,
-                    text: str) -> tuple[list[tuple[str, Any]], list[str]]:
+    def _candidates(f: FieldDef, cand: Candidate | None, llm_val: Any, text: str,
+                    ocr_tolerant: bool = False) -> tuple[list[tuple[str, Any]], list[str]]:
         """Niepuste wartości z reguł i LLM w kolejności strategii pola (LLM tylko po weryfikacji źródła)."""
         warn: list[str] = []
         rule_val = cand.value if cand is not None else None
-        llm_ok = llm_val is not None and grounded(llm_val, text, f.grounding)
+        llm_ok = llm_val is not None and grounded(llm_val, text, f.grounding, ocr_tolerant)
         if llm_val is not None and not llm_ok:
             warn.append("wartość z LLM nie występuje w tekście dokumentu, odrzucona")
         order = {

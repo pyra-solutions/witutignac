@@ -34,6 +34,15 @@ class Converted:
     raw_text: str = ""
 
 
+def _profile_key(profile: ConversionProfile) -> str:
+    """Profil do klucza cache. Pola dodane później pomijamy, gdy mają wartość domyślną,
+    żeby wcześniejsze konwersje pozostały ważne."""
+    later = {"ocr_scale", "ocr_model_size"}
+    default = ConversionProfile()
+    exclude = {f for f in later if getattr(profile, f) == getattr(default, f)}
+    return profile.model_dump_json(exclude=exclude)
+
+
 def _sha256(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
@@ -114,7 +123,8 @@ class DoclingConverter:
                                          replace_broken_text_layer=profile.replace_broken_text_layer)
         else:
             ocr = RapidOcrOptions(lang=profile.ocr_lang, mode=mode,
-                                  replace_broken_text_layer=profile.replace_broken_text_layer)
+                                  replace_broken_text_layer=profile.replace_broken_text_layer,
+                                  scale=profile.ocr_scale, model_size=profile.ocr_model_size)
         opts = PdfPipelineOptions(
             do_ocr=True,
             ocr_options=ocr,
@@ -134,7 +144,7 @@ class DoclingConverter:
         if scanned and profile.scanned_ocr_mode:
             ocr_mode = profile.scanned_ocr_mode
         ckey = hashlib.sha256(
-            f"{sha}|{self._version()}|{profile.model_dump_json()}|{ocr_mode}".encode()
+            f"{sha}|{self._version()}|{_profile_key(profile)}|{ocr_mode}".encode()
         ).hexdigest()[:32]
         cached = self._load_cache(ckey)
         if cached:

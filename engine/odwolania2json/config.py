@@ -159,6 +159,9 @@ class ConversionProfile(_Model):
     document_timeout_s: float | None = 180
     # Dokument bez warstwy tekstowej (skan) można czytać innym trybem OCR.
     scanned_ocr_mode: Literal["default", "full_page"] | None = "full_page"
+    # RapidOCR: skala obrazu strony dla OCR (1.0 = 72 dpi, 3.0 = 216 dpi) i rozmiar modelu PP-OCRv6.
+    ocr_scale: float = 3.0
+    ocr_model_size: Literal["tiny", "small", "medium"] = "small"
 
 
 class LlmProfile(_Model):
@@ -186,6 +189,9 @@ class Settings(_Model):
     unsupported_output: str = "{}"
     default_llm_profile: str = "default"
     llm_concurrency: int = 4
+    # Na skanach wartość z LLM może się różnić od tekstu OCR polskimi znakami, spacjami i pomyłkami
+    # 0/o, 1/l/i; musi jednak wystąpić w tekście w całości (textutil.grounded).
+    ocr_tolerant_grounding: bool = False
 
 
 class Release(_Model):

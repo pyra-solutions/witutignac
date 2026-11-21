@@ -84,11 +84,33 @@ def tokens(s: str) -> list[str]:
     return [t for t in re.findall(r"\w+", _fold(s)) if len(t) >= 2]
 
 
-def grounded(value: object, text: str, mode: str) -> bool:
-    """Czy wartość z LLM ma pokrycie w tekście dokumentu."""
+_OCR_CONFUSABLE = str.maketrans({"0": "o", "1": "l", "i": "l", "|": "l"})
+
+
+def ocr_fold(s: str) -> str:
+    """Litery i cyfry bez polskich znaków, z utożsamieniem znaków mylonych przez OCR (0/o, 1/l/i)."""
+    s = unicodedata.normalize("NFKD", s.replace("ł", "l").replace("Ł", "L"))
+    s = "".join(c for c in s if not unicodedata.combining(c)).casefold()
+    return re.sub(r"[\W_]+", "", s).translate(_OCR_CONFUSABLE)
+
+
+def grounded(value: object, text: str, mode: str, ocr_tolerant: bool = False) -> bool:
+    """Czy wartość z LLM ma pokrycie w tekście dokumentu.
+
+    Z `ocr_tolerant` (skany) wartość, która nie przeszła zwykłego porównania, wystarczy, że wystąpi
+    w tekście w całości po `ocr_fold` (co najmniej 4 znaki).
+    """
     if mode == "none" or value is None:
         return True
-    v = str(value)
+    if _grounded(str(value), text, mode):
+        return True
+    if not ocr_tolerant:
+        return False
+    v = ocr_fold(str(value))
+    return len(v) >= 4 and v in ocr_fold(text)
+
+
+def _grounded(v: str, text: str, mode: str) -> bool:
     if mode == "required":
         a = alnum(v)
         return bool(a) and a in alnum(text)

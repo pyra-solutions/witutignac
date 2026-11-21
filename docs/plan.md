@@ -60,7 +60,7 @@ Każdy dokument przechodzi te same kroki. Błąd jednego pliku nie zatrzymuje po
 2. **Klasyfikacja.** Wzorce z wagami z konfiguracji typu dokumentu, opcjonalnie ograniczone do początku tekstu. Wygrywa typ z najwyższym wynikiem, jeśli osiąga próg `min_score`. Dokument poniżej progu dostaje `{}` (ustawienie `unsupported_output`). Nazwa pliku nie wpływa na klasyfikację.
 3. **Reguły deterministyczne.** Regexy w nazwanych sekcjach tekstu (np. „dotyczy”, pierwszy zarzut) i dopasowanie słowników.
 4. **LLM.** Jedno wywołanie na grupę pól; dziś każdy typ dokumentu ma jedną grupę. Model dostaje fragment Markdown i schemat JSON zbudowany z definicji pól, a odpowiedź jest wymuszona schematem. Wywołania dla różnych dokumentów idą równolegle (`llm_concurrency`).
-5. **Arbitraż.** Strategia pola (`llm_first`, `rules_first`, `rules_only`, `llm_only`) wybiera źródło wartości. Wartość z LLM, której nie da się odnaleźć w tekście dokumentu, jest odrzucana (weryfikacja źródła). Jeśli wybrana wartość nie przejdzie normalizacji albo walidatora z poziomem `error`, silnik bierze wartość z następnego źródła (np. z reguły, gdy LLM wskazał adresata pisma zamiast Zamawiającego), a ślad zapisuje powód odrzucenia.
+5. **Arbitraż.** Strategia pola (`llm_first`, `rules_first`, `rules_only`, `llm_only`) wybiera źródło wartości. Wartość z LLM, której nie da się odnaleźć w tekście dokumentu, jest odrzucana (weryfikacja źródła). Jeśli wybrana wartość nie przejdzie normalizacji albo walidatora z poziomem `error`, silnik bierze wartość z następnego źródła (np. z reguły, gdy LLM wskazał adresata pisma zamiast Zamawiającego), a ślad zapisuje powód odrzucenia. Na skanach wartość z LLM może się różnić od tekstu OCR polskimi znakami, spacjami i pomyłkami 0/o, 1/l/i, ale musi wystąpić w nim w całości (`ocr_tolerant_grounding`).
 6. **Normalizacja i walidacja.** Nazwane funkcje z rejestru silnika z parametrami z konfiguracji. Walidator z poziomem `warning` tylko ostrzega, z poziomem `error` usuwa wartość. Półpauzę zamienioną przez Docling na łącznik silnik przywraca z warstwy tekstowej PDF.
 7. **Pola wyliczane i limity list.** Na przykład opis powodu czynności pochodzi ze słownika na podstawie identyfikatora.
 8. **Zapis.** JSON w kolejności pól z konfiguracji, z nazwą pliku wejściowego. Opcjonalnie powstaje też ślad ekstrakcji `*.trace.json` (opis w sekcji „Przejrzystość ekstrakcji”).
@@ -83,6 +83,7 @@ Docling 2.151 (licencja MIT) działa na Pythonie 3.10–3.14 i całkowicie lokal
 | Limity | `max_pages: 6`, `document_timeout_s: 180` | Kluczowe dane są na pierwszych stronach; uszkodzony plik nie blokuje przetwarzania |
 | Wątki CPU | `num_threads: 4` | Przewidywalne zużycie CPU |
 | Ocena konwersji | `low_grade` i `mean_grade` z `ConversionResult.confidence` | Zapisywane w śladzie ekstrakcji |
+| Rozdzielczość i model OCR | `ocr_scale: 3.0` (216 dpi), `ocr_model_size: small` | Skala 4 i model `medium` sprawdzone na 30 skanach: zysk znikomy albo wielokrotnie dłuższy OCR ([raport jakości](raport-jakosci.md)) |
 
 **Eksport `export_to_markdown`**
 
@@ -248,8 +249,8 @@ Zbiór kontrolny to co czwarta sprawa (04, 08, …, 60). Na nim nie stroimy regu
 | Same reguły | 60 spraw i 16 dokumentów negatywnych | 0,960 |
 | Same reguły (wydanie 2026.11.21-dev.3) | 15 spraw kontrolnych | 0,971 |
 | **Reguły + LLM (Qwen3.5-9B przez Eden AI, FlexAI)** | 15 spraw kontrolnych | **0,993** |
-| **Reguły + LLM, wydanie 2026.11.21-dev.5** | 60 spraw i 16 dokumentów negatywnych | **0,999** |
-| Reguły + LLM, wydanie 2026.11.21-dev.5 | 30 skanów organizatora | 0,926 |
+| **Reguły + LLM, wydanie 2026.11.21-dev.6** | 60 spraw i 16 dokumentów negatywnych | **0,999** |
+| Reguły + LLM, wydanie 2026.11.21-dev.6 | 30 skanów organizatora | 0,935 |
 | Reguły + LLM (gemma-4-26b-a4b, profil deweloperski) | 15 spraw kontrolnych | 0,994 |
 | Same reguły, symulowane skany | sprawy 01–03 | 0,896 |
 
