@@ -12,9 +12,44 @@ PAGE_BREAK = "<!-- page break -->"
 # "Ñ" nie występuje, więc w tekście skanów zamieniamy je z powrotem.
 _OCR_PL = str.maketrans({"Ñ": "Ń", "ñ": "ń"})
 
+# Samodzielny ciąg cyfr i liter o/O (bez liter ani cyfr tuż przed i tuż po), np. "9994328o29", "(3o-799)".
+_OCR_DIGIT_RUN = re.compile(r"(?<![^\W_])[0-9oO]++(?![^\W_])")
+# "Sp. z 0.o.", "z 0.0.", "z o.0." -> "z o.o."
+_OCR_ZOO = re.compile(r"(?<![^\W_])((?:(sp|Sp|SP)\.\s?)?[zZ]\s)([0oO]\.\s?[0oO]\.)")
+
+
+def _digit_run(m: re.Match[str]) -> str:
+    s = m.group(0)
+    if len(s) < 2 or not any(c.isdigit() for c in s):
+        return s
+    return s.replace("o", "0").replace("O", "0")
+
+
+def _zoo(m: re.Match[str]) -> str:
+    head, sp, oo = m.group(1), m.group(2), m.group(3)
+    if "0" not in oo:
+        return m.group(0)
+    if sp:
+        # wielkość liter jak w "Sp."/"SP." (OCR czyta też "Sp. z o.o." jako "Sp. Z 0.0.")
+        upper = sp == "SP"
+        head = head[:-2] + ("Z" if upper else "z") + head[-1]
+    else:
+        # bez "Sp.": jak druga litera skrótu, a przy "0.0." jak "z"/"Z"
+        upper = "O" in oo or ("o" not in oo and head[0] == "Z")
+    return head + re.sub("[0oO]", "O" if upper else "o", oo)
+
 
 def fix_ocr_pl(text: str) -> str:
-    return text.translate(_OCR_PL)
+    """Poprawki typowych pomyłek OCR w tekście skanów (polskie dokumenty).
+
+    - "Ñ" -> "Ń",
+    - litera o/O w liczbie -> 0 ("KRS: 9994328o29" -> "9994328029", "(3o-799)" -> "(30-799)"),
+    - zero w skrócie formy prawnej -> o ("Sp. z 0.o." -> "Sp. z o.o.").
+    Słowa z literami i cyframi (np. "k2o", "biuro2o") zostają bez zmian.
+    """
+    text = text.translate(_OCR_PL)
+    text = _OCR_DIGIT_RUN.sub(_digit_run, text)
+    return _OCR_ZOO.sub(_zoo, text)
 
 
 @dataclass(frozen=True)

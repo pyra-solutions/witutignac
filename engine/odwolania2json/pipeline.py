@@ -13,6 +13,7 @@ from odwolania2json import normalizers as norm
 from odwolania2json.assemble import _max_index, assemble, build_tree, flatten, generic, json_schema
 from odwolania2json.config import DocumentType, FieldDef, Release
 from odwolania2json.convert import Converted, DoclingConverter, restore_dashes
+from odwolania2json.diacritics import restore_diacritics
 from odwolania2json.llm import DEFAULT_SYSTEM_PROMPT, LlmClient, LlmError
 from odwolania2json.registry import validators
 from odwolania2json.rules import Candidate, classify, extract_all
@@ -32,6 +33,8 @@ class Prepared:
     llm: dict[str, Any] = field(default_factory=dict)
     llm_meta: list[dict[str, Any]] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    # słowa z przywróconymi polskimi znakami (przed, po)
+    diacritics: list[tuple[str, str]] = field(default_factory=list)
 
 
 class Engine:
@@ -68,6 +71,8 @@ class Engine:
             prep.conv = self.converter.convert(pdf, prof)
             if prep.conv.scanned:
                 prep.conv.markdown = fix_ocr_pl(prep.conv.markdown)
+                if self.release.settings.ocr_restore_diacritics:
+                    prep.conv.markdown, prep.diacritics = restore_diacritics(prep.conv.markdown)
             code, prep.scores = classify(prep.conv.markdown, pdf.stem, self.release)
             if code:
                 prep.doc_type = next(d for d in self.release.document_types if d.code == code)
@@ -147,6 +152,8 @@ class Engine:
                                    "ocr_mode": c.ocr_mode, "low_grade": c.low_grade,
                                    "mean_grade": c.mean_grade, "seconds": round(c.seconds, 2),
                                    "from_cache": c.from_cache}
+            if prep.diacritics:
+                trace["conversion"]["restored_diacritics"] = [f"{a} -> {b}" for a, b in prep.diacritics]
         trace["llm"] = prep.llm_meta
         if prep.doc_type is None or prep.conv is None:
             return None, trace

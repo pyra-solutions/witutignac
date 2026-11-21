@@ -40,7 +40,7 @@ $P -m pytest engine/tests                                            # testy jed
 
 ## Jak przetwarzany jest dokument
 
-1. **Konwersja (Docling, CPU).** Wynik trafia do cache po SHA-256 pliku, wersji Docling i profilu konwersji. Plik bez warstwy tekstowej (skan) jest czytany OCR całych stron.
+1. **Konwersja (Docling, CPU).** Wynik trafia do cache po SHA-256 pliku, wersji Docling i profilu konwersji. Plik bez warstwy tekstowej (skan) jest czytany OCR całych stron (RapidOCR PP-OCRv6 `pl`; porównanie z Tesseractem i EasyOCR w [`raport-jakosci.md`](raport-jakosci.md)). W tekście skanów silnik poprawia typowe pomyłki OCR: „Ñ” na „Ń”, „o” w liczbach na „0” („9994328o29”) i „Sp. z 0.o.” na „Sp. z o.o.”. Przywraca też polskie znaki zgubione przez OCR („odwolania” → „odwołania”) słownikiem SJP i pisownią z tego samego dokumentu (`settings.ocr_restore_diacritics`, `diacritics.py`; zasady i wynik w [`raport-jakosci.md`](raport-jakosci.md)).
 2. **Klasyfikacja.** Wzorce z wagami z konfiguracji, sprawdzane wyłącznie w treści, bo organizator zastrzega, że nazwa pliku może być dowolna. Wzorce mogą mieć ujemną wagę dla cech dokumentów spoza klas, np. sygnatury orzeczenia KIO. Dokument, który nie osiąga progu żadnego typu, dostaje `{}` (ustawienie `unsupported_output`).
 3. **Reguły deterministyczne.** Regexy w nazwanych sekcjach tekstu i dopasowanie słowników.
 4. **LLM.** Jedno wywołanie na grupę pól, ze schematem JSON zbudowanym z definicji pól i wymuszoną odpowiedzią.
@@ -78,6 +78,7 @@ engine/
 │   ├── cli.py          polecenia run, evaluate, build-release, validate-config, plugins
 │   ├── config.py       model konfiguracji (Pydantic), wczytywanie YAML/JSON
 │   ├── convert.py      Docling -> Markdown, wykrywanie skanów, cache
+│   ├── diacritics.py   przywracanie polskich znaków w tekście skanów (słownik w data/)
 │   ├── rules.py        klasyfikacja i ekstraktory deterministyczne
 │   ├── llm.py          klient API zgodnego z OpenAI, ponawianie, cache
 │   ├── assemble.py     drzewo pól: wynik JSON, schemat JSON dla LLM
@@ -86,6 +87,7 @@ engine/
 │   ├── validators.py   rejestr walidatorów (NIP, REGON, PESEL, KRS, IBAN...)
 │   └── evaluate.py     F1 pole po polu
 ├── config/release.json wydanie konfiguracji używane przez CLI
+├── tools/              build_pl_diacritics.py: odtworzenie słownika polskich znaków z hunspell-pl
 ├── tests/
 └── requirements.txt
 config/seed/            źródłowe pliki YAML konfiguracji

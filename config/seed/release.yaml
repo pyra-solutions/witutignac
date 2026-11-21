@@ -1,6 +1,6 @@
 # Ustawienia wydania konfiguracji. Pliki w config/seed/ są jedynym źródłem konfiguracji;
 # do silnika trafiają jako engine/config/release.json (build-release albo backend: manage.py publish).
-version: "2026.11.21-dev.9"
+version: "2026.11.22-dev.1"
 
 settings:
   # Wynik dla dokumentu spoza obsługiwanych typów (README: "pusty plik .json").
@@ -11,6 +11,10 @@ settings:
   # Tylko skany: wartość z LLM może się różnić od tekstu OCR polskimi znakami, spacjami i pomyłkami 0/o, 1/l/i,
   # ale musi wystąpić w tekście w całości. Na 30 skanach organizatora F1 0,926 -> 0,935, bez nowych błędnych trafień.
   ocr_tolerant_grounding: true
+  # Tylko skany: przywraca polskie znaki zgubione przez OCR ("odwolania" -> "odwołania") słownikiem SJP
+  # (engine/odwolania2json/data) i pisownią z tego samego dokumentu, zanim tekst trafi do reguł i LLM.
+  # Na 30 skanach organizatora F1 0,930 -> 0,942 (docs/raport-jakosci.md).
+  ocr_restore_diacritics: true
 
 conversion_profiles:
   - id: default

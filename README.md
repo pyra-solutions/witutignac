@@ -6,7 +6,8 @@ Rozwiązanie wyzwania Urzędu Zamówień Publicznych na HackNation 2026. Program
 (odwołanie, pełnomocnictwo, potwierdzenie przelewu), rozpoznaje rodzaj dokumentu po treści, wyodrębnia
 dane i zapisuje jeden plik JSON na dokument, w strukturze z `oczekiwane-json`.
 
-Działa lokalnie na CPU, bez GPU. Tekst z PDF, także ze skanów, odczytuje Docling z OCR. Pola odczytują
+Działa lokalnie na CPU, bez GPU. Tekst z PDF, także ze skanów, odczytuje Docling z OCR. W tekście skanów
+silnik przywraca polskie znaki zgubione przez OCR słownikiem SJP (licencja Apache 2.0). Pola odczytują
 reguły i mały otwarty model językowy Qwen3.5-9B (licencja Apache 2.0) przez endpoint UE Eden AI (dostawca FlexAI,
 przetwarzanie w UE).
 

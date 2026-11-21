@@ -56,6 +56,21 @@ def test_email_and_ocr_fix() -> None:
     assert n.email(" jan.kowalski @ firma.pl ") == "jan.kowalski@firma.pl"
     assert n.email("brak adresu") is None
     assert fix_ocr_pl("PAÑSTWOWEJ ZAMÓWIEÑ") == "PAŃSTWOWEJ ZAMÓWIEŃ"
+    # litera o/O w liczbach -> 0
+    assert fix_ocr_pl("KRS: 9994328o29, NIP: 999-O2-29-154") == "KRS: 9994328029, NIP: 999-02-29-154"
+    assert fix_ocr_pl("w Kraków (3o-799), ul. Lipowa") == "w Kraków (30-799), ul. Lipowa"
+    assert fix_ocr_pl("| 2o26-03-29 |") == "| 2026-03-29 |"
+    # zero w "Sp. z o.o."
+    assert fix_ocr_pl("Kalinex Logistyka Sp. z 0.0. ul. Leśna") == "Kalinex Logistyka Sp. z o.o. ul. Leśna"
+    assert fix_ocr_pl("Orbisol Sp. z 0.o.\nNordenix sp. z o.0.") == "Orbisol Sp. z o.o.\nNordenix sp. z o.o."
+    assert fix_ocr_pl("ASTERION SP. Z 0.0.") == "ASTERION SP. Z O.O."
+    assert fix_ocr_pl("ASTERION SP. Z O.0.") == "ASTERION SP. Z O.O."
+    assert fix_ocr_pl("Orbisol Budownictwo Sp. Z 0.0. (dalej") == "Orbisol Budownictwo Sp. z o.o. (dalej"
+    assert fix_ocr_pl("spółka z 0.0.") == "spółka z o.o."
+    # bez zmian: słowa, samotne "o", adresy i ciągi z literami
+    for s in ("o 12 dni", "Lodo 2", "www.k2o.pl", "biuro2o@firma.pl", "nr 2026/BZP0O767819/01", "Monk d w o o2e",
+              "Sp. z o.o.", "SP. Z O.O.", "art. 10 ust. 2", "OO", "z 0", "raz 0.5."):
+        assert fix_ocr_pl(s) == s, s
 
 
 def test_ocr_tolerant_grounding() -> None:

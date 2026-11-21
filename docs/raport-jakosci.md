@@ -17,6 +17,58 @@ Stan na 21.11.2026. Miara: F1 liczone pole po polu względem plików wzorcowych 
 
 Sprawy kontrolne to co czwarta sprawa: 04, 08, …, 60, w tym 6 bardziej zróżnicowanych spraw z drugiej połowy zbioru. Wcześniejsze pomiary z LLM wykonano na profilu deweloperskim z modelem gemma-4-26b-a4b przez API Google (profil usunięty od wydania 2026.11.21-dev.7). Docelowy model Qwen3.5-9B przez Eden AI zmierzyliśmy na tym samym zbiorze kontrolnym; porównanie z innymi modelami jest w [`llm.md`](llm.md).
 
+## Porównanie silników OCR (21.11.2026)
+
+30 skanów organizatora (`dane/skany`, 71 stron), pełny silnik z LLM (Qwen3.5-9B, endpoint UE Eden AI), bez cache (`--cache none`), ta sama konfiguracja poza silnikiem OCR. Druga miara dotyczy samego OCR: ile spośród 226 wartości tekstowych ze wzorców występuje w tekście po OCR, dosłownie albo po pominięciu polskich znaków i interpunkcji. Pominięte są daty, identyfikatory słownika i wartości słownikowe, których nie ma w tekście.
+
+| Silnik OCR (Docling 2.151) | F1 skanów | Wartości w tekście dosłownie | Bez polskich znaków | Czas OCR | Szczyt RAM |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| **RapidOCR, PP-OCRv6 `pl`, model `small` (obecny)** | **0,934** | **88,9%** | **94,7%** | 353 s | 2,7 GB |
+| Tesseract 5.5, `pol` z tessdata_best | 0,905 | 84,1% | 92,5% | 332 s | 2,1 GB |
+| Tesseract 5.5, `pol` z pakietu Ubuntu | 0,885 | 84,1% | 90,3% | 293 s | 2,1 GB |
+| RapidOCR, PP-OCRv5 `latin` | 0,848 | 77,0% | 89,4% | 391 s | 2,7 GB |
+| EasyOCR 1.7.2, `pl` (CPU) | przerwane | 44 z 64* | 50 z 64* | 4–5× dłużej | — |
+
+\* Pierwszych 5 odwołań; na tych samych dokumentach RapidOCR PP-OCRv6: 58 i 60 z 64, Tesseract tessdata_best: 51 i 58. EasyOCR przetwarzał jeden dokument 108–180 s (RapidOCR 20–34 s) i nie rozpoznał odwołania 0005, więc przy 150 dokumentach nie zmieściłby się w 45 minutach.
+
+- **Zostaje RapidOCR PP-OCRv6.** Żaden inny silnik nie dał wyższego F1 ani lepszego tekstu.
+- **Tesseract** lepiej czyta polskie litery: „odwoła…” bez błędu we wszystkich 330 wystąpieniach, a RapidOCR gubi „ł” w 8% z nich. Za to zamienia „@” w adresach e-mail na „G” albo „Q” (8 odwołań), dokleja pojedyncze znaki na końcach linii („… 2026 ś”), wstawia spacje w numerach („ZP/ 12/2026”) i ucina numery rachunków. Lepszy jest tylko na pełnomocnictwach (0,968 wobec 0,955).
+- **PP-OCRv5 `latin`** to model dla wszystkich języków łacińskich: gubi więcej polskich znaków niż model PP-OCRv6 `pl`.
+
+Słabe miejsca RapidOCR na tych skanach, poza polskimi literami („ł”, „Ę”, „Ł”: 5 tytułów przelewów i 1 osoba):
+
+- **Przebijający tekst z drugiej strony kartki.** Tam, gdzie nakłada się na akapit „Dotyczy:” (odwołanie 0005), OCR zwraca niezrozumiały tekst. Giną wtedy numer BZP, numer postępowania i powód czynności.
+- **Dwuwierszowa komórka tabeli na przekrzywionym skanie** (przelew 0010). Drugi wiersz tytułu przelewu jest nieczytelny.
+- **„o” zamiast zera i odwrotnie**: „KRS: 9994328o29”, „(3o-799)”, „o2.06.2026”, „Sp. z 0.o.”. Poprawiane od 21.11.2026 (niżej).
+
+**Poprawka tekstu skanów** (`textutil.fix_ocr_pl`, tylko dla plików bez warstwy tekstowej, przed klasyfikacją, regułami i LLM). Litera o/O w samodzielnym ciągu cyfr zamienia się na 0, a „z 0.o.” i „z 0.0.” na „z o.o.” z wielkością liter zgodną z „Sp.” albo „SP.”. Słowa z literami i cyframi (np. „k2o”, „biuro2o@…”) zostają bez zmian. Na tekście OCR 30 skanów zmienia 9 miejsc i wszystkie są poprawne. Dotąd te wartości ratował tylko LLM: reguła `KRS\W{0,3}(\d{10})` nie pasowała do „9994328o29”, a model sam poprawiał cyfrę. Same reguły na tym samym tekście OCR: +1 trafienie (KRS mocodawcy), bez nowych błędów. W pełnym silniku z LLM F1 skanów wynosi 0,932 wobec 0,934 przed zmianą. Różnią się 2 pola i oba wynikają z wariancji LLM, bo tekst tych dokumentów poprawka zostawia bez zmian. Zysk dotyczy więc głównie sytuacji, gdy LLM jest niedostępny.
+
+## Wydanie 2026.11.22-dev.1: polskie znaki na skanach
+
+RapidOCR gubi część polskich znaków, najczęściej „ł” i wielkie litery z ogonkami: „odwolania”, „PELNOMOCNICTWO”, „DEBNICY”. LLM przepisuje wartości z tekstu dosłownie, razem z tym błędem. Od wydania 2026.11.22-dev.1 (`settings.ocr_restore_diacritics`, moduł `diacritics.py`) silnik przywraca znaki w tekście skanu, zaraz po `fix_ocr_pl`, przed klasyfikacją, regułami i LLM:
+
+1. **Słownik SJP** (`engine/odwolania2json/data/pl_diacritics.txt.gz`, 4,8 MB, pochodna słownika `hunspell-pl` na licencji Apache 2.0). Słowo dostaje znaki, gdy jego wersja bez znaków nie jest poprawnym słowem, a słownik zna dokładnie jedną wersję ze znakami. Poprawia więc „odwolania” → „odwołania”, a pomija „sad” (sad/sąd), „zle” (złe/źle), „oplata” (oplata/opłata).
+2. **Pisownia z tego samego dokumentu**, gdy dokument zawiera dokładnie jedną wersję ze znakami i jest ona słowem ze słownika: „Spólka” → „Spółka”, „Lukasz” → „Łukasz”. Słowo poprawne bez znaków zmienia się tylko wtedy, gdy wersja ze znakami jest nazwą własną, a słowo jest pisane wielką literą. Dlatego „20 maja 2026” nie staje się „20 mają”, a „Zawadzki” nie przejmuje błędnego „ż” z innego odczytu („Zawadżki”).
+
+Pomijane są: słowa krótsze niż 4 litery, e-maile i adresy WWW, ciągi z cyframi lub ukośnikiem (kody postępowań, np. „DAZ/PN/67/26”), pisane wielką literą słowa, które są też pospolitymi słowami angielskimi („Michalak Legal”), oraz słowa z mieszaną wielkością liter. Kropka środkowa między słowami („OŚRODEK·SPORTU”) staje się spacją. Ślad ekstrakcji zapisuje każdą poprawkę (`conversion.restored_diacritics`). Słownik wczytuje się przy pierwszym skanie w partii: około 2 s i 300 MB RAM.
+
+Pomiar na 30 skanach organizatora, pełny silnik z LLM, bez cache, oba przebiegi z poprawką `fix_ocr_pl`:
+
+| Wariant | F1 skanów | Odwołania | Pełnomocnictwa | Przelewy |
+| --- | ---: | ---: | ---: | ---: |
+| Bez przywracania znaków | 0,930 | 0,952 | 0,955 | 0,822 |
+| **Z przywracaniem znaków** | **0,942** | 0,952 | 0,968 | 0,870 |
+
+- **Naprawione (7):** 5 tytułów przelewów („wpis od odwołania”, „W DĘBNICY GÓRNEJ”, „OŚRODEK SPORTU”, „PAŃSTWOWEJ STRAŻY”), osoba podpisująca pełnomocnictwo („Łukasz Sosnowski”) i data czynności w odwołaniu 0005.
+- **Nowe błędy (3):**
+  - **Reguła e-maila pełnomocnika.** W odwołaniu 0009 Odwołujący działa bez pełnomocnika. Po przywróceniu znaków reguła znajduje sekcję „Odwołujący:” (OCR: „Odwolujacy:”) i bierze z niej e-mail firmy jako e-mail pełnomocnika. To błąd samej reguły, który na cyfrowym piśmie bez pełnomocnika wystąpiłby tak samo.
+  - **Zamienione rachunki w przelewie 0008** (2 pola). Na bardzo zaszumionym skanie OCR nie odczytał etykiet rachunków, więc LLM ustala kolejność z kontekstu. Po zmianie kilku słów obok („Urząd”, „Rafał”) zamienia rachunki w obu przebiegach z poprawką, a bez niej w obu podaje je poprawnie.
+- **Słowa z fałszywą poprawką:** na tekście OCR 30 skanów 185 zmian, wszystkie poprawne poza kilkoma kawałkami słów w nieczytelnym tekście przebijającym z drugiej strony kartki („otne”, „raze”). Wszystkie 16 negatywów dostaje `{}`, w tym 3 zeskanowane, a ich punktacja klasyfikacji się nie zmienia. W zeskanowanym odwołaniu z `szablon-aplikacja` poprawka zmienia 11 słów i wszystkie są poprawne.
+- **Ryzyko:** nazwisko pisane celowo bez polskich znaków. Generator organizatora pisze „Szymanski” (4 cyfrowe sprawy). Poprawka działa tylko na skanach, więc cyfrowych dokumentów nie dotyczy, ale na skanie takie nazwisko stałoby się „Szymański”.
+- **Nie poprawia:** słów niejednoznacznych bez pisowni w dokumencie („OPLATA”, „Lódź”, „byla”). Rozstrzygnęłaby je lista frekwencyjna słów, której nie dołączamy.
+
+**Reguły na skanach organizatora.** Same reguły dają na tych 30 skanach F1 około 0,45. Docling odczytuje nagłówek pisma jako dwie osobne kolumny: najpierw same etykiety („Odwołujący:”, „Zamawiający:”, „Dotyczy:”), potem same wartości. Reguły szukające w sekcji „Odwołujący” nie znajdują więc NIP-u, REGON-u ani nazwy, i na skanach prawie wszystkie pola pochodzą z LLM. Gdy API LLM nie odpowiada, wyniki dla takich skanów będą słabe.
+
 ## Wydanie 2026.11.21-dev.6: skany
 
 Dwa eksperymenty na 30 skanach organizatora (profil domyślny, wydanie dev.5 jako punkt wyjścia):

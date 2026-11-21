@@ -1,10 +1,11 @@
 {
-  "version": "2026.11.21-dev.9",
+  "version": "2026.11.22-dev.1",
   "settings": {
     "unsupported_output": "{}",
     "default_llm_profile": "eden-qwen3.5-9b",
     "llm_concurrency": 4,
-    "ocr_tolerant_grounding": true
+    "ocr_tolerant_grounding": true,
+    "ocr_restore_diacritics": true
   },
   "conversion_profiles": [
     {

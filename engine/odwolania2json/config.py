@@ -192,6 +192,9 @@ class Settings(_Model):
     # Na skanach wartość z LLM może się różnić od tekstu OCR polskimi znakami, spacjami i pomyłkami
     # 0/o, 1/l/i; musi jednak wystąpić w tekście w całości (textutil.grounded).
     ocr_tolerant_grounding: bool = False
+    # Na skanach przywraca polskie znaki zgubione przez OCR ("odwolania" -> "odwołania") słownikiem SJP
+    # i pisownią z tego samego dokumentu, przed regułami i LLM (diacritics.py).
+    ocr_restore_diacritics: bool = False
 
 
 class Release(_Model):
