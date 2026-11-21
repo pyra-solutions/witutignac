@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.21-dev.2",
+  "version": "2026.11.21-dev.3",
   "settings": {
     "unsupported_output": "{}",
-    "default_llm_profile": "default",
+    "default_llm_profile": "eden-qwen3.5-9b",
     "llm_concurrency": 4
   },
   "conversion_profiles": [
@@ -23,7 +23,71 @@
   ],
   "llm_profiles": [
     {
-      "id": "default",
+      "id": "eden-qwen3.5-9b",
+      "base_url": "https://api.edenai.run/v3",
+      "model": "flexai/Qwen3.5-9B@eu",
+      "api_key_env": "EDEN_AI_API_KEY",
+      "temperature": 0.0,
+      "max_tokens": 2048,
+      "seed": 42,
+      "timeout_s": 120.0,
+      "max_retries": 3,
+      "reasoning_effort": null,
+      "structured_output": "json_schema",
+      "system_prompt": "",
+      "tokens_per_minute": null,
+      "requests_per_minute": null
+    },
+    {
+      "id": "eden-qwen3.5-9b-ovh",
+      "base_url": "https://api.edenai.run/v3",
+      "model": "ovhcloud/Qwen3.5-9B",
+      "api_key_env": "EDEN_AI_API_KEY",
+      "temperature": 0.0,
+      "max_tokens": 8192,
+      "seed": 42,
+      "timeout_s": 180.0,
+      "max_retries": 3,
+      "reasoning_effort": "low",
+      "structured_output": "json_schema",
+      "system_prompt": "",
+      "tokens_per_minute": null,
+      "requests_per_minute": null
+    },
+    {
+      "id": "eden-ministral-8b",
+      "base_url": "https://api.edenai.run/v3",
+      "model": "mistral/ministral-8b-2512@eu",
+      "api_key_env": "EDEN_AI_API_KEY",
+      "temperature": 0.0,
+      "max_tokens": 2048,
+      "seed": 42,
+      "timeout_s": 120.0,
+      "max_retries": 3,
+      "reasoning_effort": null,
+      "structured_output": "json_schema",
+      "system_prompt": "",
+      "tokens_per_minute": null,
+      "requests_per_minute": null
+    },
+    {
+      "id": "eden-ministral-3b",
+      "base_url": "https://api.edenai.run/v3",
+      "model": "mistral/ministral-3b-2512@eu",
+      "api_key_env": "EDEN_AI_API_KEY",
+      "temperature": 0.0,
+      "max_tokens": 2048,
+      "seed": 42,
+      "timeout_s": 120.0,
+      "max_retries": 3,
+      "reasoning_effort": null,
+      "structured_output": "json_schema",
+      "system_prompt": "",
+      "tokens_per_minute": null,
+      "requests_per_minute": null
+    },
+    {
+      "id": "ovh-qwen3.5-9b",
       "base_url": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1",
       "model": "Qwen3.5-9B",
       "api_key_env": "OVH_AI_ENDPOINTS_ACCESS_TOKEN",

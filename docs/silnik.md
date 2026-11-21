@@ -21,7 +21,7 @@ Dodatkowe argumenty trafiają do polecenia `run`:
 | `--config PATH` | inny `release.json` albo katalog YAML (`config/seed`) |
 | `--cache DIR` | katalog cache konwersji i LLM (`none` wyłącza) |
 
-LLM wymaga klucza API w zmiennej wskazanej przez profil (domyślnie `OVH_AI_ENDPOINTS_ACCESS_TOKEN`). Silnik czyta też plik `.env` z katalogu głównego. Bez klucza działa na samych regułach i zawsze zapisuje JSON.
+LLM wymaga klucza API w zmiennej wskazanej przez profil (domyślnie `EDEN_AI_API_KEY`). Silnik czyta też plik `.env` z katalogu głównego. Bez klucza działa na samych regułach i zawsze zapisuje JSON.
 
 Zmienne `LLM_BASE_URL`, `LLM_MODEL` i `LLM_API_KEY` nadpisują profil, więc można podłączyć dowolny serwer zgodny z API OpenAI bez edycji plików.
 

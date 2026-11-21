@@ -7,7 +7,8 @@ Rozwiązanie wyzwania Urzędu Zamówień Publicznych na HackNation 2026. Program
 dane i zapisuje jeden plik JSON na dokument, w strukturze z `oczekiwane-json`.
 
 Działa lokalnie na CPU, bez GPU. Tekst z PDF, także ze skanów, odczytuje Docling z OCR. Pola odczytują
-reguły i mały otwarty model językowy Qwen3.5-9B przez API OVHcloud z serwerami we Francji.
+reguły i mały otwarty model językowy Qwen3.5-9B (licencja Apache 2.0) przez API Eden AI, u dostawcy FlexAI
+z serwerami we Francji.
 
 ## Uruchomienie
 
@@ -42,7 +43,7 @@ Na Windows zamiast `PYTHONPATH=engine` wykonaj najpierw `set PYTHONPATH=engine`.
 Klucz musi być w pliku `.env` w katalogu głównym, na wzór `.env.example`:
 
 ```
-OVH_AI_ENDPOINTS_ACCESS_TOKEN=...
+EDEN_AI_API_KEY=...
 ```
 
 Bez klucza program działa na samych regułach i nadal zapisuje wszystkie pliki JSON, ale odczytuje mniej pól.

@@ -12,8 +12,10 @@ Stan na 21.11.2026. Miara: F1 liczone pole po polu względem plików wzorcowych 
 | Reguły + LLM (Gemma 4 26B-A4B), wersja pierwsza | 15 spraw kontrolnych | 0,984 | 0,980 | 0,988 |
 | Reguły + LLM, po poprawkach | 15 spraw kontrolnych | 0,994 | 0,992 | 0,996 |
 | Same reguły, klasyfikacja tylko po treści, słownik powodów z 21.11.2026 | 60 spraw i 16 dokumentów negatywnych (196 dokumentów) | 0,960 | 0,986 | 0,937 |
+| Same reguły, wydanie 2026.11.21-dev.3 | 15 spraw kontrolnych i 2 dokumenty negatywne | 0,971 | 0,990 | 0,953 |
+| **Reguły + LLM docelowy (Qwen3.5-9B przez Eden AI, FlexAI, UE), wydanie 2026.11.21-dev.3** | 15 spraw kontrolnych i 2 dokumenty negatywne | **0,993** | 0,990 | 0,996 |
 
-Sprawy kontrolne to co czwarta sprawa: 04, 08, …, 60, w tym 6 bardziej zróżnicowanych spraw z drugiej połowy zbioru. Pomiar z LLM wykonano na profilu deweloperskim (`gemini-dev`, ten sam otwarty model, który OVHcloud oferuje w UE). Pomiar na docelowym modelu `Qwen3.5-9B` czeka na klucz API OVHcloud.
+Sprawy kontrolne to co czwarta sprawa: 04, 08, …, 60, w tym 6 bardziej zróżnicowanych spraw z drugiej połowy zbioru. Wcześniejsze pomiary z LLM wykonano na profilu deweloperskim (`gemini-dev`). Docelowy model Qwen3.5-9B przez Eden AI zmierzyliśmy na tym samym zbiorze kontrolnym; porównanie z innymi modelami jest w [`llm.md`](llm.md).
 
 ## Dokumenty negatywne i klasyfikacja
 

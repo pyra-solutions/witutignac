@@ -1,4 +1,4 @@
-"""Klient LLM dla API zgodnego z OpenAI (OVHcloud, IONOS, vLLM, Ollama, Gemini compat).
+"""Klient LLM dla API zgodnego z OpenAI (Eden AI, OVHcloud, IONOS, vLLM, Ollama, Gemini compat).
 
 Klucz API pochodzi wyłącznie ze zmiennej środowiskowej wskazanej w profilu.
 Nigdy nie trafia do logów, cache ani śladu ekstrakcji.

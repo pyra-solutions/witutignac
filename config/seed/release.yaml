@@ -1,11 +1,12 @@
 # Ustawienia wydania konfiguracji. Pliki w config/seed/ są jedynym źródłem konfiguracji;
 # do silnika trafiają jako engine/config/release.json (build-release albo backend: manage.py publish).
-version: "2026.11.21-dev.2"
+version: "2026.11.21-dev.3"
 
 settings:
   # Wynik dla dokumentu spoza obsługiwanych typów (README: "pusty plik .json").
   unsupported_output: "{}"
-  default_llm_profile: default
+  # Profil oceny: Qwen3.5-9B przez Eden AI (FlexAI, Francja). F1 0,993 na 15 sprawach kontrolnych.
+  default_llm_profile: eden-qwen3.5-9b
   llm_concurrency: 4
 
 conversion_profiles:
@@ -21,8 +22,59 @@ conversion_profiles:
     document_timeout_s: 180
 
 llm_profiles:
-  # Docelowy profil oceny: otwarty model u dostawcy z UE (OVHcloud AI Endpoints, Francja).
-  - id: default
+  # Eden AI (bramka API, Francja) do otwartych modeli u dostawców z przetwarzaniem w UE.
+  # Sufiks @eu i dostawca ovhcloud wymuszają serwery w Europie. Klucz: EDEN_AI_API_KEY.
+  # Wyniki porównania modeli: docs/raport-jakosci.md.
+  - id: eden-qwen3.5-9b
+    base_url: https://api.edenai.run/v3
+    # FlexAI (Francja) podaje Qwen3.5-9B bez fazy rozumowania: krótkie i szybkie odpowiedzi.
+    model: flexai/Qwen3.5-9B@eu
+    api_key_env: EDEN_AI_API_KEY
+    temperature: 0
+    max_tokens: 2048
+    seed: 42
+    timeout_s: 120
+    max_retries: 3
+    structured_output: json_schema
+
+  - id: eden-qwen3.5-9b-ovh
+    base_url: https://api.edenai.run/v3
+    model: ovhcloud/Qwen3.5-9B
+    api_key_env: EDEN_AI_API_KEY
+    temperature: 0
+    # Qwen3.5 zawsze rozumuje przed odpowiedzią; "low" skraca rozumowanie, a większy limit
+    # tokenów chroni przed ucięciem odpowiedzi.
+    reasoning_effort: low
+    max_tokens: 8192
+    seed: 42
+    timeout_s: 180
+    max_retries: 3
+    structured_output: json_schema
+
+  - id: eden-ministral-8b
+    base_url: https://api.edenai.run/v3
+    model: mistral/ministral-8b-2512@eu
+    api_key_env: EDEN_AI_API_KEY
+    temperature: 0
+    max_tokens: 2048
+    seed: 42
+    timeout_s: 120
+    max_retries: 3
+    structured_output: json_schema
+
+  - id: eden-ministral-3b
+    base_url: https://api.edenai.run/v3
+    model: mistral/ministral-3b-2512@eu
+    api_key_env: EDEN_AI_API_KEY
+    temperature: 0
+    max_tokens: 2048
+    seed: 42
+    timeout_s: 120
+    max_retries: 3
+    structured_output: json_schema
+
+  # Bezpośrednio OVHcloud AI Endpoints (Francja), bez Eden AI. Wymaga własnego tokenu OVHcloud.
+  - id: ovh-qwen3.5-9b
     base_url: https://oai.endpoints.kepler.ai.cloud.ovh.net/v1
     model: Qwen3.5-9B
     api_key_env: OVH_AI_ENDPOINTS_ACCESS_TOKEN

@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="790" viewBox="0 0 1240 790" font-family="'Source Sans 3', 'Noto Sans', 'DejaVu Sans', sans-serif">
+  <title>Architektura Odwołania2json</title>
+  <desc>Silnik w Pythonie z CLI dla oceniających, konfiguracja w plikach YAML, backend FastAPI bez bazy danych, GUI w Angularze i API LLM w UE.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,1 L9,5 L0,9 z" fill="#a9a69c"/>
+    </marker>
+    <style>
+      .box { fill: #ffffff; stroke: #cfccc3; stroke-width: 1.5; }
+      .step { fill: #ffffff; stroke: #b9cbe8; stroke-width: 1.5; }
+      .engine { fill: #eef4fd; stroke: #2f6fd6; stroke-width: 2; }
+      .h { font-size: 21px; font-weight: 600; fill: #1b1b1b; }
+      .t { font-size: 16.5px; fill: #3b3b3b; }
+      .mono { font-family: 'DejaVu Sans Mono', 'Liberation Mono', monospace; font-size: 14.5px; fill: #3b3b3b; }
+      .lbl { font-size: 15px; fill: #6b6960; }
+      .link { stroke: #a9a69c; stroke-width: 1.6; fill: none; }
+      .title { font-size: 25px; font-weight: 600; fill: #111111; }
+      .sub { font-size: 16.5px; fill: #5c5a52; }
+      .eng { font-size: 18px; font-weight: 600; fill: #1d4f9e; }
+    </style>
+  </defs>
+
+  <rect width="1240" height="790" fill="#ffffff"/>
+
+  <text class="title" x="40" y="50">Jeden silnik w Pythonie, konfiguracja w plikach</text>
+  <text class="sub" x="40" y="78">Bez bazy danych, kolejki i Dockera: całość działa na laptopie z Pythonem 3.13+ i bez GPU</text>
+
+  <!-- Wiersz 1: GUI, backend, pliki konfiguracji -->
+  <rect class="box" x="40" y="110" width="340" height="136" rx="12"/>
+  <text class="h" x="62" y="146">Angular (przeglądarka)</text>
+  <text class="t" x="62" y="176">sprawy i weryfikacja pól</text>
+  <text class="t" x="62" y="200">konfiguracja bez programowania</text>
+  <text class="t" x="62" y="224">jakość F1, wydania</text>
+
+  <rect class="box" x="450" y="110" width="340" height="136" rx="12"/>
+  <text class="h" x="472" y="146">Backend FastAPI</text>
+  <text class="t" x="472" y="176">wydania konfiguracji</text>
+  <text class="t" x="472" y="200">podgląd szkicu z YAML</text>
+  <text class="t" x="472" y="224">bez bazy danych, na plikach</text>
+
+  <rect class="box" x="860" y="110" width="340" height="136" rx="12"/>
+  <text class="h" x="882" y="146">Pliki konfiguracji</text>
+  <text class="mono" x="882" y="176">config/seed/*.yaml</text>
+  <text class="mono" x="882" y="200">config/releases/</text>
+  <text class="mono" x="882" y="224">engine/config/release.json</text>
+
+  <line class="link" x1="380" y1="178" x2="448" y2="178" marker-end="url(#arrow)"/>
+  <text class="lbl" x="414" y="168" text-anchor="middle">REST</text>
+  <line class="link" x1="790" y1="178" x2="858" y2="178" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="lbl" x="824" y="168" text-anchor="middle">pliki</text>
+
+  <!-- Silnik -->
+  <rect class="engine" x="40" y="306" width="1160" height="236" rx="14"/>
+  <text class="eng" x="64" y="340">Silnik Python 3.13+ · jeden rdzeń dla CLI i backendu</text>
+
+  <rect class="step" x="64" y="360" width="250" height="158" rx="10"/>
+  <text class="h" x="84" y="394">Konwersja</text>
+  <text class="t" x="84" y="424">Docling lokalnie na CPU</text>
+  <text class="t" x="84" y="448">PDF → Markdown</text>
+  <text class="t" x="84" y="472">OCR skanów (RapidOCR)</text>
+  <text class="t" x="84" y="496">cache na dysku</text>
+
+  <rect class="step" x="350" y="360" width="250" height="158" rx="10"/>
+  <text class="h" x="370" y="394">Klasyfikacja</text>
+  <text class="t" x="370" y="424">wzorce z wagami</text>
+  <text class="t" x="370" y="448">próg z konfiguracji</text>
+  <text class="t" x="370" y="472">dokument spoza typów</text>
+  <text class="t" x="370" y="496">→ plik z <tspan class="mono">{}</tspan></text>
+
+  <rect class="step" x="636" y="360" width="250" height="158" rx="10"/>
+  <text class="h" x="656" y="394">Reguły i LLM</text>
+  <text class="t" x="656" y="424">regexy w sekcjach tekstu</text>
+  <text class="t" x="656" y="448">słowniki</text>
+  <text class="t" x="656" y="472">LLM ze schematem JSON</text>
+  <text class="t" x="656" y="496">z definicji pól</text>
+
+  <rect class="step" x="922" y="360" width="254" height="158" rx="10"/>
+  <text class="h" x="942" y="394">Arbitraż i wynik</text>
+  <text class="t" x="942" y="424">weryfikacja źródła</text>
+  <text class="t" x="942" y="448">normalizacja, walidacja</text>
+  <text class="t" x="942" y="472">JSON w kolejności pól</text>
+  <text class="t" x="942" y="496">ślad ekstrakcji</text>
+
+  <line class="link" x1="314" y1="439" x2="348" y2="439" marker-end="url(#arrow)"/>
+  <line class="link" x1="600" y1="439" x2="634" y2="439" marker-end="url(#arrow)"/>
+  <line class="link" x1="886" y1="439" x2="920" y2="439" marker-end="url(#arrow)"/>
+
+  <!-- Połączenia z wierszem 1 -->
+  <line class="link" x1="620" y1="246" x2="620" y2="304" marker-end="url(#arrow)"/>
+  <text class="lbl" x="632" y="281">modele konfiguracji silnika</text>
+  <line class="link" x1="1030" y1="246" x2="1030" y2="304" marker-end="url(#arrow)"/>
+  <text class="lbl" x="1042" y="281">aktywne wydanie</text>
+
+  <!-- Wiersz 3: CLI, dysk, API LLM -->
+  <rect class="box" x="40" y="610" width="340" height="136" rx="12"/>
+  <text class="h" x="62" y="646">CLI dla oceniających</text>
+  <text class="mono" x="62" y="676">start.bat · start.sh</text>
+  <text class="mono" x="62" y="700">./input → ./output</text>
+  <text class="t" x="62" y="724">opcjonalnie ślad ekstrakcji</text>
+
+  <rect class="box" x="450" y="610" width="340" height="136" rx="12"/>
+  <text class="h" x="472" y="646">Dysk lokalny</text>
+  <text class="t" x="472" y="676">PDF wejściowe i JSON wynikowe</text>
+  <text class="t" x="472" y="700">ślady <tspan class="mono">*.trace.json</tspan></text>
+  <text class="t" x="472" y="724">cache konwersji i odpowiedzi LLM</text>
+
+  <rect class="box" x="860" y="610" width="340" height="136" rx="12"/>
+  <text class="h" x="882" y="646">API LLM w UE</text>
+  <text class="t" x="882" y="676">Eden AI → FlexAI (Francja)</text>
+  <text class="t" x="882" y="700">Qwen3.5-9B, Apache 2.0</text>
+  <text class="t" x="882" y="724">tylko fragmenty tekstu, nie PDF</text>
+
+  <line class="link" x1="210" y1="608" x2="210" y2="544" marker-end="url(#arrow)"/>
+  <text class="lbl" x="222" y="581">uruchamia</text>
+  <line class="link" x1="620" y1="544" x2="620" y2="608" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="lbl" x="632" y="581">odczyt i zapis plików</text>
+  <line class="link" x1="1030" y1="544" x2="1030" y2="608" marker-end="url(#arrow)"/>
+  <text class="lbl" x="1042" y="581">Markdown + schemat JSON</text>
+</svg>

@@ -1,75 +1,86 @@
 # Odwołania2json – plan rozwiązania
 
-Nov 21, 2026 · @Witut
+Stan na 21.11.2026 · @Witut
 
-Rdzeń ekstrakcji powstaje w Pythonie 3.13 według potoku Docling (lokalnie na CPU) → Markdown → mały otwarty LLM przez API w UE. NestJS i Angular tworzą wokół niego platformę: konfigurację, sprawy, weryfikację i audyt. Definicje dokumentów i modeli LLM są w PostgreSQL i trafiają do silnika jako niezmienne wydania konfiguracji. Przetwarzanie skaluje się poziomo przez kolejkę.
+Rdzeń rozwiązania to silnik ekstrakcji w Pythonie 3.13+. Docling uruchomiony lokalnie na CPU zamienia PDF na Markdown, a reguły i mały otwarty model językowy (LLM) przez API w UE wyodrębniają z niego pola. Wszystko, co zależy od rodzaju dokumentu, opisują pliki YAML, więc nowy rodzaj dokumentu nie wymaga zmian w kodzie. Wokół silnika powstają backend FastAPI i interfejs graficzny w Angularze. Całość działa na plikach, bez bazy danych, kolejki i Dockera.
 
 ## Wymagania i ustalenia
 
-Rdzeń oceniany przez organizatora musi być w Pythonie, a o wyniku etapu 1 decyduje w całości F1. Poniższe ustalenia pochodzą z README i z analizy 60 spraw treningowych.
+Rdzeń oceniany przez organizatora musi być w Pythonie, a o wyniku etapu 1 decyduje w całości F1. Poniższe ustalenia pochodzą z README organizatora i z analizy 60 spraw treningowych.
 
 | Ustalenie | Źródło | Co z tego wynika |
 | --- | --- | --- |
-| Python 3.13+, `requirements.txt`, uruchomienie przez CLI lub `start.bat` | README, sekcja 5 | Silnik ekstrakcji w Pythonie; NestJS i Angular budujemy wokół niego |
+| Python 3.13+, `requirements.txt`, uruchomienie przez CLI lub `start.bat` | README, sekcja 5 | Silnik i backend w Pythonie; `requirements.txt` w katalogu głównym instaluje wszystko, czego potrzebuje ekstrakcja |
 | Wejście `./input/<sprawa>/*.pdf`, wyjście `./output/<sprawa>/<nazwa pliku>.json` | README, sekcja 3 | Plik wynikowy ma tę samą nazwę co wejściowy; typ dokumentu rozpoznajemy z treści |
-| Dokumenty kategorii, których nie należy identyfikować, dają pusty plik `.json` | README, sekcja 6 (zmiana z 21.11.2026) | Klasyfikator ma klasę „nieobsługiwany” z progiem pewności; pusty plik to `{}` (decyzja z 21.11.2026) |
-| Test na laptopie biurowym: 16 GB RAM, Intel i7, bez GPU | README, sekcja 6 (zmiana z 21.11.2026) | Docling lokalnie na CPU z limitem wątków i pamięci; pomiar zużycia RAM w próbie |
-| LLM przez API firmy z serwerami w UE/EOG, dostarczone z kluczem API | README, sekcja 6 (zmiana z 21.11.2026) | OVHcloud AI Endpoints (Francja); klucz z limitem wydatków przekazany poza publicznym repozytorium |
+| Dokumenty kategorii, których nie należy identyfikować, dają pusty plik `.json` | README, sekcja 6 (zmiana z 21.11.2026) | Klasyfikator ma próg pewności; dokument poniżej progu dostaje plik z zawartością `{}` |
+| Test na laptopie biurowym: 16 GB RAM, Intel i7, bez GPU | README, sekcja 6 (zmiana z 21.11.2026) | Docling na CPU z limitem wątków; żadnych usług w tle, bo laptop może nie pozwolić na Dockera |
+| LLM przez API firmy z serwerami w UE/EOG, dostarczone z kluczem API | README, sekcja 6 (zmiana z 21.11.2026) | Eden AI (Francja) z modelem u FlexAI (Francja, region UE); klucz z limitem wydatków przekazany poza publicznym repozytorium |
 | Etap 1: F1 = 100% oceny | README, sekcja 7 | Najpierw jakość ekstrakcji |
 | Etap 2: F1 50%; mniejszy model LLM 1–20 pkt; rozszerzalność 1–20 pkt; inne funkcje, np. GUI, 1–10 pkt | README, sekcja 7 (zmiana z 21.11.2026) | Najmniejszy model, który utrzyma F1; nowe typy dokumentów bez kodu; GUI w Angularze |
-| Tylko komponenty open source, w tym modele | README, sekcja 5 | Modele z otwartymi wagami na licencji Apache 2.0 |
-| Nowe klasy dokumentów przez pliki konfiguracyjne | README, sekcja 5 | Baza jako źródło konfiguracji, eksport wydania do `release.json` dla CLI |
-| Dokumentacja techniczna z opisem użytego LLM | README, sekcja 4 (zmiana z 21.11.2026) | `docs/llm.md`: model, dostawca, parametry, wyniki porównania modeli |
-| 60 spraw × 3 dokumenty, wszystkie PDF-y z warstwą tekstową z jednego generatora | analiza `dane/` | Zbiór testowy (realne sprawy) może mieć skany i inne układy, więc OCR i testy na zmienionych kopiach |
-| `czynnosc_powod_id`: 11 z 12 wartości w treningu | `dane/*/odwolanie.json` | Słownik powodów w bazie; 12. wartość („Projektowane postanowienia umowy”) podana w `oczekiwane-json/czynnosc_powod_id_dict.md` |
+| Tylko komponenty open source, w tym modele | README, sekcja 5 | Modele z otwartymi wagami na licencji Apache 2.0; bez Docker Desktop i innych narzędzi zamkniętych |
+| Nowe klasy dokumentów przez pliki konfiguracyjne | README, sekcja 5 | Pliki YAML są jedynym źródłem konfiguracji; silnik dostaje z nich wydanie `release.json` |
+| Dokumentacja techniczna z opisem użytego LLM | README, sekcja 4 (zmiana z 21.11.2026) | [`docs/llm.md`](llm.md): model, dostawca, parametry, sposób użycia |
+| 60 spraw × 3 dokumenty, wszystkie PDF-y z warstwą tekstową z jednego generatora | analiza `dane/` | Zbiór testowy (realne sprawy) może mieć skany i inne układy, więc OCR i testy na symulowanych skanach |
+| `czynnosc_powod_id`: 11 z 12 wartości w treningu | `dane/*/odwolanie.json` | Słownik powodów w YAML; 12. wartość („Projektowane postanowienia umowy”) podana w `oczekiwane-json/czynnosc_powod_id_dict.md` |
 | `data` i `miejscowosc` = null w 15 z 60 odwołań; kilku zamawiających w 3 z 60 | `dane/*/odwolanie.json` | Null jest poprawną odpowiedzią; listy podmiotów obsługujemy od początku |
-| Sumy kontrolne nie zgadzają się dla 74 ze 189 numerów NIP, 38 ze 123 REGON i 77 ze 120 rachunków | wzorce w `dane/` | Walidatory tylko ostrzegają i nie usuwają wartości |
+| Sumy kontrolne nie zgadzają się dla 74 ze 189 numerów NIP, 38 ze 123 REGON i 77 ze 120 rachunków | wzorce w `dane/` | Walidatory sum kontrolnych tylko ostrzegają i nie usuwają wartości |
 | Wzorce w `oczekiwane-json/` mają komentarze `//`, a `pesel` jest raz liczbą, raz tekstem | `oczekiwane-json/`, `dane/` | Wynik to czysty JSON; typ pola `pesel` do potwierdzenia |
 
 ## Architektura
 
-![Architektura: 9 komponentów](architektura.png)
+![Architektura: silnik w Pythonie, konfiguracja w plikach, backend FastAPI, GUI w Angularze i API LLM w UE](architektura.png)
 
-NestJS zleca zadania przez RabbitMQ i jako jedyny zapisuje do bazy. Workery i CLI uruchamiają ten sam kod silnika; CLI czyta konfigurację z `release.json` eksportowanego przy publikacji wydania. Wdrożenie to docker-compose (web, api, dwa rodzaje workerów, PostgreSQL, RabbitMQ, Keycloak), a serwer LLM działa osobno.
+Źródło diagramu: [`architektura.svg`](architektura.svg).
 
-## Potok Docling → Markdown → LLM
+| Komponent | Rola | Stan |
+| --- | --- | --- |
+| Silnik (`engine/`) | potok ekstrakcji; polecenia `run`, `evaluate`, `build-release`, `validate-config`, `plugins` | gotowy, F1 0,960 na samych regułach (60 spraw) |
+| CLI (`start.bat`, `start.sh`) | przy pierwszym uruchomieniu tworzy środowisko i instaluje zależności, potem przetwarza `./input` do `./output` | gotowy |
+| Konfiguracja (`config/seed/`, `config/releases/`, `engine/config/release.json`) | definicje typów dokumentów, słowniki, profile Docling i LLM; niezmienne wydania | gotowa dla trzech typów: odwołanie, pełnomocnictwo, potwierdzenie przelewu |
+| Backend FastAPI (`backend/`) | API dla GUI: wydania, podgląd szkicu konfiguracji, dostawcy LLM; publikacja i aktywacja wydań | API do odczytu gotowe; edycja konfiguracji przez API do zrobienia |
+| GUI w Angularze (`apps/web/`) | sprawy, weryfikacja pól z podglądem PDF, konfiguracja, wydania, jakość | wszystkie ekrany jako makieta na danych przykładowych; podłączenie do API do zrobienia |
+| API LLM | Eden AI, model Qwen3.5-9B u FlexAI (UE) | gotowe; F1 0,993 na 15 sprawach kontrolnych |
 
-Każdy dokument przechodzi przez dwa osobne etapy kolejki: konwersję (Docling, obciąża CPU) i ekstrakcję (LLM, głównie czeka na odpowiedź). Etapy skalują się niezależnie, a zmiana konfiguracji ekstrakcji nie wymaga ponownej konwersji.
+Silnik to jeden rdzeń. CLI i backend wywołują ten sam kod, a backend korzysta z modeli konfiguracji silnika (Pydantic), więc format wydania definiuje wyłącznie silnik.
 
-1. **Przyjęcie pliku.** SHA-256, typ MIME sprawdzany po zawartości, limity rozmiaru i liczby stron. Plik trafia do magazynu obiektów.
-2. **Cache konwersji.** Klucz: SHA-256 pliku + wersja Docling + hash profilu konwersji. Trafienie w cache pomija krok 3.
-3. **Konwersja Docling na CPU.** Warstwa tekstowa PDF, model układu strony, OCR tylko obszarów bez tekstu, struktura tabel, zakres stron z profilu typu dokumentu. Wynik: `DoclingDocument` (JSON z położeniem elementów na stronach) i ocena jakości konwersji.
-4. **Kontrola jakości konwersji.** Gdy `low_grade` = FAIR lub POOR (w próbie skany z ubytkami tekstu dostawały FAIR, nie POOR), konwersja jest ponawiana z OCR całych stron (`OcrMode.FULL_PAGE`), a dokument dostaje oznaczenie „do weryfikacji”.
-5. **Eksport do Markdown.** Z nagłówkami stron, znacznikami podziału stron i bez escapowania znaków (szczegóły w następnej sekcji). Plik `.md` zapisujemy obok JSON-a.
-6. **Klasyfikacja.** Reguły z bazy (słowa kluczowe z wagami) działają na Markdown pierwszej strony. Przy niskiej pewności LLM wybiera typ z listy opisów typów albo klasę „nieobsługiwany”. Dokument nieobsługiwany dostaje pusty plik JSON, zgodnie z README. Opcjonalny krok dzieli jeden PDF na kilka dokumentów, gdyby realne sprawy przychodziły sklejone.
-7. **Przygotowanie kontekstu.** Z Markdown wycinamy fragmenty wskazane w konfiguracji (np. nagłówek, strony 1–2, sekcja „Zarzut nr 1”), z limitem tokenów.
-8. **Ekstrakcja przez LLM.** Jedno wywołanie na grupę pól. Prompt i schemat JSON są generowane z definicji pól w bazie, a odpowiedź jest wymuszona schematem.
-9. **Ekstraktory deterministyczne.** Regexy i reguły „etykieta → wartość” dla identyfikatorów (NIP, REGON, KRS, PESEL, rachunek, TED, BZP, daty, kwoty) działają na tym samym Markdown.
-10. **Arbitraż i weryfikacja źródła.** Wartość musi wystąpić w Markdown po normalizacji. W przeciwnym razie bierzemy kandydata z regexa albo null. Do każdej wartości szukamy elementu `DoclingDocument`, co daje stronę i ramkę do podświetlenia w UI.
-11. **Normalizacja i walidacja.** Nazwane funkcje z rejestru silnika, parametry z bazy. Walidacje tylko ostrzegają.
-12. **Spójność sprawy.** Reguły między dokumentami (mocodawca = Odwołujący, pełnomocnik z odwołania występuje w pełnomocnictwie) zmieniają pewność i dodają ostrzeżenia, ale nie zmieniają wartości.
-13. **Zapis wyniku.** Mapowanie na schemat wyjściowy, plik JSON i ślad ekstrakcji: `*.trace.json` w CLI albo rekordy w bazie w trybie serwerowym.
+**Dlaczego bez bazy danych i Dockera (decyzja z 21.11.2026).** Pierwsza wersja backendu trzymała konfigurację w PostgreSQL uruchamianym w Dockerze. Zrezygnowaliśmy z tego z czterech powodów:
+
+- Oceniający uruchamia rozwiązanie na laptopie biurowym. Docker na Windows wymaga WSL2, uprawnień administratora i wirtualizacji, a Docker Desktop nie jest open source.
+- Dockera ani bazy nie da się zainstalować z `requirements.txt`.
+- README premiuje konfigurację „jedynie przez pliki konfiguracyjne”. Baza obok plików YAML tworzyła drugie źródło prawdy.
+- Etap 1 ocenia tylko F1, na które baza nie ma wpływu.
+
+## Potok przetwarzania
+
+Każdy dokument przechodzi te same kroki. Błąd jednego pliku nie zatrzymuje pozostałych, a jego wynik to `{}`.
+
+1. **Konwersja (Docling, CPU).** PDF zamieniany jest na Markdown ze znacznikami podziału stron. Wynik trafia do cache na dysku. Klucz cache to SHA-256 pliku, wersja Docling i profil konwersji. Plik z bardzo małą ilością tekstu na stronę jest traktowany jako skan i czytany OCR całych stron.
+2. **Klasyfikacja.** Wzorce z wagami z konfiguracji typu dokumentu, opcjonalnie ograniczone do początku tekstu. Wygrywa typ z najwyższym wynikiem, jeśli osiąga próg `min_score`. Dokument poniżej progu dostaje `{}` (ustawienie `unsupported_output`). Nazwa pliku nie wpływa na klasyfikację.
+3. **Reguły deterministyczne.** Regexy w nazwanych sekcjach tekstu (np. „dotyczy”, pierwszy zarzut) i dopasowanie słowników.
+4. **LLM.** Jedno wywołanie na grupę pól; dziś każdy typ dokumentu ma jedną grupę. Model dostaje fragment Markdown i schemat JSON zbudowany z definicji pól, a odpowiedź jest wymuszona schematem. Wywołania dla różnych dokumentów idą równolegle (`llm_concurrency`).
+5. **Arbitraż.** Strategia pola (`llm_first`, `rules_first`, `rules_only`, `llm_only`) wybiera źródło wartości. Wartość z LLM, której nie da się odnaleźć w tekście dokumentu, jest odrzucana (weryfikacja źródła).
+6. **Normalizacja i walidacja.** Nazwane funkcje z rejestru silnika z parametrami z konfiguracji. Walidator z poziomem `warning` tylko ostrzega, z poziomem `error` usuwa wartość. Półpauzę zamienioną przez Docling na łącznik silnik przywraca z warstwy tekstowej PDF.
+7. **Pola wyliczane i limity list.** Na przykład opis powodu czynności pochodzi ze słownika na podstawie identyfikatora.
+8. **Zapis.** JSON w kolejności pól z konfiguracji, z nazwą pliku wejściowego. Opcjonalnie powstaje też ślad ekstrakcji `*.trace.json` (opis w sekcji „Przejrzystość ekstrakcji”).
 
 ## Ustawienia Docling na CPU
 
-Docling 2.151 (licencja MIT) działa na Pythonie 3.10–3.14 i całkowicie lokalnie. Domyślny eksport do Markdown ma jednak trzy pułapki, które usuwamy w ustawieniach poniżej. Każde ustawienie jest potwierdzone w dokumentacji i kodzie źródłowym Docling ([dokumentacja](https://github.com/docling-project/docling/tree/main/docs)).
+Docling 2.151 (licencja MIT) działa na Pythonie 3.10–3.14 i całkowicie lokalnie. Domyślny eksport do Markdown ma jednak trzy pułapki, które usuwamy w ustawieniach poniżej ([dokumentacja Docling](https://github.com/docling-project/docling/tree/main/docs)).
 
-**Konwersja (profil konwersji, przechowywany w bazie per typ dokumentu)**
+**Konwersja: profil `conversion_profiles` w `config/seed/release.yaml`, wybierany przez typ dokumentu**
 
 | Ustawienie | Wartość | Dlaczego |
 | --- | --- | --- |
-| Instalacja | `pip install "docling[rapidocr]" --extra-index-url https://download.pytorch.org/whl/cpu` | PyTorch tylko na CPU, bez bibliotek CUDA; dodatek `rapidocr` instaluje backend onnxruntime, którego RapidOCR używa domyślnie |
-| Modele offline | `docling-tools models download` oraz `docling-tools models download rapidocr --rapidocr-backend-lang onnxruntime:pl` przy budowie obrazu, potem `artifacts_path` | Brak pobierania z internetu w czasie pracy; domyślne pobieranie obejmuje tylko chiński model OCR, polski trzeba dodać jawnie |
-| Usługi zdalne | `enable_remote_services` wyłączone (domyślnie) | Docling nie wysyła treści dokumentu poza serwer |
-| Silnik OCR | `RapidOcrOptions(lang=["pl"])` (PP-OCRv6 obsługuje polski) albo `TesseractCliOcrOptions(lang=["pol"])` | Polskie znaki diakrytyczne; wybór rozstrzygamy pomiarem na skanach |
-| Tryb OCR | domyślny (OCR tylko obszarów bez tekstu PDF), awaryjnie `OcrMode.FULL_PAGE` | Cyfrowe PDF-y nie płacą czasem za OCR |
-| Zepsuta warstwa tekstu | `replace_broken_text_layer=True` | Strony z nieczytelnym tekstem zamiast liter idą do OCR |
-| Tabele | `do_table_structure=True`, tryb `FAST` albo `ACCURATE` per typ | Potwierdzenia przelewów mają układ tabelaryczny |
-| Zakres i limity | `page_range` (np. strony 1–5), `max_num_pages`, `max_file_size` | Kluczowe dane są na pierwszych stronach; ochrona przed bardzo dużymi plikami |
-| Limit czasu | `document_timeout` | Jeden uszkodzony plik nie blokuje workera |
-| Wątki CPU | `accelerator_options.num_threads` (domyślnie 4, także `OMP_NUM_THREADS`) | Przewidywalne zużycie CPU na proces |
-| Pamięć | `queue_max_size`, `max_concurrent_results` | Stały szczyt pamięci przy dużych skanach |
-| Ocena konwersji | `ConversionResult.confidence`: `mean_grade`, `low_grade` | Decyzja o ponowieniu z pełnym OCR i o ręcznej weryfikacji |
+| Instalacja | `docling[rapidocr]` z `--extra-index-url https://download.pytorch.org/whl/cpu` (w `engine/requirements.txt`) | PyTorch tylko na CPU, bez bibliotek CUDA |
+| Modele | pobierane przy pierwszym uruchomieniu (około 0,5 GB), potem z lokalnego cache | Kolejne uruchomienia nie potrzebują internetu poza wywołaniami LLM |
+| Usługi zdalne | `enable_remote_services` wyłączone (domyślnie) | Docling nie wysyła treści dokumentu poza komputer |
+| Silnik OCR | RapidOCR, `ocr_lang: [pl]`; Tesseract dostępny jako alternatywa w profilu | Polskie znaki diakrytyczne |
+| Tryb OCR | domyślny (OCR tylko obszarów bez tekstu PDF); dla skanów `scanned_ocr_mode: full_page` | Cyfrowe PDF-y nie płacą czasem za OCR, a skany czytane są w całości |
+| Zepsuta warstwa tekstu | `replace_broken_text_layer: true` | Strony z nieczytelnym tekstem zamiast liter idą do OCR |
+| Tabele | `table_structure: true` | Potwierdzenia przelewów mają układ tabelaryczny |
+| Limity | `max_pages: 6`, `document_timeout_s: 180` | Kluczowe dane są na pierwszych stronach; uszkodzony plik nie blokuje przetwarzania |
+| Wątki CPU | `num_threads: 4` | Przewidywalne zużycie CPU |
+| Ocena konwersji | `low_grade` i `mean_grade` z `ConversionResult.confidence` | Zapisywane w śladzie ekstrakcji |
 
 **Eksport `export_to_markdown`**
 
@@ -78,9 +89,9 @@ Docling 2.151 (licencja MIT) działa na Pythonie 3.10–3.14 i całkowicie lokal
 | `included_content_layers` | `{BODY, FURNITURE}` | Domyślnie eksport obejmuje tylko `BODY`. Jeśli model układu uzna linię „Miejscowość, data” za nagłówek strony, bez tej opcji zniknie |
 | `traverse_pictures` | `True` | Przy OCR całej strony tekst trafia pod element obrazu; bez tej opcji Markdown skanu jest pusty |
 | `escape_underscores`, `escape_html` | `False` | Inaczej `jan_kowalski@…` stanie się `jan\_kowalski@…`, a „&” zmieni się w `&amp;`, i LLM to przepisze |
-| `page_break_placeholder` | `<!-- page break -->` | Numer strony do cytatów i podświetleń |
+| `page_break_placeholder` | znacznik podziału strony | Numer strony do cytatów w śladzie ekstrakcji |
 
-**Wyniki próby (21.11.2026).** Sprawy 01–03 z `dane/`, każdy dokument jako oryginalny PDF i jako symulowany skan (150 dpi, odcienie szarości, obrót 0,7°). Docling 2.151.1 na Pythonie 3.14 (3.13 nie było na maszynie), 4 wątki CPU, RapidOCR `pl`, ustawienia jak w tabelach powyżej. Pomiar na maszynie deweloperskiej z 12 rdzeniami, nie na laptopie testowym.
+**Wyniki próby (21.11.2026).** Sprawy 01–03 z `dane/`, każdy dokument jako oryginalny PDF i jako symulowany skan (150 dpi, odcienie szarości, obrót 0,7°). Docling 2.151.1 na Pythonie 3.14, 4 wątki CPU, RapidOCR `pl`. Pomiar na maszynie deweloperskiej z 12 rdzeniami, nie na laptopie testowym. Skrypt próby: `engine/spikes/docling_spike.py`.
 
 | Wariant | Dokumentów | Czas na dokument | Wartości wzorca znalezione dosłownie w Markdown |
 | --- | --- | --- | --- |
@@ -88,259 +99,212 @@ Docling 2.151 (licencja MIT) działa na Pythonie 3.10–3.14 i całkowicie lokal
 | Symulowany skan | 9 | 2,4–12,3 s | 69 z 75 |
 
 - **Brakująca wartość w oryginalnych PDF-ach to numer TED ze sprawy 02.** W dokumencie ma postać `2026/S086-999073`, a normalizator `ted_number` zamienia ją na wymagane `999073-2026`. Tekst z PDF-ów cyfrowych jest więc kompletny.
-- **Na skanach OCR gubi fragmenty długich linii.** Brakuje tytułu zamówienia, numeru postępowania, nazwy kancelarii i części opisu przelewu. Ocena jakości ani razu nie spadła przy tym do POOR, więc ponowienie z pełnym OCR uruchamiamy już przy FAIR. Następny test: 300 dpi, `OcrMode.FULL_PAGE` i Tesseract `pol`.
-- **Kolejność czytania.** Linia „Gdańsk, dnia 3 września 2026 roku” trafia na koniec akapitu „dotyczy”, a nie na początek dokumentu. Miejscowość i datę trzeba więc szukać we wzorcu „miejscowość, dnia data”, a nie w pierwszej linii.
-- **Warstwa `FURNITURE`** jest potrzebna. W sprawie 03 linia „Bydgoszcz, dnia 2 marca 2026 roku” jest nagłówkiem strony i bez tej warstwy znika z Markdown, a z nią pola data i miejscowosc. Poza tym warstwa dodaje tylko stopki „Strona X z Y”.
-- **Zasoby.** Szczytowe zużycie RAM wyniosło 2,0 GB, więc laptop z 16 GB wystarczy. Pierwszy start trwał 53 s, bo obejmował pobranie i wczytanie modeli; potem modele są już w pamięci.
+- **Na skanach OCR gubi fragmenty długich linii.** Dlatego skany czytamy OCR całych stron. Na tych samych skanach daje to F1 0,896 wobec 0,830 w trybie domyślnym Docling ([raport jakości](raport-jakosci.md)).
+- **Kolejność czytania.** Linia „Gdańsk, dnia 3 września 2026 roku” trafia na koniec akapitu „dotyczy”, a nie na początek dokumentu. Miejscowość i datę szukamy więc we wzorcu „miejscowość, dnia data”, a nie w pierwszej linii.
+- **Warstwa `FURNITURE`** jest potrzebna. W sprawie 03 linia „Bydgoszcz, dnia 2 marca 2026 roku” jest nagłówkiem strony i bez tej warstwy znika z Markdown, a z nią pola data i miejscowosc.
+- **Zasoby.** Szczytowe zużycie RAM wyniosło około 2 GB, więc laptop z 16 GB wystarczy.
 
 ## Ekstrakcja przez LLM
 
-LLM dostaje mały, celowany fragment Markdown i schemat JSON zbudowany z definicji w bazie. Każdą jego odpowiedź sprawdzamy z tekstem źródłowym. Dzięki temu można sprawdzić, czy wystarczy najmniejszy model, który daje najwięcej punktów w etapie 2.
+Szczegóły są w [`docs/llm.md`](llm.md). LLM nie widzi pliku PDF: dostaje fragment tekstu w Markdown i schemat JSON, do którego musi dopasować odpowiedź.
 
-Kandydaci w OVHcloud AI Endpoints. Wszyscy obsługują `json_schema`, a dane są przetwarzane we Francji ([katalog OVHcloud](https://catalog.endpoints.ai.ovh.net/rest/v1/models_v2), stan na 21.11.2026).
+Model wybraliśmy pomiarem na 15 sprawach kontrolnych (21.11.2026). Wszyscy kandydaci mają otwarte wagi, licencję Apache 2.0 i przetwarzanie w UE; dostęp przez Eden AI.
 
-| Model | Parametry (mld) | Licencja | USD za 1 mln tokenów: wejście / wyjście | Kontekst |
-| --- | --- | --- | --- | --- |
-| Qwen3.5-9B | 9,7 | Apache 2.0 | 0,12 / 0,18 | 262k |
-| gpt-oss-20b | 21 | Apache 2.0 | 0,05 / 0,18 | 131k |
-| Mistral-Small-3.2-24B-Instruct-2506 | 24 | Apache 2.0 | 0,10 / 0,31 | 128k |
-| gemma-4-26b-a4b | 26 | Apache 2.0 | 0,10 / 0,41 | 256k |
+| Model i dostawca | Parametry (mld) | F1 | Błędy wywołań | Czas dla 47 PDF | Koszt |
+| --- | --- | --- | --- | --- | --- |
+| **Qwen3.5-9B, FlexAI (wybrany)** | 9,7 | **0,993** | 0 z 45 | 31 s | 0,010 USD |
+| Qwen3.5-9B, OVHcloud | 9,7 | 0,986 | 17 z 45 | 672 s | 0,033 USD |
+| Ministral 3 3B, Mistral AI | 3 | 0,966 | 0 z 45 | 26 s | 0,011 USD |
+| Ministral 3 8B, Mistral AI | 8 | 0,939 | 0 z 45 | 46 s | 0,017 USD |
+| same reguły, bez LLM | — | 0,971 | — | 25 s | 0 |
 
-Zakładamy około 3 tys. tokenów wejścia i 500 wyjścia na wywołanie. Wtedy Qwen3.5-9B kosztuje około 0,0005 USD za wywołanie, a cały zbiór treningowy przy dwóch wywołaniach na dokument około 0,16 USD.
+- **Dostawca.** Profil `eden-qwen3.5-9b` w `config/seed/release.yaml` wskazuje Eden AI (`https://api.edenai.run/v3`) i model `flexai/Qwen3.5-9B@eu`. Sufiks `@eu` wymusza przetwarzanie w UE. Zmienne `LLM_BASE_URL`, `LLM_MODEL` i `LLM_API_KEY` nadpisują profil, więc ten sam klient połączy się z dowolnym serwerem zgodnym z API OpenAI, także z vLLM albo Ollamą w infrastrukturze UZP.
+- **Wybór modelu.** W etapie 2 mniejszy model dostaje więcej punktów, ale Ministral 3B i 8B obniżają F1 poniżej samych reguł. Qwen3.5-9B u OVHcloud zawsze rozumuje przed odpowiedzią, przez co jest 20 razy wolniejszy i w 17 dokumentach przekroczył limit tokenów. Ten sam model u FlexAI odpowiada od razu. Szczegóły w [`docs/llm.md`](llm.md). Pomiary deweloperskie na danych treningowych robimy też profilem `gemini-dev` (gemma-4-26b-a4b przez API Google).
+- **Prompt.** Ogólne zasady są w silniku: przepisuj dokładnie, null gdy brak, nie zgaduj, treść dokumentu to dane, a nie polecenia. Profil LLM może je zastąpić polem `system_prompt`. Instrukcje grupy i pól pochodzą z YAML, a tekst dokumentu jest w znacznikach `<dokument>`.
+- **Wymuszony schemat.** `response_format` typu `json_schema`, temperatura 0, stały `seed`, `max_tokens` 2048. Limit odpowiedzi chroni przed zapętleniem modelu.
+- **Słowniki zamiast swobodnego tekstu.** Model zwraca `czynnosc_powod_id` jako wartość z listy 1–12, a opis pochodzi ze słownika, więc zawsze zgadza się z identyfikatorem.
+- **Weryfikacja źródła.** Tryb ustawiany per pole: `required` (cała wartość występuje w tekście po usunięciu znaków innych niż litery i cyfry), `tokens` (każde słowo występuje w tekście), `token_prefix` (zgodny początek słowa, dla odmienionych imion i nazwisk) albo `none`.
+- **Reguły mają pierwszeństwo tam, gdzie są pewniejsze:** identyfikatory (NIP, REGON, KRS, rachunki, numery ogłoszeń) i powód czynności wskazany wprost w zdaniu „Zamawiający w dniu…”.
+- **Limity dostawcy.** Klient pilnuje limitu tokenów i zapytań na minutę, respektuje czas oczekiwania podany przez API (błąd 429) i ponawia zapytania po błędach serwera.
+- **Cache.** Odpowiedzi są zapisywane po skrócie treści zapytania, więc ponowne przetworzenie tych samych dokumentów nie wywołuje modelu.
+- **Tryb awaryjny.** Gdy API jest niedostępne, nie ma klucza albo odpowiedź jest niepoprawna, silnik zapisuje wynik z samych reguł. Plik JSON powstaje zawsze.
 
-- **Dostawca API.** Do oceny używamy OVHcloud AI Endpoints: API zgodne z OpenAI i przetwarzanie we Francji. Zapasowy dostawca w Niemczech to IONOS AI Model Hub; obsługę json\_schema dla wybranego modelu trzeba tam jeszcze sprawdzić. W docelowym wdrożeniu UZP ten sam klient łączy się z vLLM albo Ollama on-premise. Adres, model i klucz są w tabeli llm\_provider i w zmiennych LLM\_\*.
-- **Wybór modelu.** W etapie 2 mniejszy model dostaje więcej punktów, więc testujemy od najmniejszego: Qwen3.5-9B, potem gpt-oss-20b i Mistral-Small-3.2-24B. Wybieramy najmniejszy, którego F1 na zbiorze kontrolnym mieści się w ustalonym progu od najlepszego. Przy modelach z rozumowaniem sprawdzamy, czy niski poziom rozumowania utrzymuje F1, bo skraca czas i koszt. Bielika nie znaleźliśmy jako gotowego API u dostawcy z UE.
-- **Grupy ekstrakcji.** Pola typu dokumentu dzielimy na grupy, każda to osobne wywołanie z własnym fragmentem tekstu. Odwołanie ma dwie: „strony i postępowanie” (nagłówek i strony 1–2) oraz „zaskarżona czynność” (sekcja pierwszego zarzutu i słownik powodów).
-- **Prompt.** Składa się z szablonów w bazie: zasady (tylko z tekstu, null gdy brak, nie zgaduj), instrukcje pól, przykłady z zatwierdzonych poprawek i Markdown w ogranicznikach. Treść dokumentu jest danymi, nie poleceniami.
-- **Wymuszony schemat.** `response_format` typu `json_schema`, temperatura 0, stały `seed`. Odpowiedź parsuje model Pydantic budowany dynamicznie z definicji pól. Przy błędzie robimy jedno ponowienie z komunikatem walidacji.
-- **Słowniki zamiast swobodnego tekstu.** Model zwraca tylko `czynnosc_powod_id` jako enum 1–12, a `czynnosc_opis` bierzemy ze słownika. Opis zawsze zgadza się wtedy z identyfikatorem.
-- **Weryfikacja źródła.** Rozmyte dopasowanie (rapidfuzz, MIT) znormalizowanej wartości do Markdown, z progiem ustawianym w konfiguracji. Gdy dopasowania nie ma, bierzemy kandydata z regexa albo null i dodajemy ostrzeżenie. Wartość wpisana tam, gdzie wzorzec ma null, obniża F1 tak samo jak pominięcie.
-- **Normalizatory.** `date_iso` (także „20 marca 2026 roku”), `iban_digits` (bez PL i spacji, 26 cyfr), `ted_number` (`2025/S 123-456789` → `456789-2025`), `bzp_number` (bez spacji po „BZP”), `amount_decimal` („10 000,00 zł” → 10000.0), `digits_only` dla NIP, REGON i KRS.
-- **Cache.** Klucz: hash fragmentu Markdown, promptu, schematu, modelu i parametrów. Ponowna ewaluacja tego samego wydania nic nie kosztuje.
-- **Tryb awaryjny.** Gdy LLM jest niedostępny, działają same ekstraktory deterministyczne, więc plik JSON powstaje zawsze.
+## Konfiguracja w plikach
 
-## Konfiguracja w bazie
+Pliki YAML są jedynym źródłem konfiguracji. Silnik nie czyta ich bezpośrednio, tylko dostaje wydanie: jeden plik `release.json` zbudowany z YAML i sprawdzony modelami Pydantic silnika.
 
-PostgreSQL jest jedynym źródłem konfiguracji: typów dokumentów, ich pól, profili Docling i modeli LLM. Silnik nie czyta jednak tabel. Dostaje niezmienne wydanie konfiguracji (snapshot JSON), więc CLI działa też bez bazy.
-
-| Tabela | Zawartość |
+| Plik | Zawartość |
 | --- | --- |
-| `document_type` | kod, nazwa, opis (używany także przy klasyfikacji przez LLM), reguły klasyfikacji, wzorzec nazwy pliku wyjściowego, schemat wyjściowy |
-| `field_definition` | ścieżka pola (`Odwolujacy[].pelnomocnik.mail`), typ, nullable, instrukcja dla LLM, przykłady, grupa ekstrakcji, regexy, normalizatory, walidatory, słownik, wymóg weryfikacji źródła |
-| `extraction_group` | fragment kontekstu (strony, sekcje), limit tokenów, szablon promptu, profil LLM |
-| `conversion_profile` | ustawienia Docling: silnik i język OCR, tryb OCR, tabele, zakres stron, limit czasu, wątki |
-| `dictionary`, `dictionary_entry` | słowniki, np. powody czynności 1–12 z kanonicznymi opisami |
-| `prompt_template` | wersjonowane szablony: zasady ogólne, ekstrakcja, klasyfikacja |
-| `llm_provider` | adres API, zaszyfrowany klucz, limit równoległych żądań, limit czasu |
-| `llm_profile` | model, temperatura, `max_tokens`, `seed`, okno kontekstu, tryb wymuszania schematu |
-| `case_rule` | reguły spójności między dokumentami sprawy |
-| `config_release` | niezmienny snapshot: wersja, SHA-256, autor, data, opis zmian, status aktywny |
-
-Dane robocze: `case`, `document`, `conversion_artifact` (Markdown i JSON Docling), `processing_job`, `field_result` (wartość i ślad), `correction`, `evaluation_run`, `audit_log`.
+| `config/seed/release.yaml` | wersja, ustawienia (wynik dla nieobsługiwanych dokumentów, domyślny profil LLM, równoległość), profile Docling i LLM |
+| `config/seed/dictionaries/*.yaml` | słowniki, np. powody czynności 1–12 z kanonicznymi opisami i słowami kluczowymi |
+| `config/seed/document_types/*.yaml` | typ dokumentu: wzorce klasyfikacji i próg, sekcje tekstu, listy, grupy wywołań LLM, pola z regułami, normalizatorami, walidatorami i strategią |
+| `config/seed/llm_providers.yaml` | dostawcy LLM dla GUI: adres, lokalizacja danych, opis; silnik tego pliku nie czyta |
+| `config/releases/<wersja>.json` | opublikowane, niezmienne wydanie: wersja, SHA-256, autor, data, opis zmian i snapshot `release.json` |
+| `engine/config/release.json` | aktywne wydanie, które czyta CLI oceniających |
 
 Przykładowa definicja pola:
 
-```json
-{
-  "path": "ZamowieniePubliczne.numer_ted",
-  "type": "string",
-  "nullable": true,
-  "group": "strony_i_postepowanie",
-  "instruction": "Numer ogłoszenia TED. Nie myl z numerem BZP.",
-  "strategies": ["llm", "regex"],
-  "regex": ["\\b(\\d{5,6})-(20\\d{2})\\b", "(20\\d{2})/S\\s?\\d{3}-(\\d{5,6})"],
-  "normalizers": [{ "name": "ted_number" }],
-  "validators": [{ "name": "pattern", "args": { "re": "^\\d{5,6}-\\d{4}$" }, "severity": "warning" }],
-  "grounding": "required"
-}
+```yaml
+- path: ZamowieniePubliczne.numer_ted
+  group: strony_i_postepowanie
+  instruction: Numer ogłoszenia TED w formacie 'NNNNNN-RRRR'.
+  strategy: rules_first
+  grounding: tokens
+  rules:
+    - {pattern: '(\d{4}\s*/\s*S\s*\d{1,3}\s*-\s*\d{4,7})', section: dotyczy}
+  normalizers: [{name: ted_number}]
 ```
 
-Cykl publikacji wydania:
+Ścieżka pola wyznacza kształt wyniku: `A.b` to obiekt, a `A[].b` to lista obiektów. Kolejność pól w pliku to kolejność kluczy w JSON. Instrukcja dla LLM, schemat JSON i wynik powstają z tej samej definicji.
 
-1. Zmiany zapisujemy jako szkic w interfejsie.
-2. Walidacja szkicu: schemat JSON jest poprawny, regexy się kompilują, prompty się renderują. Każdy normalizator i walidator musi istnieć w katalogu wtyczek, który silnik publikuje przy starcie.
-3. Test na własnym PDF i ewaluacja F1 na zbiorze kontrolnym, porównane z aktywnym wydaniem.
-4. Publikacja tworzy niezmienny `config_release` i eksportuje go do `engine/config/release.json`. Plik trafia do repozytorium, z którego CLI uruchomią oceniający.
-5. Aktywacja. Każdy wynik zapisuje identyfikator wydania; wycofanie zmian polega na aktywacji poprzedniego wydania.
+**Nowy rodzaj dokumentu** to nowy plik w `config/seed/document_types/`, bez zmian w kodzie. Instrukcja krok po kroku jest w [`docs/silnik.md`](silnik.md). Kod trzeba dopisać tylko wtedy, gdy potrzebny jest nowy rodzaj normalizatora albo walidatora. To jedna funkcja z dekoratorem rejestrującym, a reszta potoku się nie zmienia.
 
-Nowy typ dokumentu wymaga wyłącznie konfiguracji. Nowy rodzaj normalizatora to jeden plik w silniku z dekoratorem rejestrującym, bez zmian w potoku. Początkowe definicje trzech typów są w `config/seed/*.yaml`, a import i eksport działają w obie strony.
+**Cykl wydania konfiguracji:**
 
-## Skalowanie
+1. Zmiana w plikach YAML (docelowo także w GUI, które zapisze te same pliki).
+2. `validate-config`: sprawdzenie modeli, regexów oraz odwołań do sekcji, grup, słowników i wtyczek.
+3. Próba na kilku PDF-ach z `--trace-dir` i `evaluate` na zbiorze z wzorcami, porównana z aktywnym wydaniem.
+4. `backend/manage.py publish --version <wersja>`: zapis niezmiennego wydania w `config/releases/` i aktywacja, czyli zapis `engine/config/release.json`. Plik trafia do repozytorium, z którego CLI uruchomią oceniający.
+5. Wycofanie zmian to `manage.py activate` z poprzednią wersją.
 
-Każdy komponent skaluje się poziomo i niezależnie, bo komunikuje się przez kolejkę i nie trzyma stanu w pamięci. Tysiące dokumentów rocznie to niewielkie obciążenie. Ta sama architektura obsłuży jednak jednorazowe przetworzenie archiwum.
+## Przejrzystość ekstrakcji
 
-| Komponent | Obciążenie | Jak skalujemy | Co jest granicą |
-| --- | --- | --- | --- |
-| Worker konwersji (Docling) | CPU | Jeden proces = jeden konwerter z modelami załadowanymi raz, `prefetch=1`, 4 wątki. Dokładamy repliki; w Kubernetes autoskalowanie po długości kolejki (KEDA) | liczba rdzeni |
-| Worker ekstrakcji | I/O (czeka na LLM) | Asynchroniczny, N równoległych wywołań. Suma po replikach nie przekracza limitu dostawcy z `llm_provider` | przepustowość serwera LLM |
-| Serwer LLM (vLLM) | GPU lub CPU na osobnej maszynie | Repliki za load balancerem; vLLM sam łączy równoległe żądania w batche | sprzęt instytucji |
-| API NestJS | lekkie, bezstanowe | Repliki za reverse proxy, uwierzytelnianie tokenami OIDC | baza danych |
-| RabbitMQ | kolejki zadań | Kolejki `convert`, `extract`, `results`, kolejki błędów, priorytet dla testów konfiguracji; w produkcji klaster z kolejkami quorum | — |
-| PostgreSQL | wyniki, konfiguracja, audyt | Zapisuje wyłącznie NestJS; indeksy pod listy i filtry; audyt partycjonowany po miesiącach; replika do odczytu raportów | jeden węzeł zapisu |
-| Magazyn plików | PDF, JSON Docling, Markdown | S3-kompatybilny (np. Ceph RGW lub SeaweedFS), w CLI dysk lokalny | — |
-| Frontend | pliki statyczne | nginx, leniwe ładowanie modułów, paginacja po stronie serwera, wirtualne przewijanie długich list | — |
+Opcja `--trace-dir` zapisuje dla każdego dokumentu ślad ekstrakcji. Pokazuje on, skąd pochodzi każda wartość w wyniku.
 
-- **Idempotencja.** Identyfikator zadania to dokument + wydanie konfiguracji + etap. Kolejka dostarcza wiadomość co najmniej raz, a wynik zapisujemy przez upsert, więc powtórka niczego nie psuje.
-- **Ponawianie.** Odstęp wykładniczy, a po N próbach kolejka błędów i status „wymaga uwagi” w UI.
-- **Przeciwciśnienie.** API odpowiada od razu kodem 202 z identyfikatorem zadania, a postęp trafia do UI przez SSE.
-- **Cache.** Dwa poziomy (konwersja i LLM) sprawiają, że ewaluacja nowego wydania na 60 sprawach kosztuje tylko wywołania LLM dla zmienionych grup pól.
-- **Obserwowalność.** OpenTelemetry śledzi zadanie przez API, kolejkę i worker. Prometheus zbiera długość kolejek, czas na stronę, czas i tokeny LLM. Logi są bez danych osobowych.
-
-RabbitMQ (licencja MPL 2.0) wybieramy, bo ma dojrzałe klienty w Node i Pythonie, model pobierania zadań przez wolne workery, kolejki błędów i priorytety. Workery w Pythonie nie mają dostępu do bazy, tylko publikują wyniki do kolejki `results`.
-
-## Backend NestJS
-
-NestJS jest jedynym właścicielem bazy i jedynym punktem wejścia dla frontendu. Każdy moduł ma układ controller → service → repository, a zależności zewnętrzne (kolejka, magazyn plików, szyfrowanie) są za interfejsami, więc ich implementacje można wymieniać.
-
-| Moduł | Odpowiedzialność |
+| Poziom | Co zawiera ślad |
 | --- | --- |
-| `auth` | OIDC przez Keycloak; role: administrator konfiguracji, operator, audytor |
-| `cases` | sprawy, przyjmowanie wielu PDF lub archiwum ZIP |
-| `documents` | pliki, podgląd, metadane, artefakty konwersji |
-| `processing` | zlecanie zadań do RabbitMQ, odbiór wyników z kolejki `results`, statusy, postęp przez SSE |
-| `document-types` | typy dokumentów, pola, grupy ekstrakcji, generowanie schematu JSON, walidacja szkicu |
-| `conversion-profiles` | profile Docling |
-| `llm` | dostawcy i profile modeli, test połączenia; klucze nigdy nie wracają do frontendu |
-| `dictionaries` | słowniki i ich pozycje |
-| `releases` | szkic → publikacja, porównanie wydań, aktywacja, eksport `release.json` |
-| `playground` | uruchomienie szkicu konfiguracji na wgranym PDF bez publikacji (kolejka z priorytetem) |
-| `results` | wyniki ze śladem, poprawki, eksport JSON i ZIP sprawy |
-| `evaluation` | zbiory z wzorcami, uruchomienie F1, porównanie wydań |
-| `audit` | kto, co i kiedy zmienił w konfiguracji i wynikach (interceptor) |
-| `health` | gotowość bazy, kolejki i magazynu |
+| Dokument | wersja wydania konfiguracji, rozpoznany typ i wyniki klasyfikacji dla wszystkich typów, błędy |
+| Konwersja | SHA-256 pliku, liczba stron, czy to skan, tryb OCR, ocena jakości Docling, czas, czy wynik pochodzi z cache |
+| LLM | dla każdej grupy: model, czas, liczba tokenów, skrót zapytania |
+| Pole | źródło wartości (reguła, LLM, pole wyliczane, wartość domyślna), wartość z reguły z nazwą reguły, cytatem i numerem strony, wartość z LLM, wartość przed normalizacją i po niej, ostrzeżenia (np. odrzucona wartość LLM, nieudana walidacja) |
 
-Narzędzia: Prisma (migracje i dostęp do bazy), `@nestjs/microservices` z transportem RMQ, OpenAPI z generowanym klientem TypeScript dla Angulara, pino do logów. Kontrakty wiadomości kolejki mają wersjonowany JSON Schema wspólny dla Node i Pythona.
+Każde wydanie konfiguracji ma skrót SHA-256, a ślad wskazuje wersję wydania. Wynik można więc zawsze odtworzyć tą samą konfiguracją. W GUI ekran weryfikacji pokaże te same informacje obok podglądu PDF.
+
+## Backend FastAPI
+
+Backend obsługuje GUI i nie jest potrzebny do uruchomienia ekstrakcji. Pracuje na plikach z poprzedniej sekcji, bez bazy danych. Opis poleceń i API jest w [`backend/README.md`](../backend/README.md).
+
+| Gotowe | Do zrobienia |
+| --- | --- |
+| `GET /api/releases`, `/api/releases/active`, `/api/releases/{wersja}`: wydania ze statusem | edycja konfiguracji przez API z walidacją i zapisem do YAML |
+| `GET /api/config/draft`: bieżąca konfiguracja z YAML | uruchomienie ekstrakcji na wgranym PDF bez publikacji wydania |
+| `GET /api/llm-providers`: dostawcy LLM | wyniki i ślady ekstrakcji dla ekranu weryfikacji |
+| `manage.py publish`, `activate`, `releases`, `serve` | ewaluacja F1 wydania z poziomu GUI |
 
 ## Frontend Angular
 
-Najważniejszy jest ekran weryfikacji. Po lewej jest PDF, po prawej pola, a kliknięcie pola podświetla jego źródło w dokumencie. Reszta interfejsu służy konfiguracji bez programowania.
-
-**Ekrany**
+Najważniejszy jest ekran weryfikacji. Po lewej jest PDF, po prawej pola, a kliknięcie pola pokazuje jego źródło w dokumencie. Reszta interfejsu służy konfiguracji bez programowania. Wszystkie ekrany istnieją jako makieta na danych przykładowych (`apps/web/public/mock`, `mock-config.ts`). Następny krok to podłączenie ich do API backendu.
 
 | Ekran | Co pozwala zrobić |
 | --- | --- |
-| Pulpit | ostatnie sprawy, dokumenty do weryfikacji, F1 aktywnego wydania |
-| Nowa sprawa | przeciągnięcie wielu PDF lub ZIP, postęp każdego dokumentu: konwersja → klasyfikacja → ekstrakcja → walidacja |
-| Weryfikacja dokumentu | PDF z podświetlonym źródłem; dla każdego pola wartość, pewność, metoda, cytat i ostrzeżenia; akceptacja lub poprawka; podgląd Markdown z Docling i JSON; pobranie JSON lub ZIP |
-| Typy dokumentów | zakładki: ogólne, klasyfikacja, pola (drzewo), grupy i prompty, profil Docling, test na własnym PDF, historia |
-| Słowniki, modele LLM, profile Docling | edycja słowników, dostawców i profili, test połączenia z modelem |
-| Wydania | lista wydań, porównanie dwóch wersji, publikacja, aktywacja poprzedniej |
-| Jakość | F1 per typ dokumentu i per pole, porównanie wydań, lista błędnych pól z podglądem |
-| Audyt i Deklaracja dostępności | historia zmian; deklaracja wymagana od podmiotów publicznych |
+| Pulpit | ostatnie sprawy, dokumenty do weryfikacji, aktywne wydanie konfiguracji |
+| Sprawy i nowa sprawa | lista spraw, przeciągnięcie wielu PDF lub archiwum ZIP, postęp etapów przetwarzania każdego dokumentu |
+| Weryfikacja dokumentu | PDF obok listy pól; dla każdego pola wartość, źródło i ostrzeżenia walidatorów; ręczna poprawka; podgląd Markdown z Docling i wynikowego JSON |
+| Typy dokumentów | klasyfikacja, pola, grupy ekstrakcji i profil Docling każdego typu |
+| Słowniki, modele LLM, profile Docling | słowniki, dostawcy i profile modeli, ustawienia konwersji |
+| Wydania konfiguracji | lista wydań, aktywne wydanie |
+| Jakość | ewaluacja F1 na zbiorze kontrolnym i pomiary konwersji Docling |
+| Audyt i deklaracja dostępności | historia zmian; deklaracja wymagana od podmiotów publicznych |
 
-**Technika.** Komponenty standalone, sygnały, NgRx SignalStore, Angular Material i CDK. PDF wyświetla ngx-extended-pdf-viewer (pdf.js), a edytor promptów i regexów to Monaco ładowany leniwie. Klient API jest generowany z OpenAPI. Własny mały zestaw komponentów: `status-badge`, `confidence-chip`, `field-evidence`, `file-dropzone`, `data-table`, `empty-state`.
+**Technika.** Angular 22 w monorepo Nx: komponenty standalone, sygnały, tryb bez zone.js, Angular Material 3 i CDK. PDF wyświetla pdf.js (`pdfjs-dist`). Krój Source Sans 3 (licencja OFL) jest serwowany z aplikacji, bez zewnętrznych CDN.
 
-**Styl urzędowy**
-
-- Jasne tło i jeden kolor akcentu (ciemny granat) zdefiniowany jako token. Czerwień tylko dla błędów, zieleń i bursztyn dla statusów.
-- Jeden krój bezszeryfowy z polskimi znakami (np. Source Sans 3, licencja OFL) serwowany z własnego serwera, bez zewnętrznych CDN.
-- Tekst bazowy 16 px, wyraźna hierarchia nagłówków, breadcrumbs, bez gradientów i ozdobnych animacji.
-- Interfejs po polsku, wszystkie teksty w plikach tłumaczeń.
-
-**Responsywność**
-
-| Szerokość okna | Ekran weryfikacji |
-| --- | --- |
-| od 1280 px | PDF i pola obok siebie, z regulowanym podziałem |
-| 768–1279 px | zakładki „Dokument” i „Pola”, kliknięcie pola przełącza na PDF z podświetleniem |
-| poniżej 768 px | lista pól z cytatem źródłowym, PDF otwierany na żądanie |
-
-**Dostępność (WCAG 2.1 AA, wymóg ustawy o dostępności cyfrowej)**: kontrast co najmniej 4.5:1, pełna obsługa klawiaturą i widoczny focus, etykiety ARIA, statusy przekazywane także tekstem i ikoną, nie tylko kolorem. Automatyczne testy axe w CI.
+**Styl urzędowy i dostępność.** Jasne tło i jeden kolor akcentu (ciemny granat). Czerwień tylko dla błędów, zieleń i bursztyn dla statusów. Tekst bazowy 16 px i wyraźna hierarchia nagłówków. Interfejs jest po polsku. Celem jest WCAG 2.1 AA, wymagane ustawą o dostępności cyfrowej: kontrast co najmniej 4,5:1, pełna obsługa klawiaturą, etykiety ARIA, statusy przekazywane tekstem i ikoną, nie tylko kolorem.
 
 ## Bezpieczeństwo, RODO i licencje
 
-Pliki PDF nie opuszczają infrastruktury instytucji. Na zewnątrz trafiają tylko fragmenty tekstu do skonfigurowanego API LLM w UE, a w docelowym wdrożeniu także model może działać lokalnie.
+Pliki PDF nie opuszczają komputera. Na zewnątrz trafiają tylko fragmenty tekstu do skonfigurowanego API LLM w UE, a w docelowym wdrożeniu także model może działać lokalnie.
 
-- **Sieć.** Modele Docling pobrane przy budowie obrazu, usługi zdalne Docling wyłączone. Workery działają jako nie-root, z systemem plików tylko do odczytu i bez dostępu do internetu.
-- **Dane osobowe.** PESEL i inne dane osobowe są maskowane w UI dla ról bez uprawnień, a logi ich nie zawierają. Okres przechowywania plików i wyników jest konfigurowalny. Usunięcie sprawy usuwa też jej pliki i artefakty.
-- **Przyjmowanie plików.** Limity rozmiaru i liczby stron, typ MIME sprawdzany po zawartości, opcjonalny skan antywirusowy ClamAV.
-- **Prompt injection.** Treść dokumentu jest w ogranicznikach i traktowana jako dane. Odpowiedź jest wymuszona schematem i sprawdzana z tekstem źródłowym, a LLM nie ma żadnych narzędzi.
-- **Sekrety.** Klucze do API LLM są szyfrowane w bazie (AES-GCM, klucz spoza bazy) i nigdy nie wracają do frontendu.
-- **API.** Tokeny OIDC, walidacja wejścia, nagłówki bezpieczeństwa i CSP, ograniczenie liczby żądań, CORS tylko dla własnej domeny.
-- **Rozliczalność.** Audyt każdej zmiany konfiguracji i każdej poprawki. Każdy wynik wskazuje wydanie konfiguracji, wersję Docling i model, które go wytworzyły.
-- **Łańcuch dostaw.** Zależności przypięte z hashami, SBOM w formacie CycloneDX, skan obrazów w CI.
-
-**Klucz API do oceny.** Zakładamy osobny projekt u dostawcy z limitem wydatków. Klucz trafia do zgłoszenia w pliku `.env` poza publicznym repozytorium i jest unieważniany po ocenie.
+- **Klucz API** jest w pliku `.env` poza repozytorium i nie trafia do logów, cache ani śladu ekstrakcji.
+- **Prompt injection.** Treść dokumentu jest w znacznikach i traktowana jako dane. Odpowiedź jest wymuszona schematem i sprawdzana z tekstem źródłowym, a LLM nie ma żadnych narzędzi.
+- **Dane osobowe** (np. PESEL) zostają na dysku lokalnym: w wynikach, śladach i cache. Opcja `--cache none` wyłącza cache.
+- **Klucz API do oceny.** Zakładamy osobny projekt u dostawcy z limitem wydatków. Klucz trafia do zgłoszenia poza publicznym repozytorium i jest unieważniany po ocenie.
 
 | Komponent | Licencja |
 | --- | --- |
-| Angular, NestJS, Docling, Ollama, llama.cpp, Pydantic, rapidfuzz, Monaco | MIT |
-| Prisma, Keycloak, vLLM, Tesseract, RapidOCR, pdf.js, ngx-extended-pdf-viewer, Qwen3.5-9B, gpt-oss-20b, Mistral-Small-3.2-24B, gemma-4-26b-a4b | Apache 2.0 |
-| PyTorch | BSD-3-Clause |
-| PostgreSQL | PostgreSQL License |
-| RabbitMQ | MPL 2.0 |
+| Docling, Pydantic, PyYAML, FastAPI, ONNX Runtime, Angular, Angular Material, Nx | MIT |
+| RapidOCR, pdf.js, Qwen3.5-9B, Ministral 3 (3B, 8B), gemma-4-26b-a4b | Apache 2.0 |
+| PyTorch, httpx, Uvicorn | BSD-3-Clause |
+| Source Sans 3 | SIL Open Font License 1.1 |
 
-Pełną listę, łącznie z wagami modeli Docling i OCR, generujemy automatycznie do `THIRD_PARTY_LICENSES.md`. CI blokuje zależności z licencją spoza listy dozwolonych.
+Do zrobienia: pełne zestawienie licencji, łącznie z wagami modeli Docling i OCR, w `THIRD_PARTY_LICENSES.md`.
 
 ## Jakość: własna ewaluacja F1
 
-Każda zmiana silnika i każde wydanie konfiguracji przechodzi ewaluację F1 na zbiorze kontrolnym, zanim trafi do użycia. Ta sama ewaluacja daje „wyniki własnych testów jakości” do zgłoszenia.
+Polecenie `evaluate` porównuje wyniki z plikami wzorcowymi pole po polu, po normalizacji:
 
-- **Liczenie.** Porównujemy pole po polu, po normalizacji:
-  - zgodna wartość to trafienie (TP);
-  - wartość tam, gdzie wzorzec ma null, to fałszywe trafienie (FP);
-  - null tam, gdzie wzorzec ma wartość, to pominięcie (FN);
-  - inna wartość liczy się jako FP i FN jednocześnie.
+- zgodna wartość to trafienie (TP);
+- wartość tam, gdzie wzorzec ma null, to fałszywe trafienie (FP);
+- null tam, gdzie wzorzec ma wartość, to pominięcie (FN);
+- inna wartość liczy się jako FP i FN jednocześnie.
 
-  Listy (pełnomocnicy, zamawiający) parujemy po najlepszym dopasowaniu nazw. Raport podaje F1 całościowe, per typ dokumentu i per pole.
-- **Podział danych.** 45 spraw roboczych i 15 kontrolnych, warstwowo według `czynnosc_powod_id`. Na zbiorze kontrolnym nie stroimy promptów ani regexów.
-- **Zbiór obciążeniowy.** Kopie 60 spraw zrasteryzowane do 150 i 200 dpi, z lekkim obrotem, szumem i kompresją JPEG. Do tego kilka ręcznie przygotowanych dokumentów o innym układzie. Symuluje to skany i różnorodność realnych spraw.
-- **Bramka jakości.** CI uruchamia ewaluację przy każdej zmianie silnika lub konfiguracji startowej. Publikacja wydania w UI jest blokowana, gdy F1 spada o więcej niż ustalony próg względem aktywnego wydania.
-- **Raport.** Tabela F1 per pole i lista błędów z różnicą wartości, w UI i w `docs/quality-report.md`.
+Listy (pełnomocnicy, zamawiający) parujemy po najlepszym dopasowaniu elementów. PDF bez pliku wzorca jest traktowany jako dokument negatywny, więc każde wypełnione pole w jego wyniku to FP. Raport podaje F1 całościowe, per typ dokumentu i per pole.
 
-Dokładna definicja F1 organizatora nie jest opublikowana. Sposób porównywania (dokładne czy znormalizowane, wielkość liter) jest więc konfigurowalny i do potwierdzenia z mentorami.
+Zbiór kontrolny to co czwarta sprawa (04, 08, …, 60). Na nim nie stroimy reguł ani instrukcji. Przed publikacją wydania uruchamiamy `evaluate` i porównujemy wynik z aktywnym wydaniem.
+
+| Wariant | Zbiór | F1 |
+| --- | --- | --- |
+| Same reguły | 60 spraw i 16 dokumentów negatywnych | 0,960 |
+| Same reguły (wydanie 2026.11.21-dev.3) | 15 spraw kontrolnych | 0,971 |
+| **Reguły + LLM (Qwen3.5-9B przez Eden AI, FlexAI)** | 15 spraw kontrolnych | **0,993** |
+| Reguły + LLM (gemma-4-26b-a4b, profil deweloperski) | 15 spraw kontrolnych | 0,994 |
+| Same reguły, symulowane skany | sprawy 01–03 | 0,896 |
+
+Pełne wyniki, poprawki i pozostałe błędy są w [raporcie jakości](raport-jakosci.md). Dokładna definicja F1 organizatora nie jest opublikowana, więc wyniki są przybliżeniem.
 
 ## Struktura repozytorium
 
-Jedno repozytorium: silnik w Pythonie obok monorepo Nx z NestJS i Angularem. Silnik ma jeden rdzeń i dwa cienkie adaptery: CLI dla oceniających i worker kolejki dla platformy.
-
 ```text
 /
-├── engine/                      # Python 3.13, oceniany rdzeń
+├── engine/                       # Python 3.13+, oceniany rdzeń
 │   ├── odwolania2json/
-│   │   ├── core/                # potok, kontekst, ślad ekstrakcji, interfejsy etapów
-│   │   ├── config/              # modele Pydantic wydania, wczytywanie release.json
-│   │   ├── stages/
-│   │   │   ├── convert/         # Docling: profil, cache, eksport Markdown
-│   │   │   ├── classify/
-│   │   │   ├── extract/         # LLM i ekstraktory deterministyczne
-│   │   │   ├── ground/          # weryfikacja źródła, strona i ramka
-│   │   │   ├── normalize/       # rejestr normalizatorów
-│   │   │   ├── validate/        # rejestr walidatorów
-│   │   │   ├── consolidate/     # reguły spójności sprawy
-│   │   │   └── output/          # mapowanie na schemat wyjściowy
-│   │   ├── llm/                 # klient API zgodnego z OpenAI, cache
-│   │   ├── eval/                # F1 i raport
-│   │   └── adapters/
-│   │       ├── cli.py           # run | evaluate | validate-config | plugins
-│   │       └── worker.py        # konsumenci RabbitMQ: convert, extract
-│   ├── config/release.json      # eksport opublikowanego wydania
+│   │   ├── cli.py                # run, evaluate, build-release, validate-config, plugins
+│   │   ├── config.py             # modele Pydantic wydania, wczytywanie YAML i JSON
+│   │   ├── convert.py            # Docling -> Markdown, wykrywanie skanów, cache
+│   │   ├── rules.py              # klasyfikacja i ekstraktory deterministyczne
+│   │   ├── llm.py                # klient API zgodnego z OpenAI, limity, ponawianie, cache
+│   │   ├── assemble.py           # drzewo pól: wynik JSON i schemat JSON dla LLM
+│   │   ├── pipeline.py           # etapy potoku, arbitraż, ślad ekstrakcji
+│   │   ├── normalizers.py        # rejestr normalizatorów
+│   │   ├── validators.py         # rejestr walidatorów (NIP, REGON, PESEL, KRS, IBAN…)
+│   │   └── evaluate.py           # F1 pole po polu
+│   ├── config/release.json       # aktywne wydanie konfiguracji
+│   ├── spikes/                   # próba Docling
 │   ├── tests/
-│   └── requirements.txt         # z --extra-index-url dla PyTorch CPU
-├── apps/
-│   ├── api/                     # NestJS
-│   └── web/                     # Angular
-├── libs/contracts/              # schematy wiadomości kolejki, klient OpenAPI
-├── config/seed/                 # startowe definicje typów dokumentów (YAML)
-├── input/  output/              # wymagane przez organizatora
-├── start.sh  start.bat          # python -m odwolania2json run --input ./input --output ./output
-├── deploy/                      # docker-compose.yml, opcjonalnie Helm
-└── docs/                        # architektura, „Jak dodać typ dokumentu”, raport jakości
+│   └── requirements.txt          # z --extra-index-url dla PyTorch CPU
+├── config/
+│   ├── seed/                     # konfiguracja w YAML: typy dokumentów, słowniki, profile
+│   └── releases/                 # opublikowane, niezmienne wydania
+├── backend/                      # FastAPI na plikach; publikacja i aktywacja wydań
+├── apps/web/                     # Angular (Nx)
+├── input/  output/               # wymagane przez organizatora
+├── requirements.txt              # zależności ekstrakcji (wskazuje engine/requirements.txt)
+├── start.sh  start.bat           # python -m odwolania2json run --input input --output output
+└── docs/                         # plan, silnik, LLM, raport jakości
 ```
 
-CLI czyta adres i model LLM ze zmiennych `LLM_BASE_URL`, `LLM_MODEL` i `LLM_API_KEY`, które nadpisują profil z wydania. Oceniający podłączą więc własny serwer bez edycji plików. Obraz Dockera silnika ma modele Docling pobrane podczas budowy.
+## Kierunek wdrożenia w UZP
 
-## Kolejność prac
+Rozwiązanie konkursowe działa na jednym komputerze. Wdrożenie dla wielu użytkowników wymagałoby dodatkowych elementów. Silnik pozostałby bez zmian, bo dostaje konfigurację jako wydanie, a pliki i wyniki przez parametry.
 
-Etap 1 ocenia wyłącznie F1, dlatego kroki 1–3 mają pierwszeństwo. Po kroku 3 sam silnik z CLI wystarcza do zgłoszenia, a platforma powstaje na nim bez zmian w rdzeniu.
+- **Baza danych** (np. PostgreSQL) na sprawy, wyniki, poprawki i audyt. Konfiguracja nadal byłaby w plikach i wydaniach.
+- **Kolejka zadań i procesy robocze** dla konwersji Docling, która obciąża CPU, żeby przetwarzać wiele spraw równolegle.
+- **Logowanie przez OIDC** i role: administrator konfiguracji, operator, audytor.
+- **Model LLM w infrastrukturze UZP** (vLLM albo Ollama). Wystarczy zmiana `LLM_BASE_URL` i `LLM_MODEL`.
+- **Instalacja bez internetu:** modele Docling pobrane z wyprzedzeniem (`docling-tools models download`).
 
-1. **Próba Docling i szkielet silnika.** Konwersja 60 spraw i ich zrasteryzowanych kopii, porównanie RapidOCR i Tesseract, pomiar czasu na stronę. Gotowe, gdy Markdown zawiera nagłówki stron i poprawnie ułożone dane przelewów, a silnik OCR jest wybrany.
-2. **Ekstrakcja i ewaluacja.** CLI `input → output`, ekstrakcja LLM ze schematem, normalizatory, skrypt F1. Gotowe, gdy mamy F1 na zbiorze kontrolnym dla Qwen3.5-9B, gpt-oss-20b i Mistral-Small-3.2-24B oraz wybrany najmniejszy wystarczający model.
-3. **Podnoszenie F1.** Grupy ekstrakcji, weryfikacja źródła, regexy, słownik powodów, ścieżka OCR sprawdzona na zbiorze obciążeniowym. Gotowe, gdy kolejne poprawki przestają podnosić F1, a `release.json` jest zamrożony do zgłoszenia.
-4. **Baza, NestJS i kolejka.** Prisma, seed z YAML, wydania i eksport `release.json`, RabbitMQ, workery. Gotowe, gdy sprawa wgrana przez API daje identyczny JSON jak CLI.
-5. **Angular: sprawy i weryfikacja.** Gotowe, gdy operator wgrywa sprawę, widzi pola z podświetlonym źródłem i pobiera JSON, także na tablecie.
-6. **Edytor konfiguracji, test na PDF, wydania, jakość.** Gotowe, gdy nowy typ dokumentu da się dodać, przetestować i opublikować bez commita.
-7. **Dokumentacja i demo.** README, przewodnik „Jak dodać typ dokumentu”, raport jakości. Na pokazie dodajemy na żywo czwarty typ (np. przystąpienie do postępowania odwoławczego) wyłącznie z UI.
+## Stan prac i kolejne kroki
+
+- [x] Próba Docling na CPU, także na symulowanych skanach.
+- [x] Silnik: CLI `input → output`, reguły, LLM ze schematem, weryfikacja źródła, ślad ekstrakcji, cache, ewaluacja F1.
+- [x] Klasyfikacja tylko po treści: wszystkie 16 dokumentów negatywnych dostaje `{}`.
+- [x] Konfiguracja w YAML, wydania w plikach, backend FastAPI bez bazy danych.
+- [x] GUI: makieta wszystkich ekranów.
+- [x] Wybór modelu pomiarem F1: Qwen3.5-9B przez Eden AI u FlexAI (F1 0,993 na 15 sprawach kontrolnych).
+- [ ] Podłączenie GUI do API: wydania, konfiguracja, ekran weryfikacji ze śladem ekstrakcji.
+- [ ] Edycja konfiguracji przez API z zapisem do YAML.
+- [ ] Uruchomienie ekstrakcji z GUI na wgranym PDF.
+- [ ] Zestawienie licencji i instrukcja instalacji bez internetu.
+- [ ] Demo: dodanie czwartego typu dokumentu (np. przystąpienia do postępowania odwoławczego) samą konfiguracją.
 
 ## Ryzyka i pytania otwarte
 
@@ -348,17 +312,18 @@ Największe ryzyko to różnica między syntetycznymi danymi treningowymi a real
 
 | Ryzyko | Skutek | Jak ograniczamy |
 | --- | --- | --- |
-| Realne sprawy to skany słabej jakości | Puste lub błędne pola | OCR z polskim modelem, ponowienie z pełnym OCR przy ocenie POOR, zbiór obciążeniowy, oznaczenie do weryfikacji |
-| Docling ustawia w złej kolejności tekst z układów dwukolumnowych (np. potwierdzenie przelewu) | LLM łączy etykiety z niewłaściwymi wartościami | Pomiar w kroku 1; ekstraktory „etykieta → wartość” na JSON Docling z pozycjami; osobny profil per typ |
-| Jeden PDF zawiera kilka dokumentów | Błędna klasyfikacja, pomieszane pola | Opcjonalny krok podziału na podstawie klasyfikacji stron |
-| Model zmyśla identyfikatory | Fałszywe trafienia obniżają F1 | Weryfikacja źródła, regex jako arbiter, temperatura 0 |
-| Przeuczenie na jednym generatorze danych | Wysokie F1 na treningu, niskie na teście | Zbiór kontrolny, zbiór obciążeniowy, własne dokumenty o innym układzie |
-| API dostawcy LLM niedostępne w czasie oceny | Brak części pól w wynikach | Ponawianie z odstępem, drugi dostawca w UE w `llm_provider`, tryb awaryjny bez LLM |
-| Długa konwersja dużych skanów na CPU | Wolne przetwarzanie | `page_range`, limity, cache, skalowanie workerów |
+| Realne sprawy to skany słabej jakości | Puste lub błędne pola | OCR całych stron dla skanów, polski model RapidOCR, pomiar na symulowanych skanach |
+| Docling ustawia w złej kolejności tekst z układów dwukolumnowych | LLM łączy etykiety z niewłaściwymi wartościami | Reguły pomijają przestawione linie nagłówków; sekcje tekstu zawężają kontekst |
+| Jeden PDF zawiera kilka dokumentów | Błędna klasyfikacja, pomieszane pola | Na razie nieobsługiwane; decyzja po odpowiedzi mentorów |
+| Model zmyśla identyfikatory | Fałszywe trafienia obniżają F1 | Weryfikacja źródła, pierwszeństwo reguł dla identyfikatorów, temperatura 0 |
+| Przeuczenie na jednym generatorze danych | Wysokie F1 na treningu, niskie na teście | Zbiór kontrolny, symulowane skany, dokumenty negatywne |
+| API dostawcy LLM niedostępne w czasie oceny albo brak klucza | Brak części pól w wynikach | Ponawianie z odstępem, limity po stronie klienta, tryb awaryjny na samych regułach (F1 0,960) |
+| Pierwsze uruchomienie bez internetu | Instalacja zależności i modeli Docling się nie powiedzie | Wymóg sieci opisany w README; instalacja offline w kolejnych krokach |
+| Długa konwersja dużych skanów na CPU | Wolne przetwarzanie | `max_pages`, limit czasu na dokument, cache konwersji |
 
 **Pytania do mentorów**
 
-- [ ] Czy NestJS i Angular wokół rdzenia w Pythonie są akceptowalne przy wymogu „Python 3.13+”?
+- [ ] Czy GUI w Angularze (TypeScript) obok rdzenia i backendu w Pythonie jest akceptowalne przy wymogu „Python 3.13+”?
 - [x] Jaka jest 12. wartość `czynnosc_powod_id` i jej kanoniczny opis? „Projektowane postanowienia umowy” (`oczekiwane-json/czynnosc_powod_id_dict.md`).
 - [ ] Jak nazwać wynik przelewu: `potwierdzenie_przelewu.json` (zgodnie z README) czy `przelew.json` (jak w danych)?
 - [ ] Jak liczone jest F1: per pole, dokładnie czy po normalizacji, z uwzględnieniem wielkości liter?

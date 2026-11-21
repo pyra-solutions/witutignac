@@ -6,24 +6,30 @@ Silnik używa małego, otwartego modelu językowego przez API dostawcy z serwera
 
 | | |
 | --- | --- |
-| Dostawca | OVHcloud AI Endpoints (przetwarzanie we Francji, API zgodne z OpenAI) |
-| Adres API | `https://oai.endpoints.kepler.ai.cloud.ovh.net/v1` |
-| Model domyślny | `Qwen3.5-9B` (9,7 mld parametrów, licencja Apache 2.0) |
-| Klucz | zmienna `OVH_AI_ENDPOINTS_ACCESS_TOKEN` (plik `.env` poza repozytorium) |
+| Bramka API | Eden AI (Francja), API zgodne z OpenAI: `https://api.edenai.run/v3` |
+| Dostawca modelu | FlexAI (Francja), region UE: identyfikator modelu kończy się sufiksem `@eu` |
+| Model | `flexai/Qwen3.5-9B@eu`, czyli Qwen3.5-9B (9,7 mld parametrów, otwarte wagi, licencja Apache 2.0) |
+| Klucz | zmienna `EDEN_AI_API_KEY` (plik `.env` poza repozytorium) |
 | Parametry | temperatura 0, `seed` 42, `max_tokens` 2048, odpowiedź wymuszona schematem (`response_format: json_schema`) |
+| Cena (katalog Eden AI) | 0,10 USD za 1 mln tokenów wejścia, 0,15 USD za 1 mln tokenów wyjścia; 15 spraw kontrolnych kosztowało około 0,01 USD |
 
-Profil jest zapisany w konfiguracji (`config/seed/release.yaml`, profil `default`). Zmianę modelu albo dostawcy wykonuje się w konfiguracji albo zmiennymi `LLM_BASE_URL`, `LLM_MODEL` i `LLM_API_KEY`, bez zmian w kodzie.
+Profil `eden-qwen3.5-9b` jest zapisany w konfiguracji (`config/seed/release.yaml`) i ustawiony jako domyślny. Zmianę modelu albo dostawcy wykonuje się w konfiguracji albo zmiennymi `LLM_BASE_URL`, `LLM_MODEL` i `LLM_API_KEY`, bez zmian w kodzie. Konfiguracja zawiera też profile porównawcze z tabeli poniżej oraz `ovh-qwen3.5-9b`, czyli bezpośredni dostęp do OVHcloud AI Endpoints bez Eden AI.
 
-Kandydaci do porównania, wszyscy z obsługą `json_schema` i licencją Apache 2.0 ([katalog OVHcloud](https://catalog.endpoints.ai.ovh.net/rest/v1/models_v2), stan na 21.11.2026):
+## Porównanie modeli
 
-| Model | Parametry (mld) | USD za 1 mln tokenów: wejście / wyjście |
-| --- | --- | --- |
-| Qwen3.5-9B | 9,7 | 0,12 / 0,18 |
-| gpt-oss-20b | 21 | 0,05 / 0,18 |
-| Mistral-Small-3.2-24B-Instruct-2506 | 24 | 0,10 / 0,31 |
-| gemma-4-26b-a4b | 26 | 0,10 / 0,41 |
+Pomiar z 21.11.2026 na 15 sprawach kontrolnych (04, 08, …, 60): 47 plików PDF, w tym 2 dokumenty negatywne. Wszystkie modele mają otwarte wagi, licencję Apache 2.0 i przetwarzanie w UE. Konwersja Docling była w cache, więc czas to głównie wywołania LLM (4 równolegle).
 
-Organizator przyznaje więcej punktów za mniejszy model, więc domyślnie używamy najmniejszego. Większy model wybierzemy tylko wtedy, gdy wyraźnie podniesie F1.
+| Profil | Model i dostawca | Parametry (mld) | F1 | Błędy wywołań | Czas | Koszt |
+| --- | --- | --- | --- | --- | --- | --- |
+| `eden-qwen3.5-9b` (domyślny) | Qwen3.5-9B, FlexAI | 9,7 | **0,993** | 0 z 45 | 31 s | 0,010 USD |
+| `eden-qwen3.5-9b-ovh` | Qwen3.5-9B, OVHcloud | 9,7 | 0,986 | 17 z 45 | 672 s | 0,033 USD |
+| `eden-ministral-3b` | Ministral 3 3B, Mistral AI | 3 | 0,966 | 0 z 45 | 26 s | 0,011 USD |
+| `eden-ministral-8b` | Ministral 3 8B, Mistral AI | 8 | 0,939 | 0 z 45 | 46 s | 0,017 USD |
+| bez LLM (`--no-llm`) | same reguły | — | 0,971 | — | 25 s | 0 |
+
+- **Qwen3.5-9B przez OVHcloud zawsze rozumuje przed odpowiedzią.** Parametry wyłączające rozumowanie nie działają, a `reasoning_effort: low` tylko je skraca. Mediana odpowiedzi to 5 345 tokenów i 48 s. W 17 dokumentach model przekroczył limit 8 192 tokenów, więc silnik użył samych reguł. Ten sam model u FlexAI odpowiada od razu, w medianie w 2 s.
+- **Ministral 3B i 8B obniżają F1 poniżej samych reguł.** Wpisują wartości tam, gdzie wzorzec ma null: 23 i 36 fałszywych trafień wobec 5 przy samych regułach. Mniejszy model daje więcej punktów w etapie 2, ale nie rekompensuje to spadku F1.
+- **Pozostałe błędy profilu domyślnego (6 wartości) to znane problemy reguł**, a nie modelu: osoby podpisujące pełnomocnictwo, KRS wskazany bez wzorca, przestawiony nagłówek dwukolumnowy i jeden nieodczytany rachunek ([raport jakości](raport-jakosci.md)).
 
 ## Jak LLM jest używany
 
@@ -38,4 +44,4 @@ Organizator przyznaje więcej punktów za mniejszy model, więc domyślnie używ
 
 ## Profil deweloperski
 
-Do prac nad silnikiem na syntetycznych danych treningowych służy profil `gemini-dev`: model `gemma-4-26b-a4b-it` przez API Google. To ten sam otwarty model, który OVHcloud oferuje we Francji. API Google nie gwarantuje jednak przetwarzania w UE, więc ten profil nie jest używany do oceny.
+Do prac nad silnikiem na syntetycznych danych treningowych służy profil `gemini-dev`: model `gemma-4-26b-a4b-it` przez API Google. To otwarty model (Apache 2.0), ale API Google nie gwarantuje przetwarzania w UE, więc ten profil nie jest używany do oceny.
