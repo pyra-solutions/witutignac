@@ -62,6 +62,17 @@ def strip_quotes(value: Any) -> str | None:
     return s or None
 
 
+@normalizers.register("email")
+def email(value: Any) -> str | None:
+    """Adres e-mail bez spacji; przecinek między znakami (błąd OCR kropki) zamienia na kropkę."""
+    s = _str(value)
+    if s is None:
+        return None
+    s = re.sub(r"\s+", "", s)
+    s = re.sub(r"(?<=[\w-]),(?=[\w-])", ".", s)
+    return s if "@" in s else None
+
+
 @normalizers.register("collapse_ws")
 def collapse_ws(value: Any) -> str | None:
     s = _str(value)

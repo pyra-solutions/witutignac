@@ -48,7 +48,7 @@ groups:
 fields:
   - path: 'mocodawca[].data.imie_nazwisko'
     group: pelnomocnictwo
-    instruction: Imię i nazwisko mocodawcy, tylko gdy jest osobą fizyczną (np. jednoosobowa działalność gospodarcza). Dla osoby prawnej null.
+    instruction: Imię i nazwisko mocodawcy w mianowniku, tylko gdy jest osobą fizyczną (np. jednoosobowa działalność gospodarcza). Dla osoby prawnej null.
     strategy: llm_first
     grounding: token_prefix
     rules:
@@ -88,7 +88,8 @@ fields:
   - path: 'mocodawca[].data.nip'
     group: pelnomocnictwo
     instruction: NIP mocodawcy, same cyfry.
-    strategy: rules_first
+    # Tylko LLM: reguła brała NIP innego podmiotu z dokumentu (2 błędy przy rules_first, 0 przy llm_only).
+    strategy: llm_only
     rules:
       - {pattern: 'NIP\W{0,3}(\d[\d\- ]{8,12}\d)', section: mocodawca}
       - {pattern: 'NIP\W{0,3}(\d[\d\- ]{8,12}\d)'}
@@ -105,7 +106,9 @@ fields:
   - path: 'mocodawca[].podpisujacy[].imie_nazwisko'
     group: pelnomocnictwo
     instruction: Imię i nazwisko osoby podpisującej w imieniu mocodawcy (np. członek zarządu, prokurent, właściciel), w mianowniku. Nie wpisuj tu pełnomocnika przyjmującego pełnomocnictwo.
-    strategy: llm_first
+    # Tylko LLM: reguła dopisywała osoby, których model słusznie nie wskazał (np. podpis pełnomocnika).
+    # Pomiar na danych organizatora: 15 błędów przy llm_first, 2 przy llm_only. Reguła zostaje w śladzie.
+    strategy: llm_only
     grounding: token_prefix
     rules:
       - pattern: '([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)\s*[,–-]?\s*(?:Prezes|Wiceprezes|Członek|Dyrektor|Prokurent|Właściciel|Wspólnik|Pełnomocnik\s+Zarządu)'
@@ -122,7 +125,7 @@ fields:
 
   - path: 'pelnomocnicy[].imie_nazwisko'
     group: pelnomocnictwo
-    instruction: Imię i nazwisko pełnomocnika w mianowniku, bez tytułu (adw., r. pr.).
+    instruction: Imię i nazwisko pełnomocnika w mianowniku, bez tytułu (adw., r. pr.). Imię zakończone na -a przy nazwisku bez końcówki przypadka (np. 'Aleksandra Rybak') to kobieta w mianowniku – przepisz bez zmian.
     strategy: llm_first
     grounding: token_prefix
     rules:

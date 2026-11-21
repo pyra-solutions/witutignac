@@ -1,11 +1,11 @@
 # Ustawienia wydania konfiguracji. Pliki w config/seed/ są jedynym źródłem konfiguracji;
 # do silnika trafiają jako engine/config/release.json (build-release albo backend: manage.py publish).
-version: "2026.11.21-dev.3"
+version: "2026.11.21-dev.5"
 
 settings:
   # Wynik dla dokumentu spoza obsługiwanych typów (README: "pusty plik .json").
   unsupported_output: "{}"
-  # Profil oceny: Qwen3.5-9B przez Eden AI (FlexAI, Francja). F1 0,993 na 15 sprawach kontrolnych.
+  # Profil oceny: Qwen3.5-9B przez endpoint UE Eden AI (dostawca FlexAI).
   default_llm_profile: eden-qwen3.5-9b
   llm_concurrency: 4
 
@@ -22,13 +22,16 @@ conversion_profiles:
     document_timeout_s: 180
 
 llm_profiles:
-  # Eden AI (bramka API, Francja) do otwartych modeli u dostawców z przetwarzaniem w UE.
-  # Sufiks @eu i dostawca ovhcloud wymuszają serwery w Europie. Klucz: EDEN_AI_API_KEY.
-  # Wyniki porównania modeli: docs/raport-jakosci.md.
+  # Eden AI (bramka API, Eden AI SAS, Francja) do otwartych modeli z przetwarzaniem w UE. Endpoint UE
+  # (api.eu.edenai.run) gwarantuje umownie, że treść zapytań nie trafia do infrastruktury poza UE
+  # (DPA Eden AI, §12.2); bez dostawcy z UE wywołanie kończy się błędem. Nagłówek x-edenai-metadata
+  # sprawia, że ślad ekstrakcji zapisuje dostawcę i region każdego wywołania. Klucz: EDEN_AI_API_KEY.
+  # Porównanie modeli: docs/llm.md.
   - id: eden-qwen3.5-9b
-    base_url: https://api.edenai.run/v3
-    # FlexAI (Francja) podaje Qwen3.5-9B bez fazy rozumowania: krótkie i szybkie odpowiedzi.
-    model: flexai/Qwen3.5-9B@eu
+    base_url: https://api.eu.edenai.run/v3
+    extra_headers: {x-edenai-metadata: enabled}
+    # FlexAI podaje Qwen3.5-9B bez fazy rozumowania (krótkie, szybkie odpowiedzi); region 'eu' potwierdzają metadane odpowiedzi.
+    model: flexai/Qwen3.5-9B
     api_key_env: EDEN_AI_API_KEY
     temperature: 0
     max_tokens: 2048
@@ -38,7 +41,8 @@ llm_profiles:
     structured_output: json_schema
 
   - id: eden-qwen3.5-9b-ovh
-    base_url: https://api.edenai.run/v3
+    base_url: https://api.eu.edenai.run/v3
+    extra_headers: {x-edenai-metadata: enabled}
     model: ovhcloud/Qwen3.5-9B
     api_key_env: EDEN_AI_API_KEY
     temperature: 0
@@ -52,8 +56,9 @@ llm_profiles:
     structured_output: json_schema
 
   - id: eden-ministral-8b
-    base_url: https://api.edenai.run/v3
-    model: mistral/ministral-8b-2512@eu
+    base_url: https://api.eu.edenai.run/v3
+    extra_headers: {x-edenai-metadata: enabled}
+    model: mistral/ministral-8b-2512
     api_key_env: EDEN_AI_API_KEY
     temperature: 0
     max_tokens: 2048
@@ -63,8 +68,9 @@ llm_profiles:
     structured_output: json_schema
 
   - id: eden-ministral-3b
-    base_url: https://api.edenai.run/v3
-    model: mistral/ministral-3b-2512@eu
+    base_url: https://api.eu.edenai.run/v3
+    extra_headers: {x-edenai-metadata: enabled}
+    model: mistral/ministral-3b-2512
     api_key_env: EDEN_AI_API_KEY
     temperature: 0
     max_tokens: 2048

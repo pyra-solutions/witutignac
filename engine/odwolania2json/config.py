@@ -174,6 +174,9 @@ class LlmProfile(_Model):
     reasoning_effort: str | None = None
     structured_output: Literal["json_schema", "json_object", "prompt"] = "json_schema"
     system_prompt: str = ""
+    # Dodatkowe nagłówki HTTP, np. {"x-edenai-metadata": "enabled"}: Eden AI zwraca wtedy dostawcę
+    # i region przetwarzania, które trafiają do śladu ekstrakcji.
+    extra_headers: dict[str, str] = Field(default_factory=dict)
     # Limity dostawcy egzekwowane po stronie klienta (None = bez limitu).
     tokens_per_minute: int | None = None
     requests_per_minute: int | None = None

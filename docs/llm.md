@@ -6,14 +6,28 @@ Silnik używa małego, otwartego modelu językowego przez API dostawcy z serwera
 
 | | |
 | --- | --- |
-| Bramka API | Eden AI (Francja), API zgodne z OpenAI: `https://api.edenai.run/v3` |
-| Dostawca modelu | FlexAI (Francja), region UE: identyfikator modelu kończy się sufiksem `@eu` |
-| Model | `flexai/Qwen3.5-9B@eu`, czyli Qwen3.5-9B (9,7 mld parametrów, otwarte wagi, licencja Apache 2.0) |
+| Bramka API | Eden AI SAS (Francja), endpoint UE zgodny z API OpenAI: `https://api.eu.edenai.run/v3` |
+| Dostawca modelu | FlexAI, region `eu`; Eden AI potwierdza dostawcę i region w metadanych każdej odpowiedzi, a silnik zapisuje je w śladzie ekstrakcji |
+| Model | `flexai/Qwen3.5-9B`, czyli Qwen3.5-9B (9,7 mld parametrów, otwarte wagi, licencja Apache 2.0) |
 | Klucz | zmienna `EDEN_AI_API_KEY` (plik `.env` poza repozytorium) |
 | Parametry | temperatura 0, `seed` 42, `max_tokens` 2048, odpowiedź wymuszona schematem (`response_format: json_schema`) |
 | Cena (katalog Eden AI) | 0,10 USD za 1 mln tokenów wejścia, 0,15 USD za 1 mln tokenów wyjścia; 15 spraw kontrolnych kosztowało około 0,01 USD |
 
 Profil `eden-qwen3.5-9b` jest zapisany w konfiguracji (`config/seed/release.yaml`) i ustawiony jako domyślny. Zmianę modelu albo dostawcy wykonuje się w konfiguracji albo zmiennymi `LLM_BASE_URL`, `LLM_MODEL` i `LLM_API_KEY`, bez zmian w kodzie. Konfiguracja zawiera też profile porównawcze z tabeli poniżej oraz `ovh-qwen3.5-9b`, czyli bezpośredni dostęp do OVHcloud AI Endpoints bez Eden AI.
+
+## Przetwarzanie danych
+
+README organizatora wymaga, aby API świadczyła firma, która w polityce prywatności określa zakres i miejsce przetwarzania danych, z serwerów w UE/EOG.
+
+- **Co wychodzi z komputera.** Tylko fragmenty tekstu dokumentu (Markdown) i schemat JSON. Pliki PDF nie opuszczają komputera.
+- **Eden AI** (Eden AI SAS, Villeurbanne, Francja), [polityka prywatności](https://www.edenai.co/privacy-policy):
+  - zakres: §2–§4 wymieniają kategorie danych i cele; treść zapytań synchronicznych nie jest domyślnie przechowywana („request and response content from synchronous API calls is not stored by default”);
+  - miejsce: §7: „Our main infrastructure is hosted in the European Union (Amazon Web Services, Paris)” oraz „When you use our EU endpoint, request and response content is not routed to AI inference infrastructure outside the European Union”;
+  - [DPA](https://www.edenai.co/dpa), §12.2: dla treści wysłanych przez endpoint UE Eden AI nie kieruje ich do infrastruktury poza UE; jeśli żaden dostawca z UE nie obsługuje modelu, wywołanie kończy się błędem ([dokumentacja endpointu UE](https://www.edenai.co/docs/v3/data-governance/eu-endpoint)).
+- **FlexAI**: [DPA](https://flex.ai/dpa) opisuje EU Workspace (FlexAI SAS, Paryż), którego zapytania nie są kierowane poza UE; według [polityki prywatności](https://flex.ai/privacy-policy) prompty i odpowiedzi są przetwarzane w pamięci i nie są przechowywane.
+- **Dowód dla każdego wywołania.** Profil wysyła nagłówek `x-edenai-metadata: enabled`, a ślad ekstrakcji zapisuje w `llm[].provider` i `llm[].region` wartości zwrócone przez Eden AI (`flexai`, `eu`).
+
+**Czego nie udało się potwierdzić.** Administratorem danych w polityce prywatności FlexAI jest FlexAI Systems Inc (USA), z przedstawicielem w UE (FlexAI SAS), a polityka mówi o przechowywaniu danych konta w USA. Strony nie mówią też wprost, z której ścieżki FlexAI (globalnej czy UE) korzysta Eden AI. Gwarancję przetwarzania w UE daje więc umowa z Eden AI (endpoint UE), a nie polityka FlexAI. Stan stron: 21.11.2026.
 
 ## Porównanie modeli
 
@@ -29,6 +43,7 @@ Pomiar z 21.11.2026 na 15 sprawach kontrolnych (04, 08, …, 60): 47 plików PDF
 
 - **Qwen3.5-9B przez OVHcloud zawsze rozumuje przed odpowiedzią.** Parametry wyłączające rozumowanie nie działają, a `reasoning_effort: low` tylko je skraca. Mediana odpowiedzi to 5 345 tokenów i 48 s. W 17 dokumentach model przekroczył limit 8 192 tokenów, więc silnik użył samych reguł. Ten sam model u FlexAI odpowiada od razu, w medianie w 2 s.
 - **Ministral 3B i 8B obniżają F1 poniżej samych reguł.** Wpisują wartości tam, gdzie wzorzec ma null: 23 i 36 fałszywych trafień wobec 5 przy samych regułach. Mniejszy model daje więcej punktów w etapie 2, ale nie rekompensuje to spadku F1.
+- **Na pełnym zbiorze organizatora** (60 spraw, 16 dokumentów negatywnych, 30 skanów) wydanie 2026.11.21-dev.5 daje F1 0,999 dla spraw i 0,926 dla skanów. Ten sam model bez reguł (każde pole tylko z LLM) daje 0,975 dla spraw, a większa Gemma 4 26B bez reguł 0,972 ([raport jakości](raport-jakosci.md)).
 - **Pozostałe błędy profilu domyślnego (6 wartości) to znane problemy reguł**, a nie modelu: osoby podpisujące pełnomocnictwo, KRS wskazany bez wzorca, przestawiony nagłówek dwukolumnowy i jeden nieodczytany rachunek ([raport jakości](raport-jakosci.md)).
 
 ## Jak LLM jest używany

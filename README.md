@@ -7,8 +7,8 @@ Rozwiązanie wyzwania Urzędu Zamówień Publicznych na HackNation 2026. Program
 dane i zapisuje jeden plik JSON na dokument, w strukturze z `oczekiwane-json`.
 
 Działa lokalnie na CPU, bez GPU. Tekst z PDF, także ze skanów, odczytuje Docling z OCR. Pola odczytują
-reguły i mały otwarty model językowy Qwen3.5-9B (licencja Apache 2.0) przez API Eden AI, u dostawcy FlexAI
-z serwerami we Francji.
+reguły i mały otwarty model językowy Qwen3.5-9B (licencja Apache 2.0) przez endpoint UE Eden AI (dostawca FlexAI,
+przetwarzanie w UE).
 
 ## Uruchomienie
 

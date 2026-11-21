@@ -10,7 +10,8 @@ entries:
     keywords: ['o odrzuceniu ofert', '(?<!nie )(?<!zaniechał )odrzucił\w* ofert', 'odrzuceni\w+ ofert']
   - id: 2
     opis: Ogłoszenie wyboru oferty
-    keywords: ['wyb[óo]r\w* ofert', 'dokonał\w* wyboru']
+    # "…o wyborze oferty…, zaniechawszy unieważnienia postępowania" to zarzut zaniechania (id 10), nie wybór oferty
+    keywords: ['wyb[óo]r\w* ofert(?![^\n]{0,250}zaniechawszy\s+unieważnienia)', 'dokonał\w* wyboru(?![^\n]{0,250}zaniechawszy\s+unieważnienia)']
   - id: 3
     opis: Decyzja o wykluczeniu wykonawcy
     keywords: ['o wykluczeniu', '(?<!nie )wykluczył']
@@ -35,7 +36,7 @@ entries:
     keywords: ['(?<!nie )unieważni+[łl]\w*', 'o unieważnieniu']
   - id: 10
     opis: Zaniechanie unieważnienia postępowania
-    keywords: ['zaniechał\w* unieważnienia', 'nie unieważnił', 'zaniechani\w+ unieważnienia']
+    keywords: ['zaniechał\w* unieważnienia', 'nie unieważnił', 'zaniechani\w+ unieważnienia', 'zaniechawszy\s+unieważnienia']
   - id: 11
     opis: Opis przedmiotu zamówienia (OPZ)
     keywords: ['Opis\w* Przedmiotu Zamówienia', '\bOPZ\b']

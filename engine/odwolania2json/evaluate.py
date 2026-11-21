@@ -148,18 +148,45 @@ def _align(pred: list[Any], gold: list[Any]) -> list[tuple[int | None, int | Non
     return out
 
 
+# Rodzaj dokumentu rozpoznajemy po kluczu głównym wzorca, bo nazwy plików bywają dowolne
+# (np. dane/skany/odwolania/0001/0001.json).
+_TYPE_KEYS = {"OdwolanieKIO": "odwolanie", "mocodawca": "pelnomocnictwo", "przelew_bankowy": "przelew"}
+
+
+def _doc_type(gold: Any, stem: str) -> str:
+    if isinstance(gold, dict):
+        for key, dtype in _TYPE_KEYS.items():
+            if key in gold:
+                return dtype
+    return stem
+
+
+def _pdf_stems(folder: Path) -> set[str]:
+    return {p.stem for p in folder.iterdir() if p.is_file() and p.suffix.lower() == ".pdf"}
+
+
 def evaluate(pred_dir: Path, gold_dir: Path, name_map: dict[str, str]) -> Report:
     """Dla każdego pliku wzorca <sprawa>/<nazwa>.json szuka wyniku <sprawa>/<nazwa wejścia>.json.
 
-    PDF-y z katalogu wzorców bez pliku wzorca (np. dane/negatywne/*.pdf) mają oczekiwany wynik `{}`.
+    Wzorce są szukane w całym drzewie katalogów (także dane/skany/<rodzaj>/<nr>/). Nazwa wejścia to
+    nazwa PDF-a obok wzorca: najpierw o tej samej nazwie co wzorzec, potem według `name_map`
+    (np. potwierdzenie_przelewu.pdf -> przelew.json). PDF-y bez pliku wzorca (np. dane/negatywne)
+    mają oczekiwany wynik `{}`.
     """
     rep = Report()
     reverse = {v: k for k, v in name_map.items()}
     expected: dict[tuple[str, str], Path | None] = {}
-    for gold_path in sorted(gold_dir.glob("*/*.json")):
-        expected[(gold_path.parent.name, reverse.get(gold_path.stem, gold_path.stem))] = gold_path
-    for pdf in sorted(p for p in gold_dir.glob("*/*") if p.suffix.lower() == ".pdf"):
-        expected.setdefault((pdf.parent.name, pdf.stem), None)
+    folders = sorted({p.parent for p in gold_dir.rglob("*")
+                      if p.is_file() and p.suffix.lower() in (".json", ".pdf")})
+    for folder in folders:
+        case = folder.relative_to(gold_dir).as_posix()
+        pdfs = _pdf_stems(folder)
+        for gold_path in sorted(folder.glob("*.json")):
+            stem = gold_path.stem
+            in_stem = stem if stem in pdfs else reverse.get(stem, stem)
+            expected[(case, in_stem)] = gold_path
+        for stem in sorted(pdfs):
+            expected.setdefault((case, stem), None)
 
     for (case, stem), gold_path in sorted(expected.items()):
         pred_path = pred_dir / case / f"{stem}.json"
@@ -169,7 +196,7 @@ def evaluate(pred_dir: Path, gold_dir: Path, name_map: dict[str, str]) -> Report
             rep.negatives += 1
         else:
             gold = json.loads(gold_path.read_text(encoding="utf-8"))
-            dtype = gold_path.stem
+            dtype = _doc_type(gold, gold_path.stem)
         if pred_path.exists():
             text = pred_path.read_text(encoding="utf-8").strip()
             pred = json.loads(text) if text else {}

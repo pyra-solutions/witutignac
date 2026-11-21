@@ -8,6 +8,14 @@ from odwolania2json.config import Section
 
 PAGE_BREAK = "<!-- page break -->"
 
+# OCR czyta polskie "Ń" jako hiszpańskie "Ñ" (np. "PAÑSTWOWEJ", "ZAMÓWIEÑ"). W polskich dokumentach
+# "Ñ" nie występuje, więc w tekście skanów zamieniamy je z powrotem.
+_OCR_PL = str.maketrans({"Ñ": "Ń", "ñ": "ń"})
+
+
+def fix_ocr_pl(text: str) -> str:
+    return text.translate(_OCR_PL)
+
 
 @dataclass(frozen=True)
 class Span:

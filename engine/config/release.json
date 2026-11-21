@@ -1,5 +1,5 @@
 {
-  "version": "2026.11.21-dev.3",
+  "version": "2026.11.21-dev.5",
   "settings": {
     "unsupported_output": "{}",
     "default_llm_profile": "eden-qwen3.5-9b",
@@ -24,8 +24,8 @@
   "llm_profiles": [
     {
       "id": "eden-qwen3.5-9b",
-      "base_url": "https://api.edenai.run/v3",
-      "model": "flexai/Qwen3.5-9B@eu",
+      "base_url": "https://api.eu.edenai.run/v3",
+      "model": "flexai/Qwen3.5-9B",
       "api_key_env": "EDEN_AI_API_KEY",
       "temperature": 0.0,
       "max_tokens": 2048,
@@ -35,12 +35,15 @@
       "reasoning_effort": null,
       "structured_output": "json_schema",
       "system_prompt": "",
+      "extra_headers": {
+        "x-edenai-metadata": "enabled"
+      },
       "tokens_per_minute": null,
       "requests_per_minute": null
     },
     {
       "id": "eden-qwen3.5-9b-ovh",
-      "base_url": "https://api.edenai.run/v3",
+      "base_url": "https://api.eu.edenai.run/v3",
       "model": "ovhcloud/Qwen3.5-9B",
       "api_key_env": "EDEN_AI_API_KEY",
       "temperature": 0.0,
@@ -51,13 +54,16 @@
       "reasoning_effort": "low",
       "structured_output": "json_schema",
       "system_prompt": "",
+      "extra_headers": {
+        "x-edenai-metadata": "enabled"
+      },
       "tokens_per_minute": null,
       "requests_per_minute": null
     },
     {
       "id": "eden-ministral-8b",
-      "base_url": "https://api.edenai.run/v3",
-      "model": "mistral/ministral-8b-2512@eu",
+      "base_url": "https://api.eu.edenai.run/v3",
+      "model": "mistral/ministral-8b-2512",
       "api_key_env": "EDEN_AI_API_KEY",
       "temperature": 0.0,
       "max_tokens": 2048,
@@ -67,13 +73,16 @@
       "reasoning_effort": null,
       "structured_output": "json_schema",
       "system_prompt": "",
+      "extra_headers": {
+        "x-edenai-metadata": "enabled"
+      },
       "tokens_per_minute": null,
       "requests_per_minute": null
     },
     {
       "id": "eden-ministral-3b",
-      "base_url": "https://api.edenai.run/v3",
-      "model": "mistral/ministral-3b-2512@eu",
+      "base_url": "https://api.eu.edenai.run/v3",
+      "model": "mistral/ministral-3b-2512",
       "api_key_env": "EDEN_AI_API_KEY",
       "temperature": 0.0,
       "max_tokens": 2048,
@@ -83,6 +92,9 @@
       "reasoning_effort": null,
       "structured_output": "json_schema",
       "system_prompt": "",
+      "extra_headers": {
+        "x-edenai-metadata": "enabled"
+      },
       "tokens_per_minute": null,
       "requests_per_minute": null
     },
@@ -99,6 +111,7 @@
       "reasoning_effort": null,
       "structured_output": "json_schema",
       "system_prompt": "",
+      "extra_headers": {},
       "tokens_per_minute": null,
       "requests_per_minute": null
     },
@@ -115,6 +128,7 @@
       "reasoning_effort": null,
       "structured_output": "json_schema",
       "system_prompt": "",
+      "extra_headers": {},
       "tokens_per_minute": 15000,
       "requests_per_minute": null
     }
@@ -136,8 +150,8 @@
         {
           "id": 2,
           "keywords": [
-            "wyb[óo]r\\w* ofert",
-            "dokonał\\w* wyboru"
+            "wyb[óo]r\\w* ofert(?![^\\n]{0,250}zaniechawszy\\s+unieważnienia)",
+            "dokonał\\w* wyboru(?![^\\n]{0,250}zaniechawszy\\s+unieważnienia)"
           ],
           "opis": "Ogłoszenie wyboru oferty"
         },
@@ -206,7 +220,8 @@
           "keywords": [
             "zaniechał\\w* unieważnienia",
             "nie unieważnił",
-            "zaniechani\\w+ unieważnienia"
+            "zaniechani\\w+ unieważnienia",
+            "zaniechawszy\\s+unieważnienia"
           ],
           "opis": "Zaniechanie unieważnienia postępowania"
         },
@@ -338,7 +353,7 @@
             "Zamawiający\\s+w\\s+dniu"
           ],
           "end": [
-            "(?<!\\sr)(?<!\\sust)(?<!\\sart)(?<!\\spkt)\\.(?=\\s|$)"
+            "(?<!\\sr)(?<!\\sust)(?<!\\sart)(?<!\\spkt)(?<!\\bsp)(?<!\\.[a-zA-Z])\\.(?=\\s|$)"
           ],
           "include_start": true,
           "max_chars": 300,
@@ -526,7 +541,7 @@
           "rules": [
             {
               "kind": "regex",
-              "pattern": "(?<![\\w.])([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+|\\s+(?:nad|pod|na)\\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?),\\s*(?:dnia\\s+)?\\d{1,2}(?:\\.\\d{1,2}\\.|\\s+[a-ząćęłńóśźż]+\\s+)\\d{4}",
+              "pattern": "(?<![\\w.])((?:(?:Zielona|Jelenia|Kamienna|Stalowa|Nowa|Nowy|Nowe|Stara|Stary|Stare|Biała|Wysokie)[ \\t]+)?[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+|\\s+(?:nad|pod|na)\\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+|[ \\t]+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]*(?:ski|ska|skie|cki|cka|ckie|icza|iczy))?),\\s*(?:dnia\\s+)?\\d{1,2}(?:\\.\\d{1,2}\\.|\\s+[a-ząćęłńóśźż]+\\s+)\\d{4}",
               "group": 1,
               "section": null,
               "occurrence": "first",
@@ -766,7 +781,7 @@
         {
           "path": "Odwolujacy[].pelnomocnik.imie_nazwisko",
           "type": "string",
-          "instruction": "Imię i nazwisko pierwszego pełnomocnika Odwołującego, w mianowniku, bez tytułu (adw., r. pr.).",
+          "instruction": "Imię i nazwisko pierwszego pełnomocnika Odwołującego, w mianowniku, bez tytułu (adw., r. pr.). Imię zakończone na -a przy nazwisku bez końcówki przypadka (np. 'Aleksandra Rybak') to kobieta w mianowniku – przepisz bez zmian.",
           "group": "odwolanie",
           "rules": [
             {
@@ -859,7 +874,7 @@
           "strategy": "rules_first",
           "normalizers": [
             {
-              "name": "strip",
+              "name": "email",
               "args": {},
               "severity": "warning"
             }
@@ -956,7 +971,15 @@
               "severity": "warning"
             }
           ],
-          "validators": [],
+          "validators": [
+            {
+              "name": "pattern",
+              "args": {
+                "re": "(?!(?:Prezes\\b|Krajow\\w+\\s+Izb\\w+\\s+Odwoławcz))[\\s\\S]+"
+              },
+              "severity": "error"
+            }
+          ],
           "derive": null,
           "enum": null,
           "dictionary": null,
@@ -1331,7 +1354,7 @@
         {
           "path": "mocodawca[].data.imie_nazwisko",
           "type": "string",
-          "instruction": "Imię i nazwisko mocodawcy, tylko gdy jest osobą fizyczną (np. jednoosobowa działalność gospodarcza). Dla osoby prawnej null.",
+          "instruction": "Imię i nazwisko mocodawcy w mianowniku, tylko gdy jest osobą fizyczną (np. jednoosobowa działalność gospodarcza). Dla osoby prawnej null.",
           "group": "pelnomocnictwo",
           "rules": [
             {
@@ -1554,7 +1577,7 @@
               "value_key": "id"
             }
           ],
-          "strategy": "rules_first",
+          "strategy": "llm_only",
           "normalizers": [
             {
               "name": "digits_only",
@@ -1633,7 +1656,7 @@
               "value_key": "id"
             }
           ],
-          "strategy": "llm_first",
+          "strategy": "llm_only",
           "normalizers": [
             {
               "name": "collapse_ws",
@@ -1652,7 +1675,7 @@
         {
           "path": "pelnomocnicy[].imie_nazwisko",
           "type": "string",
-          "instruction": "Imię i nazwisko pełnomocnika w mianowniku, bez tytułu (adw., r. pr.).",
+          "instruction": "Imię i nazwisko pełnomocnika w mianowniku, bez tytułu (adw., r. pr.). Imię zakończone na -a przy nazwisku bez końcówki przypadka (np. 'Aleksandra Rybak') to kobieta w mianowniku – przepisz bez zmian.",
           "group": "pelnomocnictwo",
           "rules": [
             {
@@ -1897,7 +1920,7 @@
           "rules": [
             {
               "kind": "regex",
-              "pattern": "(?:rachun\\w+\\s+(?:odbiorcy|beneficjenta|adresata)|na\\s+rachunek(?:\\s+nr)?)[\\s\\S]{0,200}?((?:PL)?\\s?\\d{2}(?:\\s?\\d{4}){6})",
+              "pattern": "(?:rachun\\w+\\s+(?:odbiorcy|beneficjenta|adresata|kontrahenta|uznawan\\w*)|na\\s+rachunek(?:\\s+nr)?)[\\s\\S]{0,200}?((?:PL)?\\s?\\d{2}(?:\\s?\\d{4}){6})",
               "group": 1,
               "section": null,
               "occurrence": "first",
@@ -1918,7 +1941,7 @@
               "value_key": "id"
             }
           ],
-          "strategy": "rules_first",
+          "strategy": "llm_first",
           "normalizers": [
             {
               "name": "iban_digits",
@@ -1936,7 +1959,7 @@
           "derive": null,
           "enum": null,
           "dictionary": null,
-          "grounding": "tokens",
+          "grounding": "required",
           "default": null,
           "only_if_list_size_at_least": null
         },
@@ -1948,7 +1971,7 @@
           "rules": [
             {
               "kind": "regex",
-              "pattern": "(?:nr\\.?\\s*ref\\w*\\.?|numer\\s+(?:referencyjny|transakcji)(?:\\s+operacji)?|identyfikator\\s+(?:operacji|transakcji)|id\\s+transakcji)[\\s:.|…]*([A-Z]{2,}[A-Z0-9]{6,}|\\d{8,})",
+              "pattern": "(?:nr\\.?\\s*ref\\w*\\.?|numer\\s+(?:referencyjny|transakcji)(?:\\s+(?:operacji|transakcji))?|identyfikator\\s+(?:operacji|transakcji)|id\\s+transakcji)[\\s:.|…]*((?=[A-Z0-9]*\\d)[A-Z]{2,}[A-Z0-9]{6,}|\\d{8,})",
               "group": 1,
               "section": null,
               "occurrence": "first",
@@ -1966,7 +1989,15 @@
               "severity": "warning"
             }
           ],
-          "validators": [],
+          "validators": [
+            {
+              "name": "pattern",
+              "args": {
+                "re": "[A-Z0-9]{6,}"
+              },
+              "severity": "error"
+            }
+          ],
           "derive": null,
           "enum": null,
           "dictionary": null,
@@ -1993,7 +2024,18 @@
             },
             {
               "kind": "regex",
-              "pattern": "(?:Tytuł\\w*(?:\\s+przelewu)?|Tytułem|OPIS|Opis)\\s*[:|]?\\s*\\|?\\s*\\n*\\s*([^\\n|]{3,400})",
+              "pattern": "Tytu[łlt]\\w*(?:\\s+przelewu)?\\s*(?:[:|]|\\n)\\s*\\|?\\s*\\n*\\s*(?:(?:Kanał|Status|Kwota|Opis|Waluta|Opłata|Typ\\s+\\w+|Serwis\\s+\\w+)\\s*:?\\s*\\n+\\s*)*([^\\n|]{3,400}(?:\\n\\n(?-i:[a-ząćęłńóśźż])[^\\n|]{0,300})?)",
+              "group": 1,
+              "section": null,
+              "occurrence": "first",
+              "unique": false,
+              "ignore_case": true,
+              "dictionary": null,
+              "value_key": "id"
+            },
+            {
+              "kind": "regex",
+              "pattern": "Opis\\s*(?:[:|]|\\n)\\s*\\|?\\s*\\n*\\s*(?!(?:Kwota|Typ\\b|Data\\b|Waluta|Status|Kanał|PRZELEW\\s+(?:ELIXIR|INTERNETOWY|KRAJOWY|ZWYKŁY|SORBNET|EXPRESS)))([^\\n|]{3,400}(?:\\n\\n(?-i:[a-ząćęłńóśźż])[^\\n|]{0,300})?)",
               "group": 1,
               "section": null,
               "occurrence": "first",
@@ -2026,7 +2068,7 @@
             {
               "name": "regex_replace",
               "args": {
-                "pattern": "\\s+[A-ZŁŚŻŹĆĘĄÓŃ]{3,}(?:\\s+[A-ZŁŚŻŹĆĘĄÓŃ]{3,})*\\s*[.…]{3,}.*$",
+                "pattern": "\\s+[A-ZŁŚŻŹĆĘĄÓŃ]{2,}\\.?(?:\\s+[A-ZŁŚŻŹĆĘĄÓŃ]{2,}\\.?)*\\s*[.…]{3,}.*$",
                 "repl": "",
                 "ignore_case": false
               },
@@ -2100,7 +2142,7 @@
           "derive": null,
           "enum": null,
           "dictionary": null,
-          "grounding": "tokens",
+          "grounding": "required",
           "default": null,
           "only_if_list_size_at_least": null
         }

@@ -14,7 +14,7 @@ Rdzeń oceniany przez organizatora musi być w Pythonie, a o wyniku etapu 1 decy
 | Wejście `./input/<sprawa>/*.pdf`, wyjście `./output/<sprawa>/<nazwa pliku>.json` | README, sekcja 3 | Plik wynikowy ma tę samą nazwę co wejściowy; typ dokumentu rozpoznajemy z treści |
 | Dokumenty kategorii, których nie należy identyfikować, dają pusty plik `.json` | README, sekcja 6 (zmiana z 21.11.2026) | Klasyfikator ma próg pewności; dokument poniżej progu dostaje plik z zawartością `{}` |
 | Test na laptopie biurowym: 16 GB RAM, Intel i7, bez GPU | README, sekcja 6 (zmiana z 21.11.2026) | Docling na CPU z limitem wątków; żadnych usług w tle, bo laptop może nie pozwolić na Dockera |
-| LLM przez API firmy z serwerami w UE/EOG, dostarczone z kluczem API | README, sekcja 6 (zmiana z 21.11.2026) | Eden AI (Francja) z modelem u FlexAI (Francja, region UE); klucz z limitem wydatków przekazany poza publicznym repozytorium |
+| LLM przez API firmy z serwerami w UE/EOG, która w polityce prywatności określa zakres i miejsce przetwarzania, dostarczone z kluczem API | README, sekcja 6 (zmiany z 21.11.2026) | Endpoint UE Eden AI (Eden AI SAS, Francja; hosting AWS Paryż) z modelem u FlexAI w regionie UE; klucz z limitem wydatków przekazany poza publicznym repozytorium |
 | Etap 1: F1 = 100% oceny | README, sekcja 7 | Najpierw jakość ekstrakcji |
 | Etap 2: F1 50%; mniejszy model LLM 1–20 pkt; rozszerzalność 1–20 pkt; inne funkcje, np. GUI, 1–10 pkt | README, sekcja 7 (zmiana z 21.11.2026) | Najmniejszy model, który utrzyma F1; nowe typy dokumentów bez kodu; GUI w Angularze |
 | Tylko komponenty open source, w tym modele | README, sekcja 5 | Modele z otwartymi wagami na licencji Apache 2.0; bez Docker Desktop i innych narzędzi zamkniętych |
@@ -25,6 +25,8 @@ Rdzeń oceniany przez organizatora musi być w Pythonie, a o wyniku etapu 1 decy
 | `data` i `miejscowosc` = null w 15 z 60 odwołań; kilku zamawiających w 3 z 60 | `dane/*/odwolanie.json` | Null jest poprawną odpowiedzią; listy podmiotów obsługujemy od początku |
 | Sumy kontrolne nie zgadzają się dla 74 ze 189 numerów NIP, 38 ze 123 REGON i 77 ze 120 rachunków | wzorce w `dane/` | Walidatory sum kontrolnych tylko ostrzegają i nie usuwają wartości |
 | Wzorce w `oczekiwane-json/` mają komentarze `//`, a `pesel` jest raz liczbą, raz tekstem | `oczekiwane-json/`, `dane/` | Wynik to czysty JSON; typ pola `pesel` do potwierdzenia |
+| Imię i nazwisko pełnomocnika (odwołanie) i mocodawcy (pełnomocnictwo) w mianowniku | `oczekiwane-json/` (zmiana z 21.11.2026) | Instrukcje pól wymagają mianownika; weryfikacja źródła `token_prefix` przyjmuje formy odmienione w tekście |
+| 30 zeskanowanych dokumentów ze wzorcami (`dane/skany/`), także wydruki przelewów w układzie tabel | repozytorium organizatora (zmiana z 21.11.2026) | Ocena osobno dla skanów; reguły przelewów odporne na etykiety tabel i błędy OCR w etykietach |
 
 ## Architektura
 
@@ -58,7 +60,7 @@ Każdy dokument przechodzi te same kroki. Błąd jednego pliku nie zatrzymuje po
 2. **Klasyfikacja.** Wzorce z wagami z konfiguracji typu dokumentu, opcjonalnie ograniczone do początku tekstu. Wygrywa typ z najwyższym wynikiem, jeśli osiąga próg `min_score`. Dokument poniżej progu dostaje `{}` (ustawienie `unsupported_output`). Nazwa pliku nie wpływa na klasyfikację.
 3. **Reguły deterministyczne.** Regexy w nazwanych sekcjach tekstu (np. „dotyczy”, pierwszy zarzut) i dopasowanie słowników.
 4. **LLM.** Jedno wywołanie na grupę pól; dziś każdy typ dokumentu ma jedną grupę. Model dostaje fragment Markdown i schemat JSON zbudowany z definicji pól, a odpowiedź jest wymuszona schematem. Wywołania dla różnych dokumentów idą równolegle (`llm_concurrency`).
-5. **Arbitraż.** Strategia pola (`llm_first`, `rules_first`, `rules_only`, `llm_only`) wybiera źródło wartości. Wartość z LLM, której nie da się odnaleźć w tekście dokumentu, jest odrzucana (weryfikacja źródła).
+5. **Arbitraż.** Strategia pola (`llm_first`, `rules_first`, `rules_only`, `llm_only`) wybiera źródło wartości. Wartość z LLM, której nie da się odnaleźć w tekście dokumentu, jest odrzucana (weryfikacja źródła). Jeśli wybrana wartość nie przejdzie normalizacji albo walidatora z poziomem `error`, silnik bierze wartość z następnego źródła (np. z reguły, gdy LLM wskazał adresata pisma zamiast Zamawiającego), a ślad zapisuje powód odrzucenia.
 6. **Normalizacja i walidacja.** Nazwane funkcje z rejestru silnika z parametrami z konfiguracji. Walidator z poziomem `warning` tylko ostrzega, z poziomem `error` usuwa wartość. Półpauzę zamienioną przez Docling na łącznik silnik przywraca z warstwy tekstowej PDF.
 7. **Pola wyliczane i limity list.** Na przykład opis powodu czynności pochodzi ze słownika na podstawie identyfikatora.
 8. **Zapis.** JSON w kolejności pól z konfiguracji, z nazwą pliku wejściowego. Opcjonalnie powstaje też ślad ekstrakcji `*.trace.json` (opis w sekcji „Przejrzystość ekstrakcji”).
@@ -118,7 +120,7 @@ Model wybraliśmy pomiarem na 15 sprawach kontrolnych (21.11.2026). Wszyscy kand
 | Ministral 3 8B, Mistral AI | 8 | 0,939 | 0 z 45 | 46 s | 0,017 USD |
 | same reguły, bez LLM | — | 0,971 | — | 25 s | 0 |
 
-- **Dostawca.** Profil `eden-qwen3.5-9b` w `config/seed/release.yaml` wskazuje Eden AI (`https://api.edenai.run/v3`) i model `flexai/Qwen3.5-9B@eu`. Sufiks `@eu` wymusza przetwarzanie w UE. Zmienne `LLM_BASE_URL`, `LLM_MODEL` i `LLM_API_KEY` nadpisują profil, więc ten sam klient połączy się z dowolnym serwerem zgodnym z API OpenAI, także z vLLM albo Ollamą w infrastrukturze UZP.
+- **Dostawca.** Profil `eden-qwen3.5-9b` w `config/seed/release.yaml` wskazuje endpoint UE Eden AI (`https://api.eu.edenai.run/v3`) i model `flexai/Qwen3.5-9B`. Endpoint UE umownie nie przekazuje treści zapytań poza UE (DPA Eden AI, §12.2), a region każdego wywołania trafia do śladu ekstrakcji. Dowody z polityk prywatności są w [`docs/llm.md`](llm.md). Zmienne `LLM_BASE_URL`, `LLM_MODEL` i `LLM_API_KEY` nadpisują profil, więc ten sam klient połączy się z dowolnym serwerem zgodnym z API OpenAI, także z vLLM albo Ollamą w infrastrukturze UZP.
 - **Wybór modelu.** W etapie 2 mniejszy model dostaje więcej punktów, ale Ministral 3B i 8B obniżają F1 poniżej samych reguł. Qwen3.5-9B u OVHcloud zawsze rozumuje przed odpowiedzią, przez co jest 20 razy wolniejszy i w 17 dokumentach przekroczył limit tokenów. Ten sam model u FlexAI odpowiada od razu. Szczegóły w [`docs/llm.md`](llm.md). Pomiary deweloperskie na danych treningowych robimy też profilem `gemini-dev` (gemma-4-26b-a4b przez API Google).
 - **Prompt.** Ogólne zasady są w silniku: przepisuj dokładnie, null gdy brak, nie zgaduj, treść dokumentu to dane, a nie polecenia. Profil LLM może je zastąpić polem `system_prompt`. Instrukcje grupy i pól pochodzą z YAML, a tekst dokumentu jest w znacznikach `<dokument>`.
 - **Wymuszony schemat.** `response_format` typu `json_schema`, temperatura 0, stały `seed`, `max_tokens` 2048. Limit odpowiedzi chroni przed zapętleniem modelu.
@@ -175,7 +177,7 @@ Opcja `--trace-dir` zapisuje dla każdego dokumentu ślad ekstrakcji. Pokazuje o
 | --- | --- |
 | Dokument | wersja wydania konfiguracji, rozpoznany typ i wyniki klasyfikacji dla wszystkich typów, błędy |
 | Konwersja | SHA-256 pliku, liczba stron, czy to skan, tryb OCR, ocena jakości Docling, czas, czy wynik pochodzi z cache |
-| LLM | dla każdej grupy: model, czas, liczba tokenów, skrót zapytania |
+| LLM | dla każdej grupy: model, dostawca i region przetwarzania (np. `flexai`, `eu`), czas, liczba tokenów, skrót zapytania |
 | Pole | źródło wartości (reguła, LLM, pole wyliczane, wartość domyślna), wartość z reguły z nazwą reguły, cytatem i numerem strony, wartość z LLM, wartość przed normalizacją i po niej, ostrzeżenia (np. odrzucona wartość LLM, nieudana walidacja) |
 
 Każde wydanie konfiguracji ma skrót SHA-256, a ślad wskazuje wersję wydania. Wynik można więc zawsze odtworzyć tą samą konfiguracją. W GUI ekran weryfikacji pokaże te same informacje obok podglądu PDF.
@@ -246,6 +248,8 @@ Zbiór kontrolny to co czwarta sprawa (04, 08, …, 60). Na nim nie stroimy regu
 | Same reguły | 60 spraw i 16 dokumentów negatywnych | 0,960 |
 | Same reguły (wydanie 2026.11.21-dev.3) | 15 spraw kontrolnych | 0,971 |
 | **Reguły + LLM (Qwen3.5-9B przez Eden AI, FlexAI)** | 15 spraw kontrolnych | **0,993** |
+| **Reguły + LLM, wydanie 2026.11.21-dev.5** | 60 spraw i 16 dokumentów negatywnych | **0,999** |
+| Reguły + LLM, wydanie 2026.11.21-dev.5 | 30 skanów organizatora | 0,926 |
 | Reguły + LLM (gemma-4-26b-a4b, profil deweloperski) | 15 spraw kontrolnych | 0,994 |
 | Same reguły, symulowane skany | sprawy 01–03 | 0,896 |
 

@@ -2,10 +2,10 @@
 # Profile LLM z release.yaml są przypisywane do dostawcy po base_url.
 providers:
   - code: edenai
-    name: Eden AI
-    base_url: https://api.edenai.run/v3
-    data_location: Francja (UE); model wybierany u dostawcy z UE (sufiks @eu albo dostawca ovhcloud)
-    note: Dostawca do oceny. Bramka API zgodna z OpenAI do modeli wielu dostawców, w tym otwartych modeli Mistral i OVHcloud.
+    name: Eden AI (endpoint UE)
+    base_url: https://api.eu.edenai.run/v3
+    data_location: UE; Eden AI SAS (Francja), hosting AWS Paryż; endpoint UE nie przekazuje treści zapytań poza UE (DPA §12.2)
+    note: Dostawca do oceny. Bramka API zgodna z OpenAI; model Qwen3.5-9B u dostawcy FlexAI w regionie eu.
 
   - code: ovhcloud
     name: OVHcloud AI Endpoints

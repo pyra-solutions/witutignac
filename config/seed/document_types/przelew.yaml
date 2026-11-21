@@ -57,10 +57,13 @@ fields:
   - path: przelew_bankowy.na_rachunek
     group: przelew
     instruction: Numer rachunku odbiorcy (beneficjenta), same cyfry bez prefiksu PL.
-    strategy: rules_first
-    grounding: tokens
+    # LLM lepiej niż reguła odróżnia odbiorcę od nadawcy w układach dwukolumnowych i skanach; numer z LLM
+    # przechodzi tylko wtedy, gdy występuje w tekście (grounding: required), inaczej wygrywa reguła.
+    strategy: llm_first
+    # 'required': numer musi wystąpić w tekście po usunięciu spacji (w dokumencie bywa pogrupowany po 4 cyfry)
+    grounding: required
     rules:
-      - pattern: '(?:rachun\w+\s+(?:odbiorcy|beneficjenta|adresata)|na\s+rachunek(?:\s+nr)?)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
+      - pattern: '(?:rachun\w+\s+(?:odbiorcy|beneficjenta|adresata|kontrahenta|uznawan\w*)|na\s+rachunek(?:\s+nr)?)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
       - pattern: '(?:Beneficjent\w*|Odbiorc\w*|Adresat\w*)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
     normalizers: [{name: iban_digits}]
     validators: [{name: iban_pl}]
@@ -70,8 +73,13 @@ fields:
     instruction: Numer referencyjny / identyfikator transakcji nadany przez bank.
     strategy: rules_first
     rules:
-      - pattern: '(?:nr\.?\s*ref\w*\.?|numer\s+(?:referencyjny|transakcji)(?:\s+operacji)?|identyfikator\s+(?:operacji|transakcji)|id\s+transakcji)[\s:.|…]*([A-Z]{2,}[A-Z0-9]{6,}|\d{8,})'
+      # identyfikator musi zawierać cyfrę, inaczej reguła łapie słowa typu "transakcji" w "Numer referencyjny transakcji X"
+      - pattern: '(?:nr\.?\s*ref\w*\.?|numer\s+(?:referencyjny|transakcji)(?:\s+(?:operacji|transakcji))?|identyfikator\s+(?:operacji|transakcji)|id\s+transakcji)[\s:.|…]*((?=[A-Z0-9]*\d)[A-Z]{2,}[A-Z0-9]{6,}|\d{8,})'
     normalizers: [{name: strip}]
+    # Identyfikator banku to litery i cyfry bez spacji (np. CEN2606184449569). Odrzuca numery postępowań
+    # i fragmenty rachunków, które LLM wpisuje, gdy dokument nie ma numeru transakcji.
+    validators:
+      - {name: pattern, args: {re: '[A-Z0-9]{6,}'}, severity: error}
 
   - path: przelew_bankowy.tytul
     group: przelew
@@ -79,13 +87,18 @@ fields:
     strategy: rules_first
     rules:
       - pattern: 'Tytuł\w*(?:\s+przelewu)?\s*:\s*["„“]([^"”“]{3,400})["”“]'
-      - pattern: '(?:Tytuł\w*(?:\s+przelewu)?|Tytułem|OPIS|Opis)\s*[:|]?\s*\|?\s*\n*\s*([^\n|]{3,400})'
+      # Etykieta "Tytuł"/"Tytułem" (OCR czyta ją też jako "Tytul" albo "Tytut"), po niej dwukropek, pionowa kreska
+      # albo nowa linia. Pomijamy etykiety stojące między nazwą a wartością (np. "Tytułem / Kanał / <tytuł>").
+      # Drugi akapit zaczynający się małą literą to dalszy ciąg tytułu przełamanego przez Docling.
+      - pattern: 'Tytu[łlt]\w*(?:\s+przelewu)?\s*(?:[:|]|\n)\s*\|?\s*\n*\s*(?:(?:Kanał|Status|Kwota|Opis|Waluta|Opłata|Typ\s+\w+|Serwis\s+\w+)\s*:?\s*\n+\s*)*([^\n|]{3,400}(?:\n\n(?-i:[a-ząćęłńóśźż])[^\n|]{0,300})?)'
+      # "Opis" tylko wtedy, gdy nie ma etykiety tytułu; pomijamy nazwy kolumn i rodzaj przelewu.
+      - pattern: 'Opis\s*(?:[:|]|\n)\s*\|?\s*\n*\s*(?!(?:Kwota|Typ\b|Data\b|Waluta|Status|Kanał|PRZELEW\s+(?:ELIXIR|INTERNETOWY|KRAJOWY|ZWYKŁY|SORBNET|EXPRESS)))([^\n|]{3,400}(?:\n\n(?-i:[a-ząćęłńóśźż])[^\n|]{0,300})?)'
     normalizers:
       - {name: collapse_ws}
       # w części układów przed tytułem wpada sąsiednia etykieta tabeli
       - {name: remove_prefix, args: {patterns: ['Typ\s+operacji', 'Status', 'Kanał', 'Tytuł\s+przelewu', 'Tytułem']}}
       # odcina doklejone dalsze pola wydruku, np. 'IDENTYFIKATOR OPERACJI ......... X'
-      - {name: regex_replace, args: {pattern: '\s+[A-ZŁŚŻŹĆĘĄÓŃ]{3,}(?:\s+[A-ZŁŚŻŹĆĘĄÓŃ]{3,})*\s*[.…]{3,}.*$', repl: '', ignore_case: false}}
+      - {name: regex_replace, args: {pattern: '\s+[A-ZŁŚŻŹĆĘĄÓŃ]{2,}\.?(?:\s+[A-ZŁŚŻŹĆĘĄÓŃ]{2,}\.?)*\s*[.…]{3,}.*$', repl: '', ignore_case: false}}
       - {name: strip_quotes}
       - {name: strip_punct, args: {chars: ' ,;:|'}}
 
@@ -93,7 +106,7 @@ fields:
     group: przelew
     instruction: Numer rachunku zleceniodawcy (płatnika), same cyfry bez prefiksu PL.
     strategy: rules_first
-    grounding: tokens
+    grounding: required
     rules:
       - pattern: '(?:rachun\w+\s+(?:obciążany|zleceniodawcy|nadawcy|płatnika|źródłowy)|z\s+rachunku(?:\s+nr)?)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
       - pattern: '(?:Płatnik\w*|Zleceniodawc\w*|Nadawc\w*)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'

@@ -16,7 +16,7 @@ from odwolania2json.convert import Converted, DoclingConverter, restore_dashes
 from odwolania2json.llm import DEFAULT_SYSTEM_PROMPT, LlmClient, LlmError
 from odwolania2json.registry import validators
 from odwolania2json.rules import Candidate, classify, extract_all
-from odwolania2json.textutil import collapse, grounded, page_of, section_text
+from odwolania2json.textutil import collapse, fix_ocr_pl, grounded, page_of, section_text
 
 log = logging.getLogger(__name__)
 
@@ -66,6 +66,8 @@ class Engine:
             # profil konwersji zależy od typu, a typ od treści: konwertujemy profilem domyślnym
             prof = self.release.conversion_profile("default")
             prep.conv = self.converter.convert(pdf, prof)
+            if prep.conv.scanned:
+                prep.conv.markdown = fix_ocr_pl(prep.conv.markdown)
             code, prep.scores = classify(prep.conv.markdown, pdf.stem, self.release)
             if code:
                 prep.doc_type = next(d for d in self.release.document_types if d.code == code)
@@ -158,7 +160,19 @@ class Engine:
             f = fdefs.get(generic(p))
             if f is None or f.derive:
                 continue
-            raw, source, warn = self._choose(f, prep.rules.get(p), prep.llm.get(p), text)
+            cands, warn = self._candidates(f, prep.rules.get(p), prep.llm.get(p), text)
+            # Pierwszy kandydat (w kolejności strategii), który przejdzie normalizację i walidację.
+            # Wartość odrzucona przez walidator z poziomem 'error' oddaje miejsce następnemu źródłu.
+            source, raw, val = None, (cands[0][1] if cands else None), None
+            for i, (src, cand_raw) in enumerate(cands):
+                v = self._normalize(f, cand_raw, warn)
+                if isinstance(v, str):
+                    v = restore_dashes(v, prep.conv.raw_text)
+                if v is not None and self._validate(f, v, warn):
+                    source, raw, val = src, cand_raw, v
+                    break
+                if i + 1 < len(cands):
+                    warn.append(f"wartość ze źródła '{src}' odrzucona, używam następnego źródła")
             entry: dict[str, Any] = {"source": source, "raw": raw, "warnings": warn}
             cand = prep.rules.get(p)
             if cand is not None:
@@ -168,11 +182,6 @@ class Engine:
                 entry["page"] = page_of(text, cand.start)
             if p in prep.llm:
                 entry["llm_value"] = prep.llm[p]
-            val = self._normalize(f, raw, warn) if raw is not None else None
-            if isinstance(val, str):
-                val = restore_dashes(val, prep.conv.raw_text)
-            if val is not None and not self._validate(f, val, warn):
-                val = None
             entry["value"] = val
             ftrace[p] = entry
             if val is not None:
@@ -216,7 +225,9 @@ class Engine:
                         f"lista {top} ma {size} el., pole wymaga co najmniej {f.only_if_list_size_at_least}")
 
     @staticmethod
-    def _choose(f: FieldDef, cand: Candidate | None, llm_val: Any, text: str) -> tuple[Any, str | None, list[str]]:
+    def _candidates(f: FieldDef, cand: Candidate | None, llm_val: Any,
+                    text: str) -> tuple[list[tuple[str, Any]], list[str]]:
+        """Niepuste wartości z reguł i LLM w kolejności strategii pola (LLM tylko po weryfikacji źródła)."""
         warn: list[str] = []
         rule_val = cand.value if cand is not None else None
         llm_ok = llm_val is not None and grounded(llm_val, text, f.grounding)
@@ -228,10 +239,7 @@ class Engine:
             "rules_only": [("rules", rule_val)],
             "llm_only": [("llm", llm_val if llm_ok else None)],
         }[f.strategy]
-        for source, v in order:
-            if v is not None:
-                return v, source, warn
-        return None, None, warn
+        return [(source, v) for source, v in order if v is not None], warn
 
     @staticmethod
     def _normalize(f: FieldDef, raw: Any, warn: list[str]) -> Any:

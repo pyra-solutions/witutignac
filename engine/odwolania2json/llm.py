@@ -153,12 +153,20 @@ class LlmClient:
             "completion_tokens": usage.get("completion_tokens"),
             "request_hash": key,
         }
+        # Dostawca i region przetwarzania, jeśli API je podaje (Eden AI z nagłówkiem x-edenai-metadata).
+        provider = data.get("provider")
+        region = (data.get("edenai_metadata") or {}).get("region")
+        if provider:
+            meta["provider"] = provider
+        if region:
+            meta["region"] = region
         self._cache_put(key, {"result": result, "meta": meta})
         return result, meta
 
     def _post(self, body: dict[str, Any], est_tokens: int) -> dict[str, Any]:
         url = f"{self.base_url}/chat/completions"
-        headers = {"Authorization": f"Bearer {self._key}", "Content-Type": "application/json"}
+        headers = {**self.profile.extra_headers,
+                   "Authorization": f"Bearer {self._key}", "Content-Type": "application/json"}
         delay = 2.0
         last = ""
         for attempt in range(self.profile.max_retries + 1):

@@ -31,7 +31,7 @@ Zmienne `LLM_BASE_URL`, `LLM_MODEL` i `LLM_API_KEY` nadpisują profil, więc mo�
 ```bash
 export PYTHONPATH=engine
 P=engine/.venv/bin/python
-$P -m odwolania2json evaluate --pred output --gold ścieżka/do/dane   # F1 względem wzorców
+$P -m odwolania2json evaluate --pred output --gold ścieżka/do/dane   # F1 względem wzorców (całe drzewo katalogów, także dane/skany)
 $P -m odwolania2json build-release                                   # config/seed/*.yaml -> engine/config/release.json
 $P -m odwolania2json validate-config --config config/seed            # sprawdzenie konfiguracji
 $P -m odwolania2json plugins                                         # lista normalizatorów i walidatorów
@@ -44,7 +44,7 @@ $P -m pytest engine/tests                                            # testy jed
 2. **Klasyfikacja.** Wzorce z wagami z konfiguracji, sprawdzane wyłącznie w treści, bo organizator zastrzega, że nazwa pliku może być dowolna. Wzorce mogą mieć ujemną wagę dla cech dokumentów spoza klas, np. sygnatury orzeczenia KIO. Dokument, który nie osiąga progu żadnego typu, dostaje `{}` (ustawienie `unsupported_output`).
 3. **Reguły deterministyczne.** Regexy w nazwanych sekcjach tekstu i dopasowanie słowników.
 4. **LLM.** Jedno wywołanie na grupę pól, ze schematem JSON zbudowanym z definicji pól i wymuszoną odpowiedzią.
-5. **Arbitraż.** Strategia pola (`llm_first`, `rules_first`, `rules_only`, `llm_only`) wybiera źródło. Wartość z LLM, której nie ma w tekście (`grounding`), jest odrzucana.
+5. **Arbitraż.** Strategia pola (`llm_first`, `rules_first`, `rules_only`, `llm_only`) wybiera źródło. Wartość z LLM, której nie ma w tekście (`grounding`), jest odrzucana. Jeśli wybrana wartość nie przejdzie normalizacji albo walidatora z poziomem `error`, silnik bierze wartość z następnego źródła (np. z reguły, gdy LLM wskazał adresata pisma zamiast Zamawiającego), a ślad zapisuje powód odrzucenia.
 6. **Normalizacja, walidacja, pola wyliczane, limity list.** Potem zapis JSON w kolejności pól z konfiguracji.
 
 ## Jak dodać nowy typ dokumentu (bez zmian w kodzie)

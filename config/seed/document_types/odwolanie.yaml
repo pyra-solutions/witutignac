@@ -36,7 +36,8 @@ sections:
   - name: czynnosc
     # Zdanie "Zamawiający w dniu ... [czynność]." – do pierwszej kropki kończącej zdanie.
     start: ['Zamawiający\s+w\s+dniu']
-    end: ['(?<!\sr)(?<!\sust)(?<!\sart)(?<!\spkt)\.(?=\s|$)']
+    # Nie kończymy zdania na skrótach form prawnych: "sp.", "o.o.", "sp.k.", "S.A." (kropka po pojedynczej literze po kropce).
+    end: ['(?<!\sr)(?<!\sust)(?<!\sart)(?<!\spkt)(?<!\bsp)(?<!\.[a-zA-Z])\.(?=\s|$)']
     max_chars: 300
   - name: zarzuty
     start: ['Zarzut\w*\s+nr\s*1', 'zarzucam', '^\W*ZARZUTY']
@@ -106,7 +107,10 @@ fields:
     instruction: Miejscowość z nagłówka pierwszej strony, z linii typu 'Miejscowość, dnia ...' albo 'Miejscowość DD.MM.RRRR'. Brak takiej linii = null.
     strategy: rules_first
     rules:
-      - pattern: '(?<![\w.])([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+|\s+(?:nad|pod|na)\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?),\s*(?:dnia\s+)?\d{1,2}(?:\.\d{1,2}\.|\s+[a-ząćęłńóśźż]+\s+)\d{4}'
+      # Nazwy wielowyrazowe: "Gorzów-…", "… nad Wisłą", przymiotnik przed nazwą ("Zielona Góra", "Nowy Sącz")
+      # albo po niej ("Gorzów Wielkopolski", "Dąbrowa Górnicza"). Dowolne dwa słowa łapałyby "Warszawa Tarnów"
+      # z linii z adresem KIO.
+      - pattern: '(?<![\w.])((?:(?:Zielona|Jelenia|Kamienna|Stalowa|Nowa|Nowy|Nowe|Stara|Stary|Stare|Biała|Wysokie)[ \t]+)?[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+|\s+(?:nad|pod|na)\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+|[ \t]+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]*(?:ski|ska|skie|cki|cka|ckie|icza|iczy))?),\s*(?:dnia\s+)?\d{1,2}(?:\.\d{1,2}\.|\s+[a-ząćęłńóśźż]+\s+)\d{4}'
         ignore_case: false
     normalizers: [{name: collapse_ws}]
 
@@ -157,7 +161,7 @@ fields:
 
   - path: Odwolujacy[].pelnomocnik.imie_nazwisko
     group: odwolanie
-    instruction: Imię i nazwisko pierwszego pełnomocnika Odwołującego, w mianowniku, bez tytułu (adw., r. pr.).
+    instruction: Imię i nazwisko pierwszego pełnomocnika Odwołującego, w mianowniku, bez tytułu (adw., r. pr.). Imię zakończone na -a przy nazwisku bez końcówki przypadka (np. 'Aleksandra Rybak') to kobieta w mianowniku – przepisz bez zmian.
     strategy: llm_first
     grounding: token_prefix
     rules:
@@ -181,7 +185,7 @@ fields:
     strategy: rules_first
     rules:
       - {pattern: '([\w.+-]+@[\w-]+(?:\.[\w-]+)+)', section: odwolujacy}
-    normalizers: [{name: strip}]
+    normalizers: [{name: email}]
 
   - path: Zamawiajacy[].krs
     group: odwolanie
@@ -202,6 +206,10 @@ fields:
       - pattern: '(?:^|\n)[ \t]*(?:#+[ \t]*)?((?!Prezes|adres|tel\.|KRS|NIP|REGON|ul\.|al\.|Odwołując|Zamawiając|[A-ZŁŚŻŹĆ]\w+,\s*dnia)[^\n]{3,150}?)[ \t]*,?\s*(?:ul\.|al\.|pl\.|os\.)\s'
         section: zamawiajacy
     normalizers: [{name: collapse_ws}, {name: strip_punct, args: {chars: ' ,;:'}}]
+    # Adresat odwołania z nagłówka (Prezes KIO) nie jest Zamawiającym. Odrzucona wartość z LLM oddaje
+    # miejsce regule, która adresata pomija.
+    validators:
+      - {name: pattern, args: {re: '(?!(?:Prezes\b|Krajow\w+\s+Izb\w+\s+Odwoławcz))[\s\S]+'}, severity: error}
 
   - path: Zamawiajacy[].nip
     group: odwolanie

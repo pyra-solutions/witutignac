@@ -17,6 +17,57 @@ Stan na 21.11.2026. Miara: F1 liczone pole po polu względem plików wzorcowych 
 
 Sprawy kontrolne to co czwarta sprawa: 04, 08, …, 60, w tym 6 bardziej zróżnicowanych spraw z drugiej połowy zbioru. Wcześniejsze pomiary z LLM wykonano na profilu deweloperskim (`gemini-dev`). Docelowy model Qwen3.5-9B przez Eden AI zmierzyliśmy na tym samym zbiorze kontrolnym; porównanie z innymi modelami jest w [`llm.md`](llm.md).
 
+## Wydanie 2026.11.21-dev.5: poprawki krok po kroku
+
+Każdą zmianę mierzyliśmy osobno na całym zbiorze organizatora (226 plików), z profilem domyślnym (Qwen3.5-9B przez endpoint UE Eden AI).
+
+| Krok | Zmiana | F1 całości |
+| --- | --- | --- |
+| 0 | Wydanie 2026.11.21-dev.4; silnik bierze następne źródło, gdy walidator z poziomem `error` odrzuci wartość (bez zmiany wyniku: żaden walidator nie miał jeszcze tego poziomu) | 0,9812 |
+| 1 | Osoby podpisujące i NIP mocodawcy tylko z LLM: reguła dopisywała osoby i NIP innego podmiotu | 0,9844 |
+| 2 | Powód czynności: forma „zaniechawszy unieważnienia” (id 10) wygrywa z „wyborem oferty” w tym samym zdaniu; zdanie nie kończy się na skrótach „sp.”, „o.o.”, „sp.k.” | 0,9861 |
+| 3 | Zamawiający: walidator odrzuca „Prezes Krajowej Izby Odwoławczej” (adresat pisma), nazwę bierze reguła | 0,9870 |
+| 4 | Numer transakcji: walidator formatu (litery i cyfry, bez spacji i ukośników) | 0,9874 |
+| 5 | Miejscowość: nazwy wielowyrazowe („Zielona Góra”, „Gorzów Wielkopolski”), bez łapania „Warszawa Tarnów” z linii z adresem KIO | 0,9878 |
+| 6 | Normalizator `email`: przecinek z OCR zamiast kropki | 0,9882 |
+| 7 | Instrukcja pól pełnomocnika: „Aleksandra Rybak” to kobieta w mianowniku (model zamieniał na „Aleksander”) | 0,9895 |
+
+| Zbiór | F1 | Precyzja | Pełność |
+| --- | --- | --- | --- |
+| 60 spraw (180 dokumentów) i 16 dokumentów negatywnych | **0,999** | 0,999 | 0,999 |
+| Skany: odwołania / pełnomocnictwa / przelewy | 0,943 / 0,949 / 0,841 | | |
+| Wszystkie skany (30) | 0,926 | | |
+| Całość (226 plików) | **0,990** | 0,991 | 0,988 |
+
+Ostrzeżenie: poprawki stroiliśmy na tych samych danych, na których mierzymy, a wszystkie 60 spraw pochodzi z jednego generatora. Wynik 0,999 jest więc górną granicą, a nie prognozą dla ukrytego zbioru realnych spraw.
+
+**Same LLM-y bez reguł** (każde pole tylko z modelu, weryfikacja źródła włączona; wydanie 2026.11.21-dev.4): Qwen3.5-9B 0,966 całości (0,975 dla spraw), Gemma 4 26B-A4B 0,964 (0,972), wobec 0,981 hybrydy. Bez reguł najwięcej błędów przybywa w powodzie i dacie czynności, rachunku nadawcy i kwocie przelewu; większy model nie nadrabia braku reguł.
+
+## Pełny zbiór organizatora (wydanie 2026.11.21-dev.4)
+
+Stan repozytorium organizatora z 21.11.2026 (submoduł `hacknation-2026`): 60 spraw, 16 dokumentów negatywnych i 30 nowych skanów ze wzorcami (`dane/skany`). Profil domyślny: Qwen3.5-9B przez endpoint UE Eden AI. 226 plików przetworzono w 125 s (konwersja z cache), bez błędów; wszystkie 210 wywołań LLM ma w śladzie dostawcę `flexai` i region `eu`.
+
+| Zbiór | F1 | Precyzja | Pełność |
+| --- | --- | --- | --- |
+| 60 spraw (180 dokumentów) i 16 dokumentów negatywnych | **0,992** | 0,989 | 0,995 |
+| Skany: odwołania (10) | 0,931 | | |
+| Skany: pełnomocnictwa (10) | 0,924 | | |
+| Skany: potwierdzenia przelewów (10) | 0,826 | | |
+| Wszystkie skany (30) | 0,911 | 0,915 | 0,906 |
+| Całość (226 plików) | **0,981** | 0,979 | 0,983 |
+
+Wszystkie 16 dokumentów negatywnych dostaje `{}`, a wszystkie 30 skanów jest rozpoznanych poprawnie.
+
+Poprawki względem pierwszego przebiegu na tym zbiorze (F1 całości 0,973, przelewy 0,941, skany przelewów 0,698):
+
+- **Tytuł przelewu.** Najpierw etykieta „Tytuł” (także w wariantach z OCR: „Tytul”, „Tytut”), dopiero potem „Opis”. Reguła pomija etykiety stojące między nazwą a wartością („Tytułem / Kanał / …”), dołącza drugi akapit tytułu zaczynający się małą literą i odcina doklejone pole „NR REF. ……”. Błędne tytuły w cyfrowych przelewach: z 6 do 0.
+- **Numer transakcji.** Reguła obsługuje „Numer referencyjny transakcji X” i wymaga cyfry w identyfikatorze. Wcześniej łapała słowa „transakcji” i „operacji”.
+- **Rachunki.** Nowe etykiety „Rachunek kontrahenta” i „Rachunek uznawany”. Numer z LLM jest porównywany z tekstem po samych znakach, bo w dokumentach bywa pogrupowany po 4 cyfry. Dla rachunku odbiorcy pierwszeństwo ma LLM (rozróżnia odbiorcę i nadawcę w układach dwukolumnowych), dla rachunku nadawcy reguła (przy pierwszeństwie LLM 9 błędów zamiast 0).
+- **OCR.** W tekście skanów „Ñ” jest zamieniane na „Ń” („PAÑSTWOWEJ”, „ZAMÓWIEÑ”).
+- **Ocena.** `evaluate` przeszukuje całe drzewo wzorców (także `dane/skany/<rodzaj>/<nr>/`), rozpoznaje rodzaj dokumentu po treści wzorca i bierze nazwę wyniku od PDF-a obok wzorca (organizator zmienił w sprawach 01 i 02 nazwę `potwierdzenie_przelewu.pdf` na `przelew.pdf`).
+
+Pozostałe błędy na skanach to głównie polskie znaki zgubione przez OCR („odwolania” zamiast „odwołania”), których nie da się bezpiecznie odtworzyć, oraz numery rachunków z prefiksem „PL” w 2 wzorcach skanów. Wynik zawiera zawsze same cyfry rachunku, tak jak wszystkie 60 wzorców cyfrowych.
+
 ## Dokumenty negatywne i klasyfikacja
 
 Organizator dołączył dokumenty, które nie należą do żadnej klasy i mają dać `{}`: 12 w `dane/negatywne` i 4 w sprawach 04, 10, 24 i 37. Ewaluacja traktuje każdy PDF bez pliku wzorca jako negatywny: każde wypełnione pole w jego wyniku to FP.

@@ -49,6 +49,30 @@ def test_remove_prefix_and_strip() -> None:
     assert n.strip_quotes('„Dostawa”') == "Dostawa"
 
 
+def test_email_and_ocr_fix() -> None:
+    from odwolania2json.textutil import fix_ocr_pl
+
+    assert n.email("a,wrobel@wrobel-kancelaria.example") == "a.wrobel@wrobel-kancelaria.example"
+    assert n.email(" jan.kowalski @ firma.pl ") == "jan.kowalski@firma.pl"
+    assert n.email("brak adresu") is None
+    assert fix_ocr_pl("PAÑSTWOWEJ ZAMÓWIEÑ") == "PAŃSTWOWEJ ZAMÓWIEŃ"
+
+
+def test_candidates_follow_strategy_and_grounding() -> None:
+    from odwolania2json.pipeline import Engine
+    from odwolania2json.rules import Candidate
+
+    text = "Zamawiający: Orynte Konsulting sp. k."
+    rule = Candidate("Orynte Konsulting sp. k.", 0, 10, 0, "")
+    f = FieldDef(path="Z.nazwa", group="g", strategy="llm_first", grounding="tokens")
+    # LLM pierwszy, reguła jako zapas (do niej sięga potok, gdy walidator odrzuci wartość z LLM)
+    assert Engine._candidates(f, rule, "Orynte Konsulting", text)[0] == [
+        ("llm", "Orynte Konsulting"), ("rules", "Orynte Konsulting sp. k.")]
+    # wartości z LLM, której nie ma w tekście, nie ma wśród kandydatów
+    cands, warn = Engine._candidates(f, rule, "Prezes KIO", text)
+    assert cands == [("rules", "Orynte Konsulting sp. k.")] and warn
+
+
 def test_validators() -> None:
     assert v.nip("5540240549") is None
     assert v.nip("5540240548") is not None
@@ -129,3 +153,20 @@ def test_evaluate_negative_documents(tmp_path: Path) -> None:
     assert rep.negatives == 2
     assert rep.negatives_classified == ["c1/obcy2"]
     assert rep.positives_empty == []
+
+
+def test_evaluate_input_names_and_nested_dirs(tmp_path: Path) -> None:
+    # Wynik ma nazwę PDF-a: potwierdzenie_przelewu.pdf albo (po zmianie u organizatora) przelew.pdf.
+    # Wzorce mogą leżeć głębiej (dane/skany/<rodzaj>/<nr>/) i mieć dowolne nazwy.
+    gold, pred = tmp_path / "gold", tmp_path / "pred"
+    przelew = {"przelew_bankowy": {"kwota": 100}}
+    for case, pdf in (("stara", "potwierdzenie_przelewu"), ("nowa", "przelew"), ("skany/przelewy/0001", "0001")):
+        (gold / case).mkdir(parents=True)
+        (pred / case).mkdir(parents=True)
+        (gold / case / f"{pdf}.pdf").write_bytes(b"%PDF")
+        (gold / case / ("0001.json" if pdf == "0001" else "przelew.json")).write_text(json.dumps(przelew))
+        (pred / case / f"{pdf}.json").write_text(json.dumps(przelew))
+    rep = evaluate(pred, gold, {"potwierdzenie_przelewu": "przelew"})
+    assert (rep.total.tp, rep.total.fp, rep.total.fn) == (3, 0, 0)
+    assert rep.negatives == 0 and rep.missing_pred == []
+    assert set(rep.by_type) == {"przelew"}
