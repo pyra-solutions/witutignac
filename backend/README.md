@@ -87,6 +87,7 @@ Pliki wydań trafiają do repozytorium, więc historia konfiguracji jest też w 
 | `GET /api/audit` | dziennik zdarzeń |
 | `GET /api/config/active` | konfiguracja, której używa silnik (`engine/config/release.json`) |
 | `GET /api/document-types/{kod}/llm-schemas`, `/source` | schematy JSON wysyłane do LLM; plik YAML typu |
+| `POST /api/document-types` | zapis typu dokumentu z GUI w `config/seed/document_types/` (JSON: `source` z treścią YAML, `replace`); przed zapisem te same sprawdzenia co `validate-config`; 422 przy błędzie, 409, gdy typ istnieje bez `replace`; aktywne wydanie się nie zmienia |
 | `GET /api/llm-models` | wielkość i licencja modeli z `config/seed/llm_providers.yaml` |
 | `GET /api/releases` | lista wydań (bez snapshotu) |
 | `GET /api/releases/active` | aktywne wydanie ze snapshotem; 404, gdy `release.json` nie odpowiada żadnemu wydaniu |

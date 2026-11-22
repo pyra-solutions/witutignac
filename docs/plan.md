@@ -40,8 +40,8 @@ Rdzeń oceniany przez organizatora musi być w Pythonie, a o wyniku etapu 1 decy
 | Silnik (`engine/`) | potok ekstrakcji; polecenia `run`, `evaluate`, `build-release`, `validate-config`, `plugins` | gotowy, F1 0,960 na samych regułach (60 spraw) |
 | CLI (`start.bat`, `start_linux.sh`, `start.sh`) | przy pierwszym uruchomieniu tworzy środowisko i instaluje zależności, potem przetwarza `./input` do `./output` | gotowy |
 | Konfiguracja (`config/seed/`, `config/releases/`, `engine/config/release.json`) | definicje typów dokumentów, słowniki, profile Docling i LLM; niezmienne wydania | gotowa dla trzech typów: odwołanie, pełnomocnictwo, potwierdzenie przelewu |
-| Backend FastAPI (`backend/`) | API dla GUI: sprawy (wgranie PDF, przetwarzanie silnikiem w tle, wyniki, ślad, poprawki, audyt), wydania i konfiguracja; serwuje zbudowane GUI | gotowy; edycja konfiguracji przez API do zrobienia |
-| GUI w Angularze (`apps/web/`, uruchomienie: `gui.bat`, `gui.sh`) | wgranie spraw, weryfikacja pól z podglądem PDF i śladem ekstrakcji, konfiguracja, wydania, jakość, audyt | gotowe, podłączone do backendu; konfiguracja tylko do odczytu, poza publikacją i aktywacją wydań |
+| Backend FastAPI (`backend/`) | API dla GUI: sprawy (wgranie PDF, przetwarzanie silnikiem w tle, wyniki, ślad, poprawki, audyt), wydania i konfiguracja; serwuje zbudowane GUI | gotowy; typy dokumentów zapisywane z GUI, słowniki i profile tylko w plikach |
+| GUI w Angularze (`apps/web/`, uruchomienie: `gui.bat`, `gui.sh`) | wgranie spraw, weryfikacja pól z podglądem PDF i śladem ekstrakcji, konfiguracja, wydania, jakość, audyt | gotowe, podłączone do backendu; konfiguracja tylko do odczytu, poza dodawaniem typów dokumentów oraz publikacją i aktywacją wydań |
 | API LLM | Eden AI, model Qwen3.5-9B u FlexAI (UE) | gotowe; F1 0,993 na 15 sprawach kontrolnych |
 
 Silnik to jeden rdzeń. CLI i backend wywołują ten sam kod, a backend korzysta z modeli konfiguracji silnika (Pydantic), więc format wydania definiuje wyłącznie silnik.
@@ -190,7 +190,7 @@ Backend obsługuje GUI i nie jest potrzebny do uruchomienia ekstrakcji. Pracuje 
 
 | Gotowe | Do zrobienia |
 | --- | --- |
-| Sprawy z GUI: wgranie PDF lub ZIP, kolejka w tle z tym samym `Engine` co CLI, wyniki, ślad, Markdown, PDF, ZIP z wynikami | edycja konfiguracji przez API z walidacją i zapisem do YAML |
+| Sprawy z GUI: wgranie PDF lub ZIP, kolejka w tle z tym samym `Engine` co CLI, wyniki, ślad, Markdown, PDF, ZIP z wynikami | edycja słowników i profili przez API (typy dokumentów już są) |
 | Poprawki i zatwierdzenie dokumentu z walidacją walidatorami silnika; dziennik audytu (`gui-data/audit.jsonl`) | uruchomienie ekstrakcji szkicem konfiguracji bez publikacji wydania |
 | Wydania, aktywna konfiguracja, szkic z YAML, dostawcy i modele LLM, schematy JSON wysyłane do LLM | ewaluacja F1 wydania z poziomu GUI |
 | `manage.py publish`, `activate`, `releases`, `serve`; publikacja i aktywacja wydań także z GUI (ekran Wydania) | |
@@ -318,7 +318,7 @@ Rozwiązanie konkursowe działa na jednym komputerze. Wdrożenie dla wielu użyt
 - [x] GUI: wszystkie ekrany.
 - [x] Wybór modelu pomiarem F1: Qwen3.5-9B przez Eden AI u FlexAI (F1 0,993 na 15 sprawach kontrolnych).
 - [x] Podłączenie GUI do API: wydania, konfiguracja, ekran weryfikacji ze śladem ekstrakcji.
-- [ ] Edycja konfiguracji przez API z zapisem do YAML.
+- [x] Dodawanie i zastępowanie typów dokumentów z GUI: zapis YAML przez API po walidacji jak `validate-config` (22.11.2026). Słowniki i profile nadal tylko w plikach.
 - [x] Uruchomienie ekstrakcji z GUI na wgranym PDF (22.11.2026).
 - [x] Budżet czasu partii przy limicie 45 minut na 150 PDF-ów (22.11.2026).
 - [x] Wstępna klasyfikacja PDF-ów cyfrowych z warstwy tekstowej: wyraźne negatywy bez konwersji (wydanie 2026.11.22-dev.6, 22.11.2026).

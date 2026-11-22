@@ -60,6 +60,7 @@ W interfejsie można:
   z dostawcą i regionem przetwarzania,
 - poprawić pola, zatwierdzić dokument i pobrać wyniki sprawy jako ZIP w układzie katalogu `output`,
 - przejrzeć konfigurację silnika: typy dokumentów, słowniki, modele LLM, profile Docling, wydania i dziennik zmian,
+- dodać albo zastąpić typ dokumentu (wgrany lub wklejony plik YAML, sprawdzany przed zapisem jak `validate-config`),
 - opublikować konfigurację z plików YAML jako nowe wydanie i aktywować wybrane wydanie (także wycofać zmiany).
 
 Sprawy z interfejsu trafiają do katalogu `gui-data/`, a nie do `input/` i `output/`.

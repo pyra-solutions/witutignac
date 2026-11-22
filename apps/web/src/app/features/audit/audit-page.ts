@@ -23,6 +23,8 @@ const EVENTS: Record<string, string> = {
   poprawki_odrzucone: 'Przywrócono wynik silnika',
   wydanie_opublikowane: 'Opublikowano wydanie konfiguracji',
   wydanie_aktywowane: 'Aktywowano wydanie konfiguracji',
+  typ_dokumentu_dodany: 'Dodano typ dokumentu (konfiguracja robocza)',
+  typ_dokumentu_zastapiony: 'Zastąpiono typ dokumentu (konfiguracja robocza)',
 };
 
 @Component({

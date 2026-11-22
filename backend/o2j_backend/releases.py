@@ -22,7 +22,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, ValidationError
 
-from odwolania2json.config import Release, build_from_seed, config_problems
+from odwolania2json.config import DocumentType, Release, build_from_seed, config_problems
 
 from . import REPO_ROOT
 
@@ -117,6 +117,76 @@ def build_draft(files: ConfigFiles, version: str = "draft") -> Release:
         raise ReleaseError(f"Konfiguracja w {files.seed_dir} nie przechodzi walidacji silnika:\n{e}") from e
     _raise_problems(release, f"Konfiguracja w {files.seed_dir}")
     return release.model_copy(update={"version": version})
+
+
+# --- typy dokumentów z GUI ------------------------------------------------------------------------
+
+_TYPE_CODE_RE = re.compile(r"[a-z0-9][a-z0-9_]{0,63}")
+MAX_TYPE_SOURCE_CHARS = 256_000
+
+
+class TypeExistsError(ReleaseError):
+    pass
+
+
+@dataclass(frozen=True)
+class SavedType:
+    code: str
+    name: str
+    path: Path
+    created: bool
+
+
+def _type_files(files: ConfigFiles) -> dict[str, Path]:
+    """Kod typu -> plik YAML w `config/seed/document_types` (nazwa pliku nie musi być równa kodowi)."""
+    out: dict[str, Path] = {}
+    for p in sorted((files.seed_dir / "document_types").glob("*.yaml")):
+        try:
+            data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+        except yaml.YAMLError:
+            continue
+        if isinstance(data, dict) and isinstance(data.get("code"), str):
+            out[data["code"]] = p
+    return out
+
+
+def save_document_type(files: ConfigFiles, source: str, *, replace: bool = False) -> SavedType:
+    """Zapisuje typ dokumentu (treść YAML) w `config/seed/document_types/`.
+
+    Zapis następuje tylko wtedy, gdy cała konfiguracja robocza z tym typem przechodzi te same sprawdzenia
+    co `validate-config`. Plik trafia na dysk w oryginalnej postaci, z komentarzami. Silnik zaczyna go używać
+    dopiero po publikacji i aktywacji wydania, więc sam zapis nie zmienia `engine/config/release.json`.
+    """
+    try:
+        data = yaml.safe_load(source)
+    except yaml.YAMLError as e:
+        raise ReleaseError(f"Niepoprawny YAML:\n{e}") from e
+    if not isinstance(data, dict):
+        raise ReleaseError("Plik YAML musi opisywać jeden typ dokumentu (code, name, classification, fields).")
+    try:
+        dt = DocumentType.model_validate(data)
+    except ValidationError as e:
+        raise ReleaseError(f"Typ dokumentu nie pasuje do modelu konfiguracji silnika:\n{e}") from e
+    if not _TYPE_CODE_RE.fullmatch(dt.code):
+        raise ReleaseError(f"Niepoprawny kod typu {dt.code!r}: dozwolone są małe litery, cyfry i '_' (do 64 znaków).")
+
+    existing = _type_files(files)
+    created = dt.code not in existing
+    if not created and not replace:
+        raise TypeExistsError(f"Typ {dt.code} już istnieje ({existing[dt.code].name}). Zaznacz zastąpienie, żeby go nadpisać.")
+    path = existing.get(dt.code) or files.seed_dir / "document_types" / f"{dt.code}.yaml"
+    if created and path.exists():
+        raise ReleaseError(f"Plik {path.name} już istnieje i opisuje inny typ dokumentu.")
+
+    draft = build_draft(files)
+    others = [d for d in draft.document_types if d.code != dt.code]
+    _raise_problems(draft.model_copy(update={"document_types": [*others, dt]}), f"Konfiguracja z typem {dt.code}")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".yaml.tmp")
+    tmp.write_text(source if source.endswith("\n") else source + "\n", encoding="utf-8")
+    tmp.replace(path)
+    return SavedType(dt.code, dt.name, path, created)
 
 
 def _llm_meta(files: ConfigFiles, section: str, model: type[BaseModel]) -> list[Any]:

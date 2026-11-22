@@ -1,8 +1,11 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from o2j_backend import REPO_ROOT
 from o2j_backend.api import app, get_files
 from o2j_backend.releases import publish
+
+EXAMPLE_TYPE = REPO_ROOT / "config" / "examples" / "document_types" / "przystapienie.yaml"
 
 
 @pytest.fixture
@@ -91,6 +94,47 @@ def test_publish_runs_engine_checks(client, files):
     r = client.post("/api/releases", json={"version": "v1"})
     assert r.status_code == 409
     assert "niepoprawny regex" in r.json()["detail"]
+
+
+def test_save_document_type_from_gui(client, files, gui_state):
+    """Nowy typ dokumentu z GUI: zapis YAML po walidacji jak validate-config, potem zwykła publikacja."""
+    store, _ = gui_state
+    source = EXAMPLE_TYPE.read_text(encoding="utf-8")
+    target = files.seed_dir / "document_types" / "przystapienie.yaml"
+
+    r = client.post("/api/document-types", json={"source": source})
+    assert r.status_code == 201
+    assert r.json() == {"code": "przystapienie", "name": "Zgłoszenie przystąpienia do postępowania odwoławczego",
+                        "file": "przystapienie.yaml", "created": True}
+    assert target.read_text(encoding="utf-8") == source  # oryginalny plik, z komentarzami
+    assert "przystapienie" in [d["code"] for d in client.get("/api/config/draft").json()["document_types"]]
+    assert not files.active_file.exists()  # sam zapis nie zmienia konfiguracji silnika
+
+    assert client.post("/api/document-types", json={"source": source}).status_code == 409
+    r = client.post("/api/document-types", json={"source": source, "replace": True})
+    assert r.status_code == 201 and r.json()["created"] is False
+
+    # Błędny plik nie trafia na dysk, a komunikat mówi, co poprawić.
+    bad = source.replace("{name: date_iso}", "{name: nie_ma_takiego}")
+    r = client.post("/api/document-types", json={"source": bad, "replace": True})
+    assert r.status_code == 422 and "nieznany normalizator nie_ma_takiego" in r.json()["detail"]
+    bad = source.replace("pattern: '\\b(KIO", "pattern: '\\b((KIO", 1)  # niedomknięty nawias w regule
+    r = client.post("/api/document-types", json={"source": bad, "replace": True})
+    assert r.status_code == 422 and "niepoprawny regex" in r.json()["detail"]
+    assert client.post("/api/document-types", json={"source": "code: ["}).status_code == 422
+    assert client.post("/api/document-types", json={"source": "code: x\nname: X\n"}).status_code == 422
+    assert client.post("/api/document-types", json={"source": source.replace("code: przystapienie", "code: ../x")}
+                       ).status_code == 422
+    assert target.read_text(encoding="utf-8") == source
+    assert not (files.seed_dir / "document_types" / "przystapienie.yaml.tmp").exists()
+
+    events = [(e["event"], e.get("doc_type")) for e in store.audit_entries()]
+    assert events == [("typ_dokumentu_zastapiony", "przystapienie"), ("typ_dokumentu_dodany", "przystapienie")]
+
+    r = client.post("/api/releases", json={"version": "v1"})
+    assert r.status_code == 201
+    snapshot = client.get("/api/releases/v1").json()["snapshot"]
+    assert "przystapienie" in [d["code"] for d in snapshot["document_types"]]
 
 
 def test_draft(client, files):

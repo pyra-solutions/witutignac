@@ -20,7 +20,7 @@ from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, PlainTextResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import REPO_ROOT, __version__
 from . import releases as rel
@@ -278,6 +278,33 @@ def get_document_type_source(code: str, files: FilesDep) -> str:
         if isinstance(data, dict) and data.get("code") == code:
             return text
     raise HTTPException(status_code=404, detail=f"Nie ma pliku YAML typu {code}")
+
+
+class DocumentTypeIn(BaseModel):
+    source: str = Field(max_length=rel.MAX_TYPE_SOURCE_CHARS)
+    replace: bool = False
+
+
+class DocumentTypeSaved(BaseModel):
+    code: str
+    name: str
+    file: str
+    created: bool
+
+
+@app.post("/api/document-types", status_code=201)
+def save_document_type(body: DocumentTypeIn, files: FilesDep, store: StoreDep) -> DocumentTypeSaved:
+    """Zapisuje typ dokumentu z GUI w `config/seed/document_types/` po sprawdzeniu jak w `validate-config`.
+
+    To zmiana konfiguracji roboczej: silnik używa typu dopiero po publikacji i aktywacji wydania."""
+    try:
+        saved = rel.save_document_type(files, body.source, replace=body.replace)
+    except rel.TypeExistsError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except rel.ReleaseError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    store.audit("typ_dokumentu_dodany" if saved.created else "typ_dokumentu_zastapiony", doc_type=saved.code)
+    return DocumentTypeSaved(code=saved.code, name=saved.name, file=saved.path.name, created=saved.created)
 
 
 class LlmStatus(BaseModel):
