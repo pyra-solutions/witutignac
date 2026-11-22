@@ -1,5 +1,5 @@
 {
-  "version": "2026.11.22-dev.2",
+  "version": "2026.11.22-dev.4",
   "settings": {
     "unsupported_output": "{}",
     "default_llm_profile": "eden-qwen3.5-9b",
@@ -25,7 +25,8 @@
       "ocr_scale": 3.0,
       "ocr_model_size": "small",
       "scanned_label_columns": true,
-      "scanned_max_pages": 3
+      "scanned_max_pages": 3,
+      "scanned_bleed_cutoff": 155
     }
   ],
   "llm_profiles": [
@@ -1950,7 +1951,7 @@
           "rules": [
             {
               "kind": "regex",
-              "pattern": "(?:rachun\\w+\\s+(?:odbiorcy|beneficjenta|adresata|kontrahenta|uznawan\\w*)|na\\s+rachunek(?:\\s+nr)?)[\\s\\S]{0,200}?((?:PL)?\\s?\\d{2}(?:\\s?\\d{4}){6})",
+              "pattern": "(?:[rz]ac[hn]un\\w+\\s+(?:odbiorcy|beneficjenta|adresata|kontrahenta|uznawan\\w*)|na\\s+rachunek(?:\\s+nr)?)[\\s\\S]{0,200}?((?:PL)?\\s?\\d{2}(?:\\s?\\d{4}){6})",
               "group": 1,
               "section": null,
               "occurrence": "first",
@@ -1961,7 +1962,7 @@
             },
             {
               "kind": "regex",
-              "pattern": "(?:Beneficjent\\w*|Odbiorc\\w*|Adresat\\w*)[\\s\\S]{0,200}?((?:PL)?\\s?\\d{2}(?:\\s?\\d{4}){6})",
+              "pattern": "(?:Beneficjent\\w*|Odbiorc\\w*|Adresat\\w*|Kontrahent\\w*)[\\s\\S]{0,200}?((?:PL)?\\s?\\d{2}(?:\\s?\\d{4}){6})",
               "group": 1,
               "section": null,
               "occurrence": "first",
@@ -2156,7 +2157,7 @@
           "rules": [
             {
               "kind": "regex",
-              "pattern": "(?:rachun\\w+\\s+(?:obciążany|zleceniodawcy|nadawcy|płatnika|źródłowy)|z\\s+rachunku(?:\\s+nr)?)[\\s\\S]{0,200}?((?:PL)?\\s?\\d{2}(?:\\s?\\d{4}){6})",
+              "pattern": "(?:[rz]ac[hn]un\\w+\\s+(?:obciążany|zleceniodawcy|z[il]ecen\\w*|nadawcy|płatnika|źródłowy)|z\\s+rachunku(?:\\s+nr)?)[\\s\\S]{0,200}?((?:PL)?\\s?\\d{2}(?:\\s?\\d{4}){6})",
               "group": 1,
               "section": null,
               "occurrence": "first",

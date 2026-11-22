@@ -68,8 +68,8 @@ fields:
     # 'required': numer musi wystąpić w tekście po usunięciu spacji (w dokumencie bywa pogrupowany po 4 cyfry)
     grounding: required
     rules:
-      - pattern: '(?:rachun\w+\s+(?:odbiorcy|beneficjenta|adresata|kontrahenta|uznawan\w*)|na\s+rachunek(?:\s+nr)?)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
-      - pattern: '(?:Beneficjent\w*|Odbiorc\w*|Adresat\w*)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
+      - pattern: '(?:[rz]ac[hn]un\w+\s+(?:odbiorcy|beneficjenta|adresata|kontrahenta|uznawan\w*)|na\s+rachunek(?:\s+nr)?)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
+      - pattern: '(?:Beneficjent\w*|Odbiorc\w*|Adresat\w*|Kontrahent\w*)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
     normalizers: [{name: iban_digits}]
     validators: [{name: iban_pl}]
 
@@ -119,7 +119,7 @@ fields:
     strategy: rules_first
     grounding: required
     rules:
-      - pattern: '(?:rachun\w+\s+(?:obciążany|zleceniodawcy|nadawcy|płatnika|źródłowy)|z\s+rachunku(?:\s+nr)?)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
+      - pattern: '(?:[rz]ac[hn]un\w+\s+(?:obciążany|zleceniodawcy|z[il]ecen\w*|nadawcy|płatnika|źródłowy)|z\s+rachunku(?:\s+nr)?)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
       - pattern: '(?:Płatnik\w*|Zleceniodawc\w*|Nadawc\w*)[\s\S]{0,200}?((?:PL)?\s?\d{2}(?:\s?\d{4}){6})'
     normalizers: [{name: iban_digits}]
     validators: [{name: iban_pl}]

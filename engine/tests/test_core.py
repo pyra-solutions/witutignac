@@ -140,6 +140,43 @@ def test_profile_cache_key_ignores_default_ocr_options() -> None:
     p = ConversionProfile()
     assert "ocr_scale" not in _profile_key(p) and "ocr_model_size" not in _profile_key(p)
     assert "ocr_scale" in _profile_key(p.model_copy(update={"ocr_scale": 4.0}))
+    bleed = p.model_copy(update={"scanned_bleed_cutoff": 155})
+    assert _profile_key(bleed, scanned=False) == _profile_key(p, scanned=False)
+
+
+def test_remove_bleed_gray_and_rapidocr_boxes_to_lines() -> None:
+    import numpy as np
+    from odwolania2json.convert import boxes_to_lines, remove_bleed_gray
+    from odwolania2json.pipeline import _transfer_garble_count
+
+    # strona z prześwitem (jasnoszary > 155, < 30% strony) jest czyszczona, ciemny tekst zostaje
+    img = np.full((100, 100), 255, dtype=np.uint8)
+    img[10:20, 10:80] = 30
+    img[30:50, 10:80] = 200
+    cleaned, changed = remove_bleed_gray(img, 155)
+    assert changed
+    assert cleaned[15, 15] == 30 and cleaned[40, 40] == 255
+
+    # szary papier (>30% strony) oraz czysty skan 1-bitowy nie są modyfikowane
+    gray_paper = np.full((100, 100), 200, dtype=np.uint8)
+    gray_paper[10:20, 10:80] = 20
+    _, changed_paper = remove_bleed_gray(gray_paper, 155)
+    assert not changed_paper
+    bw = np.full((100, 100), 255, dtype=np.uint8)
+    bw[10:20, 10:80] = 0
+    _, changed_bw = remove_bleed_gray(bw, 155)
+    assert not changed_bw
+
+    # składanie ramek mimo lekkiego przekrzywienia + zawinięta druga linia z lekkim nachodzeniem Y
+    boxes = [
+        [[20, 14], [80, 14], [80, 30], [20, 30]],
+        [[140, 10], [420, 10], [420, 30], [140, 30]],
+        [[140, 24], [380, 24], [380, 42], [140, 42]],
+    ]
+    txts = ["Tytułem", "opłata skarbowa dla adw.", "Monika Zawadzka ZP/107/2026"]
+    assert boxes_to_lines(boxes, txts) == "Tytułem | opłata skarbowa dla adw. Monika Zawadzka ZP/107/2026"
+    assert _transfer_garble_count("adwokat Monk d w o o2e") > 0
+    assert _transfer_garble_count("adwokat Monika Zawadzka") == 0
 
 
 def test_candidates_follow_strategy_and_grounding() -> None:
@@ -254,6 +291,17 @@ def test_evaluate_input_names_and_nested_dirs(tmp_path: Path) -> None:
     assert (rep.total.tp, rep.total.fp, rep.total.fn) == (3, 0, 0)
     assert rep.negatives == 0 and rep.missing_pred == []
     assert set(rep.by_type) == {"przelew"}
+
+
+def test_evaluate_z_rachunku_bez_pl(tmp_path: Path) -> None:
+    gold, pred = tmp_path / "gold", tmp_path / "pred"
+    gold.mkdir()
+    pred.mkdir()
+    (gold / "p.pdf").write_bytes(b"%PDF")
+    (gold / "p.json").write_text(json.dumps({"przelew_bankowy": {"z_rachunku": "PL62217000089152501756617062"}}))
+    (pred / "p.json").write_text(json.dumps({"przelew_bankowy": {"z_rachunku": "62217000089152501756617062"}}))
+    rep = evaluate(pred, gold, {})
+    assert (rep.total.tp, rep.total.fp, rep.total.fn) == (1, 0, 0)
 
 
 def test_dotenv_bom_and_key_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

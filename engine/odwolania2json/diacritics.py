@@ -86,6 +86,22 @@ class DiacriticsRestorer:
         hit = self._map.get(fold(lw))
         return hit is not None and hit[0] == lw
 
+    def _fix_ocr_q(self, w: str, lw: str) -> str | None:
+        """RapidOCR myli 'ą' z 'q' (np. 'towarzyszącq') oraz początkowe 'O' z 'Q'. Poprawia tylko wtedy,
+        gdy oryginał nie jest słowem słownikowym, a poprawione słowo istnieje w SJP."""
+        if "q" in lw and not self._doc_word(lw):
+            alt = lw.replace("q", "ą")
+            if self._doc_word(alt):
+                return alt
+            hit = self._map.get(fold(alt))
+            if hit is not None and not (hit[1] and not w.islower()) and _consistent(alt, hit[0]):
+                return hit[0]
+        if w.startswith("Q") and not lw.startswith("qu") and not self._doc_word(lw):
+            alt_o = "o" + lw[1:]
+            if self._doc_word(alt_o):
+                return alt_o
+        return None
+
     @classmethod
     def from_file(cls, path: Path) -> "DiacriticsRestorer":
         with gzip.open(path, "rt", encoding="utf-8") as f:
@@ -118,6 +134,8 @@ class DiacriticsRestorer:
                 if cand in self._proper and w.islower():
                     cand = None  # „łukasz” tylko dla „Lukasz”/„LUKASZ”, nie dla czasownika „lukasz”
             if cand is None or cand == lw or not _consistent(lw, cand):
+                cand = self._fix_ocr_q(w, lw)
+            if cand is None or cand == lw:
                 return w
             out = _with_case(w, cand)
             if out is None:

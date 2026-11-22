@@ -205,3 +205,27 @@ def test_regula_nie_nadpisuje_wartosci_innego_elementu_listy() -> None:
         consortium_llm,
         [ListDef(path="Odwolujacy", max_items=1)],
     ) is None
+
+
+def test_formularz_bez_dwukropkow_pary_etykieta_wartosc() -> None:
+    items = [
+        ("Bank Karpacki", 40, 20, 180, 40),
+        ("Rachunek zleceniodawcy", 40, 100, 160, 114),
+        ("Nazwa zleceniodawcy", 40, 120, 160, 134),
+        ("Rachunek kontrahenta", 40, 140, 160, 154),
+        ("11 1240 1111 9078 8570 5000 0455", 220, 100, 450, 114),
+        ("Kancelaria SP. P.", 220, 120, 360, 134),
+        ("25 1030 1508 9486 5035 5622 1675", 220, 140, 450, 154),
+    ]
+    doc = _doc(items)
+    notes = reorder_label_columns(doc)
+    assert notes
+    assert _texts(doc) == [
+        "Bank Karpacki",
+        "Rachunek zleceniodawcy",
+        "11 1240 1111 9078 8570 5000 0455",
+        "Nazwa zleceniodawcy",
+        "Kancelaria SP. P.",
+        "Rachunek kontrahenta",
+        "25 1030 1508 9486 5035 5622 1675",
+    ]

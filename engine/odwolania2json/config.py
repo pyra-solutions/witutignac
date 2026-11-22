@@ -172,6 +172,8 @@ class ConversionProfile(_Model):
     # prawie zawsze na stronach 1–2; 3 strony zamiast 6 skracają konwersję długiego skanu o połowę
     # bez zmiany F1 na 30 skanach organizatora (docs/raport-jakosci.md).
     scanned_max_pages: int | None = Field(default=None, ge=1)
+    # Skany: próg odcięcia szarego pasma (prześwitujący druk z odwrotu kartki -> biel) przed OCR.
+    scanned_bleed_cutoff: int | None = Field(default=None, ge=100, le=250)
 
 
 class LlmProfile(_Model):

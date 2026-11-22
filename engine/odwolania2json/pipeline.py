@@ -12,8 +12,14 @@ from typing import Any
 import odwolania2json.validators  # noqa: F401 — rejestracja walidatorów
 from odwolania2json import normalizers as norm
 from odwolania2json.assemble import _max_index, assemble, build_tree, flatten, generic, json_schema
-from odwolania2json.config import DocumentType, FieldDef, Release
-from odwolania2json.convert import Converted, DoclingConverter, restore_dashes
+from odwolania2json.config import ConversionProfile, DocumentType, FieldDef, Release
+from odwolania2json.convert import (
+    Converted,
+    DoclingConverter,
+    rapidocr_pages_text,
+    rapidocr_transfer_text,
+    restore_dashes,
+)
 from odwolania2json.diacritics import restore_diacritics
 from odwolania2json.llm import DEFAULT_SYSTEM_PROMPT, LlmClient, LlmError
 from odwolania2json.registry import validators
@@ -79,10 +85,51 @@ class Engine:
             if code:
                 prep.doc_type = next(d for d in self.release.document_types if d.code == code)
                 prep.rules = extract_all(prep.doc_type, prep.conv.markdown, self.release)
+                if prep.conv.scanned:
+                    if code == "przelew":
+                        self._maybe_transfer_fallback(pdf, prof, prep)
+                    elif prof.scanned_bleed_cutoff and _bleed_garble_count(prep.conv.markdown) >= 12:
+                        self._maybe_bleed_fallback(pdf, prof, prep)
         except Exception as e:  # jeden zły plik nie zatrzymuje całej partii
             log.exception("błąd przygotowania %s", pdf)
             prep.errors.append(f"{type(e).__name__}: {e}")
         return prep
+
+    def _maybe_transfer_fallback(self, pdf: Path, prof: ConversionProfile, prep: Prepared) -> None:
+        """Dla skanów potwierdzeń przelewów o słabym albo zniekształconym tekście uruchamia zapasowy OCR
+        (pypdfium2 + RapidOCR) bez segmentacji tabel Doclinga i wybiera wariant czystszy/pełniejszy."""
+        assert prep.conv is not None and prep.doc_type is not None
+        if not _weak_transfer_ocr(prep.conv, prep.rules):
+            return
+        fb_raw = rapidocr_transfer_text(pdf, prof)
+        fb_md = fix_ocr_pl(fb_raw)
+        fb_diac: list[tuple[str, str]] = []
+        if self.release.settings.ocr_restore_diacritics:
+            fb_md, fb_diac = restore_diacritics(fb_md)
+        fb_rules = extract_all(prep.doc_type, fb_md, self.release)
+        if _transfer_text_score(fb_rules, fb_md) > _transfer_text_score(prep.rules, prep.conv.markdown):
+            prep.conv.markdown = fb_md
+            prep.diacritics = fb_diac
+            prep.rules = fb_rules
+            prep.conv.notes.append("zapasowy OCR: RapidOCR + pypdfium2")
+
+    def _maybe_bleed_fallback(self, pdf: Path, prof: ConversionProfile, prep: Prepared) -> None:
+        """Dla skanów z ciężkim prześwitem z odwrotu kartki uruchamia w pamięci RapidOCR z odcięciem
+        szarego pasma (bez stratnej rekompresji całego PDF)."""
+        assert prep.conv is not None and prep.doc_type is not None
+        fb_raw, cleaned = rapidocr_pages_text(pdf, prof, bleed_cutoff=prof.scanned_bleed_cutoff)
+        if not cleaned:
+            return
+        fb_md = fix_ocr_pl(fb_raw)
+        fb_diac: list[tuple[str, str]] = []
+        if self.release.settings.ocr_restore_diacritics:
+            fb_md, fb_diac = restore_diacritics(fb_md)
+        fb_rules = extract_all(prep.doc_type, fb_md, self.release)
+        if _bleed_garble_count(fb_md) < _bleed_garble_count(prep.conv.markdown) and len(fb_rules) > len(prep.rules):
+            prep.conv.markdown = fb_md
+            prep.diacritics = fb_diac
+            prep.rules = fb_rules
+            prep.conv.notes.append(f"odcięto szare pasmo >{prof.scanned_bleed_cutoff} (RapidOCR)")
 
     def run_llm(self, prep: Prepared) -> None:
         dt, conv = prep.doc_type, prep.conv
@@ -457,6 +504,38 @@ class Engine:
 def resolve_workers(value: int, n_docs: int) -> int:
     """Liczba procesów konwersji: nie więcej niż dokumentów i co najmniej 1."""
     return max(1, min(int(value), n_docs))
+
+
+_GARBLE_RUN = re.compile(r"(?<!\S)[A-Za-z](?:\s+[A-Za-z]){2,}(?!\S)")
+_GARBLE_MIX = re.compile(r"\b[a-ząćęłńóśźż]{1,4}\d+[a-ząćęłńóśźż]{1,4}\b")
+_BLEED_FRAG = re.compile(r"(?:\b[a-ząćęłńóśźż]{1,2}\b[ \t]+){3,}\b[a-ząćęłńóśźż]{1,2}\b", re.IGNORECASE)
+_TRUNC_END = re.compile(r"\b(?:przed|dla|nr|przetargu|postępowaniu|w|z|na|do)\s*$", re.IGNORECASE)
+
+
+def _transfer_garble_count(text: str) -> int:
+    return len(_GARBLE_RUN.findall(text)) + len(_GARBLE_MIX.findall(text))
+
+
+def _bleed_garble_count(text: str) -> int:
+    return len(_BLEED_FRAG.findall(text))
+
+
+def _weak_transfer_ocr(conv: Converted, rules: dict[str, Candidate]) -> bool:
+    if _transfer_garble_count(conv.markdown) > 0:
+        return True
+    required = ("przelew_bankowy.tytul", "przelew_bankowy.z_rachunku", "przelew_bankowy.na_rachunek",
+                "przelew_bankowy.kwota", "przelew_bankowy.data_operacji")
+    if any(k not in rules for k in required):
+        return True
+    tytul = str(rules["przelew_bankowy.tytul"].value).strip()
+    return bool(_TRUNC_END.search(tytul))
+
+
+def _transfer_text_score(rules: dict[str, Candidate], md: str) -> tuple[int, int, int, int]:
+    tytul = rules.get("przelew_bankowy.tytul")
+    tval = collapse(str(tytul.value)) if tytul is not None else ""
+    truncated = 1 if (not tval or _TRUNC_END.search(tval)) else 0
+    return len(rules), -_transfer_garble_count(md), -truncated, len(tval)
 
 
 def _path_order(dt: DocumentType) -> Any:

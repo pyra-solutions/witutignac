@@ -61,3 +61,8 @@ def test_slownik_z_pakietu() -> None:
     out, _ = restore_diacritics("OPLATA od PELNOMOCNICTWA, zostala zlożona; zlożenie; Wydzial; sad; zle; byla; Szymanski")
     # „oplata”, „zlożona” (złożona/złożoną), „sad”, „zle”, „byla” są niejednoznaczne albo poprawne bez znaków
     assert out == "OPLATA od PEŁNOMOCNICTWA, została zlożona; złożenie; Wydział; sad; zle; byla; Szymański"
+
+
+def test_literowka_ocr_q() -> None:
+    out, _ = restore_diacritics("infrastrukturą towarzyszącq, spółkq, aquaparków, Quasi, QQD, Qdwołujący")
+    assert out == "infrastrukturą towarzyszącą, spółką, aquaparków, Quasi, QQD, Odwołujący"

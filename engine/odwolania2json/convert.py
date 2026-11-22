@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,7 +20,7 @@ log = logging.getLogger(__name__)
 GRADES = ["poor", "fair", "good", "excellent"]
 # Wersja algorytmu kolejności w layout.py. Zmiana algorytmu = nowa wersja, żeby cache nie zwracał
 # Markdownu ułożonego poprzednią wersją.
-LAYOUT_VERSION = 2
+LAYOUT_VERSION = 3
 
 
 @dataclass
@@ -45,7 +46,7 @@ def _profile_key(profile: ConversionProfile, scanned: bool = True) -> str:
     klucza dokumentów z warstwą tekstową."""
     later = {"ocr_scale", "ocr_model_size", "scanned_label_columns", "scanned_max_pages"}
     default = ConversionProfile()
-    exclude = {f for f in later if getattr(profile, f) == getattr(default, f)}
+    exclude = {f for f in later if getattr(profile, f) == getattr(default, f)} | {"scanned_bleed_cutoff"}
     if not scanned:
         exclude.update({"scanned_label_columns", "scanned_max_pages"})
     key = profile.model_dump_json(exclude=exclude)
@@ -171,10 +172,10 @@ class DoclingConverter:
             return cached
 
         t0 = time.perf_counter()
+        n_pages = max(_pages_to_convert(profile, scanned), 1)
         # max_num_pages odrzuca dłuższe dokumenty, więc ustawiamy je wysoko,
         # a liczbę przetwarzanych stron ogranicza page_range.
-        res = self._converter(profile, ocr_mode).convert(path, max_num_pages=10_000,
-                                                        page_range=(1, max(_pages_to_convert(profile, scanned), 1)))
+        res = self._converter(profile, ocr_mode).convert(path, max_num_pages=10_000, page_range=(1, n_pages))
         reorder = scanned and profile.scanned_label_columns
         out = self._export(res.document, res.confidence, sha, scanned, ocr_mode, reorder)
         out.seconds = time.perf_counter() - t0
@@ -231,6 +232,147 @@ def export_markdown(doc: Any, reorder: bool = False) -> tuple[str, list[str]]:
         traverse_pictures=True,
     )
     return md, notes
+
+
+def remove_bleed_gray(gray: Any, cutoff: int) -> tuple[Any, bool]:
+    """Czyści jasnoszary szum/prześwit z odwrotu kartki powyżej `cutoff` do bieli (pomija szary papier >30%)."""
+    import numpy as np
+
+    mid_frac = float(((gray > cutoff) & (gray < 240)).mean())
+    if mid_frac <= 0.008 or mid_frac >= 0.30:
+        return gray, False
+    return np.where(gray > cutoff, 255, gray).astype(np.uint8), True
+
+
+def _render_scan_pages(path: Path, n_pages: int, scale: float) -> list[Any]:
+    import cv2
+    import pypdfium2 as pdfium
+
+    pdf = pdfium.PdfDocument(str(path))
+    pages = []
+    try:
+        for i in range(min(len(pdf), n_pages)):
+            page = pdf[i]
+            arr = page.render(scale=scale).to_numpy()
+            page.close()
+            pages.append(cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY) if arr.ndim == 3 else arr)
+    finally:
+        pdf.close()
+    return pages
+
+
+_rapid_lock = threading.Lock()
+_rapid_ocr: Any = None
+
+
+def _get_rapidocr() -> Any:
+    global _rapid_ocr
+    with _rapid_lock:
+        if _rapid_ocr is None:
+            from rapidocr import RapidOCR
+
+            _rapid_ocr = RapidOCR()
+        return _rapid_ocr
+
+
+def boxes_to_lines(boxes: Any, txts: Any) -> str:
+    """Składa ramki RapidOCR w wiersze `etykieta | wartość` z zachowaniem zawiniętych linii kolumny wartości."""
+    items = []
+    for box, txt in zip(boxes if boxes is not None else (), txts if txts is not None else ()):
+        t = (txt or "").strip()
+        if not t:
+            continue
+        ys = [float(pt[1]) for pt in box]
+        xs = [float(pt[0]) for pt in box]
+        items.append((min(ys), max(ys), min(xs), max(xs), t))
+    items.sort(key=lambda x: (x[0], x[2]))
+
+    # Grupowanie w wiersze po pasie Y niezależnie od kolejności X (odporne na lekkie przekrzywienie skanu).
+    rows: list[list[Any]] = []  # [y0, y1, [(x0, x1, h, txt), ...]]
+    for y0, y1, x0, x1, txt in items:
+        h = max(y1 - y0, 1.0)
+        yc = 0.5 * (y0 + y1)
+        placed = False
+        for row in reversed(rows[-4:]):
+            ry0, ry1, cells = row
+            rh = max(ry1 - ry0, 1.0)
+            ryc = 0.5 * (ry0 + ry1)
+            ov = min(y1, ry1) - max(y0, ry0)
+            if (ov >= 0.35 * min(h, rh) or abs(yc - ryc) <= 0.45 * min(h, rh)) and all(
+                x1 <= cx0 + 0.3 * rh or x0 >= cx1 - 0.3 * rh for cx0, cx1, _, _ in cells
+            ):
+                row[0] = min(ry0, y0)
+                row[1] = max(ry1, y1)
+                cells.append((x0, x1, h, txt))
+                placed = True
+                break
+        if not placed:
+            rows.append([y0, y1, [(x0, x1, h, txt)]])
+
+    rows.sort(key=lambda r: r[0])
+    lines: list[str] = []
+    prev_val_x0: float | None = None
+    prev_y1 = 0.0
+    prev_h = 0.0
+    for y0, y1, cells in rows:
+        cells.sort(key=lambda c: c[0])
+        h = max(y1 - y0, 1.0)
+        parts = [cells[0][3]]
+        val_x0: float | None = None
+        for (_, px1, ph, _), (cx0, _cx1, ch, ctxt) in zip(cells, cells[1:]):
+            if cx0 - px1 > 0.6 * min(ph, ch):
+                parts.append(" | " + ctxt)
+                if val_x0 is None:
+                    val_x0 = cx0
+            else:
+                parts.append(" " + ctxt)
+        line = "".join(parts)
+        mh = max(h, prev_h)
+        is_cont = (
+            len(cells) == 1
+            and prev_val_x0 is not None
+            and lines
+            and abs(cells[0][0] - prev_val_x0) <= 1.5 * mh
+            and -0.6 * mh <= y0 - prev_y1 <= 1.1 * mh
+        )
+        if is_cont:
+            lines[-1] = lines[-1] + " " + line
+        else:
+            lines.append(line)
+            if val_x0 is not None:
+                prev_val_x0 = val_x0
+            elif not (len(cells) == 1 and prev_val_x0 is not None and abs(cells[0][0] - prev_val_x0) <= 1.5 * mh):
+                prev_val_x0 = None
+        prev_y1 = y1
+        prev_h = h
+    return "\n".join(lines)
+
+
+def rapidocr_pages_text(path: Path, profile: ConversionProfile, bleed_cutoff: int | None = None,
+                        upscale_1bit: bool = False) -> tuple[str, bool]:
+    """Bezpośredni OCR przez pypdfium2 + RapidOCR z opcjonalnym odcięciem prześwitu i powiększeniem 1-bit."""
+    import cv2
+
+    n_pages = max(_pages_to_convert(profile, scanned=True), 1)
+    grays = _render_scan_pages(path, n_pages, profile.ocr_scale)
+    ocr = _get_rapidocr()
+    pages_md: list[str] = []
+    bleed_cleaned = False
+    for gray in grays:
+        if bleed_cutoff:
+            gray, changed = remove_bleed_gray(gray, bleed_cutoff)
+            bleed_cleaned = bleed_cleaned or changed
+        if upscale_1bit and float(((gray > 30) & (gray < 225)).mean()) < 0.02:
+            gray = cv2.resize(gray, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_CUBIC)
+        res = ocr(gray)
+        pages_md.append(boxes_to_lines(res.boxes, res.txts))
+    return f"\n\n{PAGE_BREAK}\n\n".join(pages_md), bleed_cleaned
+
+
+def rapidocr_transfer_text(path: Path, profile: ConversionProfile) -> str:
+    """Zapasowy OCR przez pypdfium2 + RapidOCR dla słabych skanów potwierdzeń przelewów."""
+    md, _ = rapidocr_pages_text(path, profile, bleed_cutoff=profile.scanned_bleed_cutoff, upscale_1bit=True)
+    return md
 
 
 def page_count(path: Path, max_pages: int) -> int:

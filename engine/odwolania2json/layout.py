@@ -61,6 +61,14 @@ def _is_short_text(item: Any) -> bool:
     return 0 < len(text) <= 40 and len(text.split()) <= LABEL_MAX_WORDS
 
 
+def _is_kv_key(item: Any) -> bool:
+    """Krótki napis bez długich liczb/dat/kwot mogący być etykietą w układzie formularzowym bez dwukropka."""
+    text = (getattr(item, "text", None) or "").strip()
+    if not _is_short_text(item) or re.search(r"\d{4}", text) or text.startswith(("-", "•", "–")):
+        return False
+    return bool(re.search(r"[A-Za-ząćęłńóśźżĄĆĘŁŃÓŚŹŻ]{3}", text))
+
+
 def _overlap(a: _Box, b: _Box) -> bool:
     """Czy elementy nachodzą na siebie w pionie."""
     return a.t < b.b and a.b > b.t
@@ -107,38 +115,59 @@ def _reorder_children(doc: Any, parent: Any) -> list[str]:
             if b.page == page and not b.label and b.ref.cref not in used and _is_short_text(b.item)
             and b.l < x1 and b.r > x0 and col[0].t < b.t < col[-1].t
         ], key=lambda x: x.t)
-        width = doc.pages[page].size.width
-        col_r = max(c.r for c in col)
-        tol_x = 0.01 * width
-        col_ids = {c.ref.cref for c in col}
-        rest = [b for b in boxes if b.page == page and b.ref.cref not in col_ids and b.ref.cref not in used]
-        # Elementy, które zaczynają się w kolumnie etykiet albo na lewo od niej (akapit na całą szerokość,
-        # „Wpis od odwołania”, „ODWOŁANIE”), przerywają kolumnę: etykiety po obu stronach takiego
-        # elementu to osobne odcinki, a etykieta nigdy nie przeskakuje nad nim.
-        breaks = sorted(b.t for b in rest if b.l < col_r - tol_x)
-        segments: list[list[_Box]] = [[col[0]]]
-        for prev, nxt in zip(col, col[1:]):
-            if any(prev.t < t < nxt.t for t in breaks):
-                segments.append([nxt])
-            else:
-                segments[-1].append(nxt)
-        others = [b for b in boxes if b.page == page and not b.label]
-        for seg in segments:
-            # Układ jednokolumnowy: wartość stoi tuż pod etykietą („Odwołujący:” / „Jan Kowalski”).
-            # Docling czyta go we właściwej kolejności, a elementy po prawej to wtedy co innego
-            # (adres KIO, pieczęć). Takiego odcinka nie zmieniamy.
-            if any(c.label and _stacked(c, others) for c in seg):
-                continue
-            note = _reorder_segment(parent, seg, rest, breaks, col_r - tol_x, used)
-            if note:
-                notes.append(f"strona {page}: {note}")
+        _process_column(doc, parent, col, boxes, used, notes, require_colon=True)
+
+    # Drugi przebieg dla formularzy bez dwukropków (np. potwierdzenia przelewów typu Bank Karpacki):
+    # kolumna co najmniej 3 krótkich etykiet nieliczbowych po lewej, gdzie etykiety mają po prawej
+    # wartości leżące na tej samej wysokości.
+    kv_candidates = [
+        b for b in boxes
+        if b.ref.cref not in used and not b.label and _is_kv_key(b.item)
+        and any(o.page == b.page and o.ref.cref != b.ref.cref and o.l > b.r and _overlap(b, o) for o in boxes)
+    ]
+    for col in _columns(kv_candidates):
+        if len(col) < 3 or any(c.ref.cref in used for c in col):
+            continue
+        _process_column(doc, parent, col, boxes, used, notes, require_colon=False)
     return notes
 
 
+def _process_column(doc: Any, parent: Any, col: list[_Box], boxes: list[_Box], used: set[str],
+                    notes: list[str], require_colon: bool) -> None:
+    page = col[0].page
+    width = doc.pages[page].size.width
+    col_r = max(c.r for c in col)
+    tol_x = 0.01 * width
+    col_ids = {c.ref.cref for c in col}
+    rest = [b for b in boxes if b.page == page and b.ref.cref not in col_ids and b.ref.cref not in used]
+    # Elementy, które zaczynają się w kolumnie etykiet albo na lewo od niej (akapit na całą szerokość,
+    # „Wpis od odwołania”, „ODWOŁANIE”), przerywają kolumnę: etykiety po obu stronach takiego
+    # elementu to osobne odcinki, a etykieta nigdy nie przeskakuje nad nim.
+    breaks = sorted(b.t for b in rest if b.l < col_r - tol_x)
+    segments: list[list[_Box]] = [[col[0]]]
+    for prev, nxt in zip(col, col[1:]):
+        if any(prev.t < t < nxt.t for t in breaks):
+            segments.append([nxt])
+        else:
+            segments[-1].append(nxt)
+    others = [b for b in boxes if b.page == page and not b.label and b.ref.cref not in col_ids]
+    for seg in segments:
+        # Układ jednokolumnowy: wartość stoi tuż pod etykietą („Odwołujący:” / „Jan Kowalski”).
+        # Docling czyta go we właściwej kolejności, a elementy po prawej to wtedy co innego
+        # (adres KIO, pieczęć). Takiego odcinka nie zmieniamy.
+        if any(_stacked(c, others) for c in seg if (c.label if require_colon else True)):
+            continue
+        note = _reorder_segment(parent, seg, rest, breaks, col_r - tol_x, used, require_colon=require_colon)
+        if note:
+            notes.append(f"strona {page}: {note}")
+
+
 def _reorder_segment(parent: Any, seg: list[_Box], rest: list[_Box], breaks: list[float], values_l: float,
-                     used: set[str]) -> str | None:
+                     used: set[str], require_colon: bool = True) -> str | None:
     """Jeden odcinek kolumny etykiet: przypisuje wartości z prawej i ustawia kolejność w `parent`."""
-    if sum(1 for c in seg if c.label) < 2:
+    if require_colon and sum(1 for c in seg if c.label) < 2:
+        return None
+    if not require_colon and len(seg) < 3:
         return None
     label_h = sorted(c.b - c.t for c in seg)[len(seg) // 2]
     # Wartość może zaczynać się trochę wyżej niż jej etykieta („Konsorcjum wykonawców:”).
@@ -156,10 +185,14 @@ def _reorder_segment(parent: Any, seg: list[_Box], rest: list[_Box], breaks: lis
         hit = [c for c in seg if _overlap(v, c)]
         owner = hit[0] if hit else [c for c in seg if c.t - tol_up <= v.t][-1]
         assigned[owner.ref.cref].append(v)
-    # Co najmniej dwie etykiety z dwukropkiem muszą mieć wartości po prawej. Krótki tekst bez
-    # dwukropka (np. wartość pod etykietą w układzie jednokolumnowym) sam nie uzasadnia zmiany.
-    if sum(1 for c in seg if c.label and assigned[c.ref.cref]) < 2:
-        return None
+    if require_colon:
+        # Co najmniej dwie etykiety z dwukropkiem muszą mieć wartości po prawej. Krótki tekst bez
+        # dwukropka (np. wartość pod etykietą w układzie jednokolumnowym) sam nie uzasadnia zmiany.
+        if sum(1 for c in seg if c.label and assigned[c.ref.cref]) < 2:
+            return None
+    else:
+        if sum(1 for c in seg if any(_overlap(v, c) for v in assigned[c.ref.cref])) < 3:
+            return None
     # Wartości każdej etykiety zostają w kolejności Doclinga (z góry na dół w swojej kolumnie).
     expected = [x.ref.cref for c in seg for x in [c, *assigned[c.ref.cref]]]
     block = set(expected)

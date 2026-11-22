@@ -1,6 +1,6 @@
 # Ustawienia wydania konfiguracji. Pliki w config/seed/ są jedynym źródłem konfiguracji;
 # do silnika trafiają jako engine/config/release.json (build-release albo backend: manage.py publish).
-version: "2026.11.22-dev.2"
+version: "2026.11.22-dev.4"
 
 settings:
   # Wynik dla dokumentu spoza obsługiwanych typów (README: "pusty plik .json").
@@ -32,6 +32,8 @@ conversion_profiles:
     # Skany: OCR tylko 3 pierwszych stron (cyfrowe PDF-y dalej do max_pages). Wartości pól są prawie zawsze
     # na stronach 1–2; na 30 skanach F1 bez zmian, konwersja długiego skanu ok. 2× krótsza.
     scanned_max_pages: 3
+    # Skany: piksele jaśniejsze niż 155 w zapasowym przebiegu dla stron z ciężkim prześwitem z odwrotu kartki.
+    scanned_bleed_cutoff: 155
 
 llm_profiles:
   # Eden AI (bramka API, Eden AI SAS, Francja) do otwartych modeli z przetwarzaniem w UE. Endpoint UE

@@ -94,6 +94,15 @@ def _list_leaves(items: list[Any], prefix: str) -> dict[str, Any]:
     return out
 
 
+def _norm_account(v: Any) -> str | None:
+    """Wszystkie rachunki z_rachunku porównujemy jako ciąg bez prefiksu kraju PL i spacji (bez rzutowania na float)."""
+    if v is None:
+        return None
+    s = re.sub(r"\s+", "", str(v)).casefold()
+    s = re.sub(r"^pl(?=\d)", "", s)
+    return s or None
+
+
 def _compare(pred: Any, gold: Any, path: str, rep: Report, dtype: str, case: str) -> None:
     if isinstance(gold, dict) or isinstance(pred, dict):
         g = gold if isinstance(gold, dict) else {}
@@ -109,7 +118,10 @@ def _compare(pred: Any, gold: Any, path: str, rep: Report, dtype: str, case: str
                      f"{path}[]", rep, dtype, case)
         return
     c = Counts()
-    gn, pn = _norm(gold), _norm(pred)
+    if path.rpartition(".")[2] == "z_rachunku":
+        gn, pn = _norm_account(gold), _norm_account(pred)
+    else:
+        gn, pn = _norm(gold), _norm(pred)
     if gn is None and pn is None:
         return
     if gn == pn:
