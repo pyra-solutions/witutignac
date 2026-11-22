@@ -1,0 +1,139 @@
+# Przykład rozszerzalności: czwarty typ dokumentu dodany samą konfiguracją, bez zmian w kodzie.
+# Zgłoszenie przystąpienia do postępowania odwoławczego (art. 525 Pzp): wykonawca przystępuje do sprawy
+# przed KIO po stronie Zamawiającego albo Odwołującego.
+#
+# Plik celowo NIE leży w config/seed/document_types/, więc nie wchodzi do wydania, którego używa silnik
+# (engine/config/release.json, run.sh). Test engine/tests/test_extensibility.py dokłada go do kopii config/seed
+# i sprawdza klasyfikację, ekstrakcję i schemat dla LLM. Włączenie w systemie:
+#   1. skopiuj plik do config/seed/document_types/,
+#   2. sprawdź wzorce klasyfikacji na prawdziwych przystąpieniach i na dane/negatywne (odwołania i orzeczenia KIO
+#      też wspominają o przystąpieniu),
+#   3. python -m odwolania2json validate-config --config config/seed, potem publikacja wydania (GUI albo manage.py).
+#
+# Użyte są wyłącznie istniejące elementy konfiguracji: wzorce z wagami, sekcja, lista, grupa LLM, reguły regex,
+# normalizatory (regex_replace, date_iso, map_values, digits_only...), walidatory (pattern, nip, krs), enum i pole
+# wyliczane (count_at_least).
+code: przystapienie
+name: Zgłoszenie przystąpienia do postępowania odwoławczego
+conversion_profile: default
+
+classification:
+  description: Pismo wykonawcy zgłaszające przystąpienie do toczącego się postępowania odwoławczego przed KIO.
+  # Nagłówek daje 3 punkty, każdy zwrot 1. Próg 4 wymaga nagłówka i co najmniej jednego zwrotu. Przystąpienie ma też
+  # cechy odwołania ("Odwołujący:", "Zamawiający:", "Prezes KIO" = 3 pkt dla typu odwolanie), więc wynik tego typu
+  # musi być wyraźnie wyższy: na przykładzie z testu 7,5 pkt wobec 3.
+  min_score: 4
+  patterns:
+    # [ŁL], [ĄA]: OCR skanów gubi polskie znaki
+    - {pattern: '^\W*(?:ZG[ŁL]OSZENIE\s+)?PRZYST[ĄA]PIENI[EA]\b', weight: 3, first_chars: 4000}
+    - {pattern: 'zgłasza\w*\s+przystąpieni', weight: 1, first_chars: null}
+    - {pattern: 'przystąpieni\w*\s+do\s+postępowania\s+odwoławczego', weight: 1, first_chars: null}
+    - {pattern: 'po\s+stronie\s+(?:Zamawiającego|Odwołującego)', weight: 1, first_chars: null}
+    - {pattern: 'Przystępując\w*\s*:', weight: 1, first_chars: 4000}
+    - {pattern: '\bKIO\s*\d{1,5}\s*/\s*\d{2,4}\b', weight: 0.5, first_chars: 3000}
+    # Orzeczenia KIO opisują przystąpienia, ale zaczynają się nazwą rozstrzygnięcia.
+    - {pattern: '^\W*(?:WYROK|POSTANOWIENIE|UCHWAŁA)\b', weight: -3, first_chars: 800}
+    - {pattern: 'W\s+IMIENIU\s+RZECZYPOSPOLITEJ', weight: -2, first_chars: 1500}
+
+sections:
+  # Dane przystępującego: od etykiety do etykiety następnej strony albo do tytułu pisma.
+  - name: przystepujacy
+    start: ['Przystępując\w*\s*:']
+    end: ['Odwołując\w*\s*:', 'Zamawiając\w*\s*:', 'Pełnomocni\w*\s*:', '^\W*ZG[ŁL]OSZENIE\b']
+    max_chars: 1500
+
+lists:
+  - path: Przystepujacy
+    min_items: 1
+    instruction: Wykonawcy zgłaszający przystąpienie (więcej niż jeden, gdy przystępuje konsorcjum).
+
+groups:
+  - name: przystapienie
+    instruction: Odczytaj dane zgłoszenia przystąpienia do postępowania odwoławczego.
+    sections: []
+    max_chars: 12000
+
+fields:
+  - path: PrzystapienieKIO.sygnatura
+    group: przystapienie
+    instruction: Sygnatura sprawy odwoławczej w formacie 'KIO NNNN/RR'.
+    strategy: rules_first
+    grounding: tokens
+    rules:
+      - pattern: '\b(KIO\s*\d{1,5}\s*/\s*\d{2,4})\b'
+    normalizers:
+      - {name: regex_replace, args: {pattern: 'KIO\s*(\d+)\s*/\s*(\d+)', repl: 'KIO \1/\2'}}
+    validators:
+      - {name: pattern, args: {re: 'KIO \d{1,5}/\d{2,4}'}, severity: error}
+
+  - path: PrzystapienieKIO.data
+    type: date
+    group: przystapienie
+    instruction: Data pisma z nagłówka, z linii typu 'Miejscowość, dnia DD.MM.RRRR'. Brak takiej linii = null.
+    strategy: rules_first
+    grounding: none
+    rules:
+      # ta sama reguła co dla daty odwołania (config/seed/document_types/odwolanie.yaml)
+      - pattern: '(?<![\w.])[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+|\s+(?:nad|pod|na)\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?,\s*(?:dnia\s+)?(\d{1,2}(?:\.\d{1,2}\.|\s+[a-ząćęłńóśźż]+\s+)\d{4})'
+        ignore_case: false
+    normalizers: [{name: date_iso}]
+
+  - path: PrzystapienieKIO.miejscowosc
+    group: przystapienie
+    instruction: Miejscowość z nagłówka, z linii typu 'Miejscowość, dnia ...'. Brak takiej linii = null.
+    strategy: rules_first
+    rules:
+      - pattern: '(?<![\w.])([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+|\s+(?:nad|pod|na)\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?),\s*(?:dnia\s+)?\d{1,2}(?:\.\d{1,2}\.|\s+[a-ząćęłńóśźż]+\s+)\d{4}'
+        ignore_case: false
+    normalizers: [{name: collapse_ws}]
+
+  - path: PrzystapienieKIO.po_stronie
+    group: przystapienie
+    instruction: Strona, po której wykonawca przystępuje - 'zamawiajacy' albo 'odwolujacy'.
+    strategy: rules_first
+    grounding: none
+    rules:
+      - pattern: 'po\s+stronie\s+(Zamawiając\w*|Odwołując\w*)'
+    # wartość kanoniczna zamiast odmienionego słowa z tekstu; enum trafia też do schematu JSON dla LLM
+    normalizers:
+      - {name: map_values, args: {mapping: {Zamawiającego: zamawiajacy, Odwołującego: odwolujacy}, keep_unmapped: false}}
+    enum: [zamawiajacy, odwolujacy]
+
+  - path: PrzystapienieKIO.konsorcjum
+    # pole wyliczane: przystępuje więcej niż jeden wykonawca
+    derive:
+      kind: count_at_least
+      source: Przystepujacy
+      min_count: 2
+      if_true: true
+      if_false: false
+
+  - path: 'Przystepujacy[].nazwa'
+    group: przystapienie
+    instruction: Pełna nazwa (firma) przystępującego wykonawcy, bez adresu.
+    strategy: rules_first
+    grounding: fuzzy
+    rules:
+      - pattern: 'Przystępując\w*\s*:\s*([^\n|]{3,160}?)\s*(?:,\s*(?:ul\.|al\.|z\s+siedzibą)|\n|$)'
+        section: przystepujacy
+    normalizers: [{name: collapse_ws}, {name: strip_quotes}, {name: strip_punct, args: {chars: ' ,;:'}}]
+
+  - path: 'Przystepujacy[].nip'
+    group: przystapienie
+    instruction: NIP przystępującego, same cyfry.
+    strategy: rules_first
+    rules:
+      - {pattern: 'NIP\W{0,3}(\d[\d\- ]{8,12}\d)', section: przystepujacy}
+    normalizers: [{name: digits_only}]
+    validators:
+      - {name: pattern, args: {re: '\d{10}'}, severity: error}
+      - {name: nip}
+
+  - path: 'Przystepujacy[].krs'
+    group: przystapienie
+    instruction: Numer KRS przystępującego (10 cyfr), jeśli podany.
+    strategy: rules_first
+    rules:
+      - {pattern: 'KRS\W{0,3}(\d{10})', section: przystepujacy}
+    normalizers: [{name: digits_only}]
+    validators: [{name: krs}]

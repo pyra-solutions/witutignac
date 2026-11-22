@@ -99,6 +99,16 @@ Przykład pola:
 
 Nowy rodzaj normalizatora lub walidatora to jedna funkcja z dekoratorem `@normalizers.register("nazwa")` w `engine/odwolania2json/normalizers.py` (albo `validators.py`). Reszta potoku się nie zmienia.
 
+**Przykład: czwarty typ bez zmian w kodzie.** [`config/examples/document_types/przystapienie.yaml`](../config/examples/document_types/przystapienie.yaml) opisuje zgłoszenie przystąpienia do postępowania odwoławczego. Ma wzorce klasyfikacji z wagami, sekcję z danymi przystępującego, listę, grupę LLM, reguły, normalizatory (`regex_replace`, `date_iso`, `map_values`, `digits_only`), walidatory (`pattern`, `nip`, `krs`), `enum` i pole wyliczane. Wszystko to już istniało, kod się nie zmienił. Plik leży poza `config/seed`, więc nie wchodzi do wydania silnika. Test [`engine/tests/test_extensibility.py`](../engine/tests/test_extensibility.py) dokłada go do kopii `config/seed` i sprawdza pięć rzeczy:
+
+- `validate-config`,
+- `release.json`,
+- klasyfikację (nowy typ nie przejmuje odwołań),
+- wynik JSON z reguł bez Doclinga i LLM,
+- schemat JSON dla LLM.
+
+Żeby włączyć typ w systemie, skopiuj plik do `config/seed/document_types/`, sprawdź wzorce na prawdziwych dokumentach i na `dane/negatywne`, a potem opublikuj wydanie.
+
 ## Struktura
 
 ```text
