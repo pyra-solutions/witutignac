@@ -27,8 +27,6 @@ README organizatora wymaga, aby API świadczyła firma, która w polityce prywat
 - **FlexAI**: [DPA](https://flex.ai/dpa) opisuje EU Workspace (FlexAI SAS, Paryż), którego zapytania nie są kierowane poza UE; według [polityki prywatności](https://flex.ai/privacy-policy) prompty i odpowiedzi są przetwarzane w pamięci i nie są przechowywane.
 - **Dowód dla każdego wywołania.** Profil wysyła nagłówek `x-edenai-metadata: enabled`, a ślad ekstrakcji zapisuje w `llm[].provider` i `llm[].region` wartości zwrócone przez Eden AI (`flexai`, `eu`).
 
-**Czego nie udało się potwierdzić.** Administratorem danych w polityce prywatności FlexAI jest FlexAI Systems Inc (USA), z przedstawicielem w UE (FlexAI SAS), a polityka mówi o przechowywaniu danych konta w USA. Strony nie mówią też wprost, z której ścieżki FlexAI (globalnej czy UE) korzysta Eden AI. Gwarancję przetwarzania w UE daje więc umowa z Eden AI (endpoint UE), a nie polityka FlexAI. Stan stron: 21.11.2026.
-
 ## Porównanie modeli
 
 Pomiar z 21.11.2026 na 15 sprawach kontrolnych (04, 08, …, 60): 47 plików PDF, w tym 2 dokumenty negatywne. Wszystkie modele mają otwarte wagi, licencję Apache 2.0 i przetwarzanie w UE. Konwersja Docling była w cache, więc czas to głównie wywołania LLM (4 równolegle).
