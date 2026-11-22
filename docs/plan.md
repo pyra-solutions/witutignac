@@ -41,7 +41,7 @@ Rdzeń oceniany przez organizatora musi być w Pythonie, a o wyniku etapu 1 decy
 | CLI (`start.bat`, `start_linux.sh`, `start.sh`) | przy pierwszym uruchomieniu tworzy środowisko i instaluje zależności, potem przetwarza `./input` do `./output` | gotowy |
 | Konfiguracja (`config/seed/`, `config/releases/`, `engine/config/release.json`) | definicje typów dokumentów, słowniki, profile Docling i LLM; niezmienne wydania | gotowa dla trzech typów: odwołanie, pełnomocnictwo, potwierdzenie przelewu |
 | Backend FastAPI (`backend/`) | API dla GUI: sprawy (wgranie PDF, przetwarzanie silnikiem w tle, wyniki, ślad, poprawki, audyt), wydania i konfiguracja; serwuje zbudowane GUI | gotowy; edycja konfiguracji przez API do zrobienia |
-| GUI w Angularze (`apps/web/`, uruchomienie: `gui.bat`, `gui.sh`) | wgranie spraw, weryfikacja pól z podglądem PDF i śladem ekstrakcji, konfiguracja, wydania, jakość, audyt | gotowe, podłączone do backendu; konfiguracja tylko do odczytu |
+| GUI w Angularze (`apps/web/`, uruchomienie: `gui.bat`, `gui.sh`) | wgranie spraw, weryfikacja pól z podglądem PDF i śladem ekstrakcji, konfiguracja, wydania, jakość, audyt | gotowe, podłączone do backendu; konfiguracja tylko do odczytu, poza publikacją i aktywacją wydań |
 | API LLM | Eden AI, model Qwen3.5-9B u FlexAI (UE) | gotowe; F1 0,993 na 15 sprawach kontrolnych |
 
 Silnik to jeden rdzeń. CLI i backend wywołują ten sam kod, a backend korzysta z modeli konfiguracji silnika (Pydantic), więc format wydania definiuje wyłącznie silnik.
@@ -168,7 +168,7 @@ Przykładowa definicja pola:
 1. Zmiana w plikach YAML (docelowo także w GUI, które zapisze te same pliki).
 2. `validate-config`: sprawdzenie modeli, regexów oraz odwołań do sekcji, grup, słowników i wtyczek.
 3. Próba na kilku PDF-ach z `--trace-dir` i `evaluate` na zbiorze z wzorcami, porównana z aktywnym wydaniem.
-4. `backend/manage.py publish --version <wersja>`: zapis niezmiennego wydania w `config/releases/` i aktywacja, czyli zapis `engine/config/release.json`. Plik trafia do repozytorium, z którego CLI uruchomią oceniający.
+4. `backend/manage.py publish --version <wersja>` albo „Opublikuj” na ekranie Wydania w GUI: zapis niezmiennego wydania w `config/releases/` i aktywacja, czyli zapis `engine/config/release.json`. Plik trafia do repozytorium, z którego CLI uruchomią oceniający.
 5. Wycofanie zmian to `manage.py activate` z poprzednią wersją.
 
 ## Przejrzystość ekstrakcji
@@ -193,7 +193,7 @@ Backend obsługuje GUI i nie jest potrzebny do uruchomienia ekstrakcji. Pracuje 
 | Sprawy z GUI: wgranie PDF lub ZIP, kolejka w tle z tym samym `Engine` co CLI, wyniki, ślad, Markdown, PDF, ZIP z wynikami | edycja konfiguracji przez API z walidacją i zapisem do YAML |
 | Poprawki i zatwierdzenie dokumentu z walidacją walidatorami silnika; dziennik audytu (`gui-data/audit.jsonl`) | uruchomienie ekstrakcji szkicem konfiguracji bez publikacji wydania |
 | Wydania, aktywna konfiguracja, szkic z YAML, dostawcy i modele LLM, schematy JSON wysyłane do LLM | ewaluacja F1 wydania z poziomu GUI |
-| `manage.py publish`, `activate`, `releases`, `serve` | |
+| `manage.py publish`, `activate`, `releases`, `serve`; publikacja i aktywacja wydań także z GUI (ekran Wydania) | |
 
 ## Frontend Angular
 

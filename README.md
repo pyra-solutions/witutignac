@@ -59,7 +59,8 @@ W interfejsie można:
 - zobaczyć tekst z Docling, wynikowy JSON i przebieg przetwarzania: wyniki klasyfikacji, OCR, wywołania LLM
   z dostawcą i regionem przetwarzania,
 - poprawić pola, zatwierdzić dokument i pobrać wyniki sprawy jako ZIP w układzie katalogu `output`,
-- przejrzeć konfigurację silnika: typy dokumentów, słowniki, modele LLM, profile Docling, wydania i dziennik zmian.
+- przejrzeć konfigurację silnika: typy dokumentów, słowniki, modele LLM, profile Docling, wydania i dziennik zmian,
+- opublikować konfigurację z plików YAML jako nowe wydanie i aktywować wybrane wydanie (także wycofać zmiany).
 
 Sprawy z interfejsu trafiają do katalogu `gui-data/`, a nie do `input/` i `output/`.
 Node.js nie jest potrzebny: zbudowany interfejs jest w `backend/o2j_backend/static`.

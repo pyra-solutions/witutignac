@@ -33,6 +33,7 @@ from .cases import (
     CaseStore,
     DocStatus,
     DocumentRecord,
+    _user,
     collect_pdfs,
 )
 from .processing import ActiveRelease, Processor, active_config_path, validate_result
@@ -147,6 +148,49 @@ def get_release_by_version(version: str, files: FilesDep) -> ReleaseDetail:
     if record is None:
         raise HTTPException(status_code=404, detail=f"Nie ma wydania {version}")
     return _detail(record, rel.status_of(record, rel.active_sha256(files)))
+
+
+class PublishIn(BaseModel):
+    version: str
+    summary: str = ""
+    author: str = ""
+    activate: bool = True
+
+
+@app.post("/api/releases", status_code=201)
+def publish_release(body: PublishIn, files: FilesDep, store: StoreDep) -> ReleaseSummary:
+    """Publikuje konfigurację z `config/seed/*.yaml` jako niezmienne wydanie (jak `manage.py publish`)."""
+    version = body.version.strip()
+    try:
+        rel.check_version(version)
+    except rel.ReleaseError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    try:
+        record = rel.publish(
+            files, version, summary=body.summary.strip(), author=body.author.strip() or _user(), activate=body.activate
+        )
+    except rel.ReleaseError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    store.audit("wydanie_opublikowane", release=record.version)
+    if body.activate:
+        store.audit("wydanie_aktywowane", release=record.version)
+    return _summary(record, rel.status_of(record, rel.active_sha256(files)))
+
+
+@app.post("/api/releases/{version}/activate")
+def activate_release(version: str, files: FilesDep, store: StoreDep) -> ReleaseSummary:
+    """Aktywuje opublikowane wydanie (jak `manage.py activate`); aktywacja starszego to wycofanie zmian."""
+    try:
+        if rel.get_release(files, version) is None:
+            raise HTTPException(status_code=404, detail=f"Nie ma wydania {version}")
+    except rel.ReleaseError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    try:
+        record = rel.activate_release(files, version)
+    except rel.ReleaseError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    store.audit("wydanie_aktywowane", release=record.version)
+    return _summary(record, rel.ReleaseStatus.ACTIVE)
 
 
 @app.get("/api/config/draft")

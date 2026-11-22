@@ -90,6 +90,8 @@ Pliki wydań trafiają do repozytorium, więc historia konfiguracji jest też w 
 | `GET /api/releases` | lista wydań (bez snapshotu) |
 | `GET /api/releases/active` | aktywne wydanie ze snapshotem; 404, gdy `release.json` nie odpowiada żadnemu wydaniu |
 | `GET /api/releases/{wersja}` | wydanie ze snapshotem |
+| `POST /api/releases` | publikacja z GUI, jak `publish` (JSON: `version`, `summary`, `author`, `activate`); 409, gdy wersja już istnieje albo YAML nie przechodzi walidacji |
+| `POST /api/releases/{wersja}/activate` | aktywacja z GUI, jak `activate`; wycofanie zmian to aktywacja starszego wydania |
 | `GET /api/config/draft` | bieżąca konfiguracja z YAML w formacie `release.json`; 409, gdy pliki nie przechodzą walidacji |
 | `GET /api/llm-providers` | dostawcy LLM z `config/seed/llm_providers.yaml` |
 

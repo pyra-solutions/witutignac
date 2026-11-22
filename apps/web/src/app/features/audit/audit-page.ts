@@ -21,6 +21,8 @@ const EVENTS: Record<string, string> = {
   dokument_zatwierdzony: 'Zatwierdzono dokument',
   zatwierdzenie_cofniete: 'Cofnięto zatwierdzenie',
   poprawki_odrzucone: 'Przywrócono wynik silnika',
+  wydanie_opublikowane: 'Opublikowano wydanie konfiguracji',
+  wydanie_aktywowane: 'Aktywowano wydanie konfiguracji',
 };
 
 @Component({
