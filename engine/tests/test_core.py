@@ -424,3 +424,38 @@ def test_preclassify_skips_scans_and_when_disabled(monkeypatch: pytest.MonkeyPat
     assert not eng._reject_digital_early(Path("skan.pdf"), pipeline.Prepared(pdf=Path("s.pdf"), rel=Path("s.pdf")))
     pipeline, eng = _preclass_engine(monkeypatch, _NOTICE_TEXT, pages=0)
     assert not eng._reject_digital_early(Path("o.pdf"), pipeline.Prepared(pdf=Path("o.pdf"), rel=Path("o.pdf")))
+
+
+# --- poprawki z 22.11.2026: e-mail pełnomocnika bez pełnomocnika, blok „Wykonawca wybrany” -----------------
+
+def _odwolanie_type():  # noqa: ANN202
+    from odwolania2json.cli import DEFAULT_SEED
+    from odwolania2json.config import load_release
+
+    return next(d for d in load_release(DEFAULT_SEED).document_types if d.code == "odwolanie")
+
+
+def test_only_if_present_drops_mail_without_attorney() -> None:
+    from odwolania2json.pipeline import Engine
+
+    dt = _odwolanie_type()
+    values = {"Odwolujacy[0].nazwa": "Alfa", "Odwolujacy[0].pelnomocnik.mail": "biuro@alfa.example"}
+    ftrace: dict = {}
+    Engine._apply_list_limits(dt, values, ftrace)
+    assert "Odwolujacy[0].pelnomocnik.mail" not in values
+    assert "dropped" in ftrace["Odwolujacy[0].pelnomocnik.mail"]
+    values = {"Odwolujacy[0].pelnomocnik.imie_nazwisko": "Jan Nowak", "Odwolujacy[0].pelnomocnik.mail": "j@k.example"}
+    Engine._apply_list_limits(dt, values, {})
+    assert values["Odwolujacy[0].pelnomocnik.mail"] == "j@k.example"
+
+
+def test_party_sections_end_at_selected_contractor() -> None:
+    from odwolania2json.textutil import section_text
+
+    dt = _odwolanie_type()
+    secs = {s.name: s for s in dt.sections}
+    text = ("Zamawiający:\nGmina Rudnik\nNIP: 9990264287\n\nOdwołujący:\nBRONTEX-BUD Jan Nowak\nNIP: 9993140838\n\n"
+            "Wykonawca wybrany (potencjalny uczestnik po stronie Zamawiającego): Cervin sp.j.\nKRS: 9992630248\n\n"
+            "dotyczy: postępowania o udzielenie zamówienia")
+    body, _ = section_text(text, "odwolujacy", secs)
+    assert "BRONTEX" in body and "9993140838" in body and "9992630248" not in body

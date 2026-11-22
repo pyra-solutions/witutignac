@@ -26,11 +26,15 @@ classification:
 sections:
   - name: odwolujacy
     start: ['Odwołując\w*\s*:']
-    end: ['Zamawiając\w*\s*:', '^\W*dotyczy\s*:?', '^\W*ODWOŁANIE\W*$', 'Działając\s+w\s+imieniu', 'Wartość\s+zamówienia']
+    # „Wykonawca wybrany (potencjalny uczestnik…)”: blok strony trzeciej po danych stron (7 z 60 spraw); bez tego
+    # końca KRS wybranego wykonawcy trafiał do Odwołującego bez własnego KRS (przyklad_52).
+    end: ['Zamawiając\w*\s*:', '^\W*dotyczy\s*:?', '^\W*ODWOŁANIE\W*$', 'Działając\s+w\s+imieniu', 'Wartość\s+zamówienia',
+          'Wykonawc\w*\s+wybran\w*']
     max_chars: 2500
   - name: zamawiajacy
     start: ['Zamawiając\w*\s*:']
-    end: ['Odwołując\w*\s*:', '^\W*dotyczy\s*:?', '^\W*ODWOŁANIE\W*$', 'Działając\s+w\s+imieniu', 'Wartość\s+zamówienia']
+    end: ['Odwołując\w*\s*:', '^\W*dotyczy\s*:?', '^\W*ODWOŁANIE\W*$', 'Działając\s+w\s+imieniu', 'Wartość\s+zamówienia',
+          'Wykonawc\w*\s+wybran\w*']
     max_chars: 2500
   - name: dotyczy
     start: ['dotyczy\s*:']
@@ -195,6 +199,9 @@ fields:
     group: odwolanie
     instruction: Adres e-mail kontaktowy pełnomocnika Odwołującego.
     strategy: rules_first
+    # Bez pełnomocnika e-mail w sekcji „Odwołujący” to adres samego wykonawcy (skan 0009). We wzorcach
+    # organizatora e-mail pełnomocnika nigdy nie występuje bez jego nazwiska (210 odwołań).
+    only_if_present: 'Odwolujacy[].pelnomocnik.imie_nazwisko'
     rules:
       - {pattern: '([\w.+-]+@[\w-]+(?:\.[\w-]+)+)', section: odwolujacy}
     normalizers: [{name: email}]

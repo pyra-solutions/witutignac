@@ -298,7 +298,7 @@ class Engine:
 
     @staticmethod
     def _apply_list_limits(dt: DocumentType, values: dict[str, Any], ftrace: dict[str, Any]) -> None:
-        """max_items list i only_if_list_size_at_least pól (tylko listy najwyższego poziomu)."""
+        """max_items list, only_if_list_size_at_least (tylko listy najwyższego poziomu) i only_if_present pól."""
         for ld in dt.lists:
             if ld.max_items is None or "[]" in ld.path:
                 continue
@@ -318,6 +318,16 @@ class Engine:
                     del values[k]
                     ftrace.setdefault(k, {})["dropped"] = (
                         f"lista {top} ma {size} el., pole wymaga co najmniej {f.only_if_list_size_at_least}")
+        for f in dt.fields:
+            if not f.only_if_present:
+                continue
+            for k in [k for k in values if generic(k) == f.path]:
+                # wymagane pole w tym samym elemencie listy: indeksy z k wstawione w kolejne "[]"
+                idx = iter(re.findall(r"\[(\d+)\]", k))
+                req = re.sub(r"\[\]", lambda _m: f"[{next(idx, '0')}]", f.only_if_present)
+                if values.get(req) in (None, ""):
+                    del values[k]
+                    ftrace.setdefault(k, {})["dropped"] = f"pole wymaga wartości {req}, a ta jest pusta"
 
     @staticmethod
     def _rule_in_other_item(p: str, cand: Candidate | None, llm: dict[str, Any],

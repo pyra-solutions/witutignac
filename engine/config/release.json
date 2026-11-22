@@ -1,5 +1,5 @@
 {
-  "version": "2026.11.22-dev.6",
+  "version": "2026.11.22-dev.7",
   "settings": {
     "unsupported_output": "{}",
     "default_llm_profile": "eden-qwen3.5-9b",
@@ -271,7 +271,8 @@
             "^\\W*dotyczy\\s*:?",
             "^\\W*ODWOŁANIE\\W*$",
             "Działając\\s+w\\s+imieniu",
-            "Wartość\\s+zamówienia"
+            "Wartość\\s+zamówienia",
+            "Wykonawc\\w*\\s+wybran\\w*"
           ],
           "include_start": true,
           "max_chars": 2500,
@@ -287,7 +288,8 @@
             "^\\W*dotyczy\\s*:?",
             "^\\W*ODWOŁANIE\\W*$",
             "Działając\\s+w\\s+imieniu",
-            "Wartość\\s+zamówienia"
+            "Wartość\\s+zamówienia",
+            "Wykonawc\\w*\\s+wybran\\w*"
           ],
           "include_start": true,
           "max_chars": 2500,
@@ -391,7 +393,8 @@
           "dictionary": null,
           "grounding": "none",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "OdwolanieKIO.czynnosc_dzien",
@@ -425,7 +428,8 @@
           "dictionary": null,
           "grounding": "none",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "OdwolanieKIO.czynnosc_powod_id",
@@ -466,7 +470,8 @@
           "dictionary": "powody_czynnosci",
           "grounding": "none",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "OdwolanieKIO.czynnosc_opis",
@@ -494,7 +499,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "OdwolanieKIO.miejscowosc",
@@ -528,7 +534,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "Odwolujacy[].krs",
@@ -575,7 +582,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "Odwolujacy[].nazwa",
@@ -638,7 +646,8 @@
           "dictionary": null,
           "grounding": "fuzzy",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "Odwolujacy[].nip",
@@ -685,7 +694,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "Odwolujacy[].regon",
@@ -732,7 +742,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "Odwolujacy[].przez-pelnomocnika",
@@ -760,7 +771,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "Odwolujacy[].pelnomocnik.imie_nazwisko",
@@ -794,7 +806,8 @@
           "dictionary": null,
           "grounding": "token_prefix",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "Odwolujacy[].pelnomocnik.nazwa",
@@ -835,7 +848,8 @@
           "dictionary": null,
           "grounding": "fuzzy",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "Odwolujacy[].pelnomocnik.mail",
@@ -869,7 +883,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": "Odwolujacy[].pelnomocnik.imie_nazwisko"
         },
         {
           "path": "Zamawiajacy[].krs",
@@ -916,7 +931,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "Zamawiajacy[].nazwa",
@@ -976,7 +992,8 @@
           "dictionary": null,
           "grounding": "fuzzy",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "Zamawiajacy[].nip",
@@ -1023,7 +1040,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "Zamawiajacy[].regon",
@@ -1070,7 +1088,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "Zamawiajacy[].prowadzacy_postepowanie",
@@ -1089,7 +1108,8 @@
           "dictionary": null,
           "grounding": "none",
           "default": null,
-          "only_if_list_size_at_least": 2
+          "only_if_list_size_at_least": 2,
+          "only_if_present": null
         },
         {
           "path": "ZamowieniePubliczne.numer_bzp",
@@ -1123,7 +1143,8 @@
           "dictionary": null,
           "grounding": "tokens",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "ZamowieniePubliczne.numer_postepowania",
@@ -1159,7 +1180,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "ZamowieniePubliczne.numer_ted",
@@ -1193,7 +1215,8 @@
           "dictionary": null,
           "grounding": "tokens",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "ZamowieniePubliczne.tytul",
@@ -1239,7 +1262,8 @@
           "dictionary": null,
           "grounding": "fuzzy",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         }
       ]
     },
@@ -1393,7 +1417,8 @@
           "dictionary": null,
           "grounding": "token_prefix",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "mocodawca[].data.krs",
@@ -1451,7 +1476,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "mocodawca[].data.nazwa",
@@ -1563,7 +1589,8 @@
           "dictionary": null,
           "grounding": "fuzzy",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "mocodawca[].data.nip",
@@ -1621,7 +1648,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "mocodawca[].data.typ",
@@ -1649,7 +1677,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "mocodawca[].podpisujacy[].imie_nazwisko",
@@ -1694,7 +1723,8 @@
           "dictionary": null,
           "grounding": "token_prefix",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "pelnomocnicy[].imie_nazwisko",
@@ -1739,7 +1769,8 @@
           "dictionary": null,
           "grounding": "token_prefix",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "pelnomocnicy[].pesel",
@@ -1779,7 +1810,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         }
       ]
     },
@@ -1899,7 +1931,8 @@
           "dictionary": null,
           "grounding": "none",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "przelew_bankowy.kwota",
@@ -1944,7 +1977,8 @@
           "dictionary": null,
           "grounding": "none",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "przelew_bankowy.na_rachunek",
@@ -1995,7 +2029,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "przelew_bankowy.numer_transakcji",
@@ -2037,7 +2072,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "przelew_bankowy.tytul",
@@ -2150,7 +2186,8 @@
           "dictionary": null,
           "grounding": "fuzzy",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         },
         {
           "path": "przelew_bankowy.z_rachunku",
@@ -2201,7 +2238,8 @@
           "dictionary": null,
           "grounding": "required",
           "default": null,
-          "only_if_list_size_at_least": null
+          "only_if_list_size_at_least": null,
+          "only_if_present": null
         }
       ]
     }

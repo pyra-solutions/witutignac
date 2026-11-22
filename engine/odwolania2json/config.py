@@ -96,6 +96,9 @@ class FieldDef(_Model):
     # Pole ma sens tylko, gdy lista nadrzędna ma co najmniej tyle elementów (np. prowadzący
     # postępowanie przy kilku zamawiających); inaczej zostaje null.
     only_if_list_size_at_least: int | None = None
+    # Pole ma sens tylko, gdy wypełnione jest inne pole tego samego elementu listy (np. e-mail pełnomocnika
+    # tylko przy nazwisku pełnomocnika: bez pełnomocnika e-mail w sekcji to adres samego wykonawcy); inaczej null.
+    only_if_present: str | None = None
 
 
 class ListDef(_Model):
