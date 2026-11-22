@@ -16,6 +16,7 @@ Stan na 22.11.2026. Miara: F1 liczone pole po polu względem plików wzorcowych 
 | **Reguły + LLM docelowy (Qwen3.5-9B przez Eden AI, FlexAI, UE), wydanie 2026.11.21-dev.3** | 15 spraw kontrolnych i 2 dokumenty negatywne | **0,993** | 0,990 | 0,996 |
 | Reguły + LLM, wydanie 2026.11.22-dev.5, serwer oceny organizatora | 5 spraw cyfrowych, 9 skanów i 4 dokumenty negatywne (28 dokumentów) | 1,000 | 1,000 | 1,000 |
 | **Reguły + LLM, wydanie 2026.11.22-dev.5, serwer oceny, 3 strony skanu i budżet czasu** | 150 skanów w 50 sprawach (30 skanów organizatora × 5) | **0,981** | 0,981 | 0,981 |
+| **Reguły + LLM, wydanie 2026.11.22-dev.6 (wstępna klasyfikacja PDF-ów cyfrowych), serwer oceny** | pełny zbiór organizatora: 226 PDF (60 spraw, 30 skanów, 16 negatywów) | **0,997** | 0,997 | 0,998 |
 
 Sprawy kontrolne to co czwarta sprawa: 04, 08, …, 60, w tym 6 bardziej zróżnicowanych spraw z drugiej połowy zbioru. Wcześniejsze pomiary z LLM wykonano na profilu deweloperskim z modelem gemma-4-26b-a4b przez API Google (profil usunięty od wydania 2026.11.21-dev.7). Docelowy model Qwen3.5-9B przez Eden AI zmierzyliśmy na tym samym zbiorze kontrolnym; porównanie z innymi modelami jest w [`llm.md`](llm.md).
 
@@ -81,6 +82,20 @@ Liczba stron zmienia tylko odwołania, bo pełnomocnictwa i przelewy organizator
 **Powtarzalność.** Kopie tego samego skanu przetworzone z tą samą liczbą stron dają prawie zawsze identyczny wynik, mimo temperatury 0 nie zawsze. W 150 dokumentach ostatniego testu różniło się między kopiami jedno pole.
 
 **Wątki Doclinga.** Ustawienie z laptopa (4 wątki) porównaliśmy z liczbą vCPU serwera (2 wątki) na 3 skanach. Tekst wyszedł identyczny, a czas 51 s wobec 46 s. To mieści się w wahaniach między przebiegami, bo ten sam skan trwał 30–36 s, więc ustawienie zostało bez zmian.
+
+**Dokumenty negatywne i wstępna klasyfikacja (wydanie 2026.11.22-dev.6).** Testowano 28 PDF-ów: `przyklad_01`–`05` i `negatywne`, przez `sudo`, na wydaniu dev.5. Dokumenty spoza klas zajęły tam 173 z 215 s konwersji, czyli 81%, choć było ich 13 z 28. Silnik rozpoznaje rodzaj dokumentu dopiero na tekście z Doclinga, więc każdy negatyw przechodził pełną konwersję. Negatywy mają 9–35 stron, a z PDF-ów cyfrowych silnik czyta do 6 stron, więc taki dokument trwał 11–13 s. Broszura JPK trwała 30 s, najpewniej przez wiele tabel. Trzy negatywy to skany: OCR to 7–9 s na stronę.
+
+Od wydania dev.6 silnik klasyfikuje PDF cyfrowy najpierw z warstwy tekstowej 2 pierwszych stron. Dokument, któremu do progu każdego rodzaju brakuje co najmniej 1 punktu, dostaje `{}` bez konwersji ([`silnik.md`](silnik.md)). Skany idą pełną ścieżką, bo wstępny OCR prawie nic by nie dał: skany i tak czytamy najwyżej do 3 stron.
+
+| Pomiar na 226 PDF-ach organizatora | Wynik |
+| --- | --- |
+| cyfrowe dokumenty spraw: wstępnie odrzucone / z innym rodzajem | 0 z 180 / 0 z 180 |
+| cyfrowe negatywy odrzucone bez konwersji | 13 z 13 |
+| zapas do progu: negatywy / dokumenty spraw | co najmniej 1,5 pkt poniżej / co najmniej 0,5 pkt powyżej (pełnomocnictwa) |
+| odczyt warstwy tekstowej 2 stron | średnio 3 ms, najwyżej 13 ms |
+| 2 strony wobec 6 stron | te same decyzje |
+
+Pełny przebieg wydania dev.6 na serwerze trwał 1263 s (21 min) i zakończył się bez błędów; budżet czasu ani razu się nie włączył. F1 wyniosło 0,9972 (P 0,9966, R 0,9979), wszystkie 16 negatywów dostało `{}`, a żaden dokument sprawy nie dostał pustego wyniku. Konwersja wg grup: 180 dokumentów spraw cyfrowych 721 s, 30 skanów 397 s, 3 negatywy ze skanów 49 s, 13 negatywów cyfrowych 0 s. Wcześniej te same 13 negatywów zajmowało około 150 s, a ich czas zawyżał też średnią, z której budżet czasu liczy prognozę.
 
 ## Kolejność nagłówka w dwóch kolumnach na skanach (22.11.2026)
 
