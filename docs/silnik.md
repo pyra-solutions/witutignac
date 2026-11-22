@@ -80,7 +80,7 @@ $P -m pytest engine/tests                                            # testy jed
 1. Dodaj plik `config/seed/document_types/<kod>.yaml`. Najprościej skopiować `przelew.yaml`.
 2. Ustaw `classification`: wzorce charakterystyczne dla treści tego dokumentu i próg `min_score`. Nie używaj `filename_patterns`, bo nazwy plików w zbiorze testowym mogą być dowolne. Jedna cecha nie powinna wystarczać do przekroczenia progu. Sprawdź, czy dokumenty z `dane/negatywne` zostają poniżej progu.
 3. Opisz pola w `fields`. Ścieżka pola wyznacza kształt wyniku: `A.b` to obiekt, `A[].b` to lista obiektów. Kolejność pól to kolejność kluczy w JSON.
-4. Dla każdego pola podaj `instruction` dla LLM i przypisz je do grupy z `groups`. Opcjonalnie dodaj `rules` (regex), `normalizers`, `validators` i `strategy`.
+4. Dla każdego pola podaj `instruction` dla LLM i przypisz je do grupy z `groups`. Opcjonalnie dodaj `rules` (regex), `normalizers`, `validators` i `strategy`. Pole zależne od innego pola tego samego elementu listy dostaje `only_if_present: <ścieżka>`. Na przykład e-mail pełnomocnika zostaje tylko wtedy, gdy jest nazwisko pełnomocnika. Pole, które ma sens tylko przy kilku elementach listy, dostaje `only_if_list_size_at_least: N`.
 5. Uruchom `validate-config`, potem `build-release`, a następnie `run` na kilku przykładach z `--trace-dir`, żeby zobaczyć, skąd pochodzi każda wartość.
 
 Przykład pola:

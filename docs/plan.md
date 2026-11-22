@@ -313,6 +313,7 @@ Rozwiązanie konkursowe działa na jednym komputerze. Wdrożenie dla wielu użyt
 - [x] Uruchomienie ekstrakcji z GUI na wgranym PDF (22.11.2026).
 - [x] Budżet czasu partii przy limicie 45 minut na 150 PDF-ów (22.11.2026).
 - [x] Wstępna klasyfikacja PDF-ów cyfrowych z warstwy tekstowej: wyraźne negatywy bez konwersji (wydanie 2026.11.22-dev.6, 22.11.2026).
+- [x] Dwie bezpieczne poprawki błędów stałych: e-mail pełnomocnika tylko przy pełnomocniku (`only_if_present`), sekcje stron do bloku „Wykonawca wybrany” (wydanie 2026.11.22-dev.7, 22.11.2026).
 - [x] Wdrożenie na serwer oceny organizatora: `RUN.md`, `run.sh`, `deploy/install.sh`; test jak u oceniających (F1 1,000 na 28 dokumentach) i test 150 skanów (38,4 min, F1 0,981) (22.11.2026).
 - [ ] Zestawienie licencji i instrukcja instalacji bez internetu.
 - [ ] Demo: dodanie czwartego typu dokumentu (np. przystąpienia do postępowania odwoławczego) samą konfiguracją.

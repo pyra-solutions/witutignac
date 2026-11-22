@@ -17,6 +17,7 @@ Stan na 22.11.2026. Miara: F1 liczone pole po polu względem plików wzorcowych 
 | Reguły + LLM, wydanie 2026.11.22-dev.5, serwer oceny organizatora | 5 spraw cyfrowych, 9 skanów i 4 dokumenty negatywne (28 dokumentów) | 1,000 | 1,000 | 1,000 |
 | **Reguły + LLM, wydanie 2026.11.22-dev.5, serwer oceny, 3 strony skanu i budżet czasu** | 150 skanów w 50 sprawach (30 skanów organizatora × 5) | **0,981** | 0,981 | 0,981 |
 | **Reguły + LLM, wydanie 2026.11.22-dev.6 (wstępna klasyfikacja PDF-ów cyfrowych), serwer oceny** | pełny zbiór organizatora: 226 PDF (60 spraw, 30 skanów, 16 negatywów) | **0,997** | 0,997 | 0,998 |
+| **Reguły + LLM, wydanie 2026.11.22-dev.7 (e-mail pełnomocnika, blok „Wykonawca wybrany”), serwer oceny** | pełny zbiór organizatora: 226 PDF | **0,997** | 0,996 | 0,997 |
 
 Sprawy kontrolne to co czwarta sprawa: 04, 08, …, 60, w tym 6 bardziej zróżnicowanych spraw z drugiej połowy zbioru. Wcześniejsze pomiary z LLM wykonano na profilu deweloperskim z modelem gemma-4-26b-a4b przez API Google (profil usunięty od wydania 2026.11.21-dev.7). Docelowy model Qwen3.5-9B przez Eden AI zmierzyliśmy na tym samym zbiorze kontrolnym; porównanie z innymi modelami jest w [`llm.md`](llm.md).
 
@@ -70,7 +71,7 @@ Liczba stron zmienia tylko odwołania, bo pełnomocnictwa i przelewy organizator
 
 | Błąd | Skan | Kopie | Przyczyna |
 | --- | --- | ---: | --- |
-| e-mail firmy jako e-mail pełnomocnika | odwołanie 0009 | 5 z 5 | firma działa bez pełnomocnika, a reguła `pelnomocnik.mail` bierze dowolny e-mail z sekcji „Odwołujący” |
+| e-mail firmy jako e-mail pełnomocnika | odwołanie 0009 | 5 z 5 | firma działa bez pełnomocnika, a reguła `pelnomocnik.mail` bierze dowolny e-mail z sekcji „Odwołujący” (naprawione w wydaniu dev.7) |
 | drugi z dwóch pełnomocników | odwołanie 0010 | 5 z 5 | OCR: „przez.pełnomocnika: radca prawny Andrzej Wróbel adwokat Monika Zawadzka”; reguła nie pasuje przez kropkę, a model wybiera drugie nazwisko |
 | „S.A.” zamiast „spółka akcyjna” | pełnomocnictwo 0004 | 5 z 5 | model bierze nazwę z nagłówka, a wzorzec ma formę z treści (w OCR „spółkaakcyjna”) |
 | brak KRS lidera konsorcjum | pełnomocnictwo 0007 | 5 z 5 | numeru nie ma w tekście OCR: w miejscu „wpisana do rejestru… KRS” jest szum |
@@ -82,6 +83,21 @@ Liczba stron zmienia tylko odwołania, bo pełnomocnictwa i przelewy organizator
 **Powtarzalność.** Kopie tego samego skanu przetworzone z tą samą liczbą stron dają prawie zawsze identyczny wynik, mimo temperatury 0 nie zawsze. W 150 dokumentach ostatniego testu różniło się między kopiami jedno pole.
 
 **Wątki Doclinga.** Ustawienie z laptopa (4 wątki) porównaliśmy z liczbą vCPU serwera (2 wątki) na 3 skanach. Tekst wyszedł identyczny, a czas 51 s wobec 46 s. To mieści się w wahaniach między przebiegami, bo ten sam skan trwał 30–36 s, więc ustawienie zostało bez zmian.
+
+**Wydanie 2026.11.22-dev.7: dwa błędy stałe.** Dwa błędy można było naprawić bez ryzyka dla innych dokumentów:
+
+- **E-mail pełnomocnika tylko przy pełnomocniku.** Nowa opcja pola `only_if_present`. We wzorcach organizatora e-mail pełnomocnika nigdy nie występuje bez jego nazwiska (210 odwołań). Jedyny odwołujący bez pełnomocnika to skan 0009, w którym reguła brała e-mail samej firmy.
+- **Sekcje stron kończą się na bloku „Wykonawca wybrany (potencjalny uczestnik…)”.** Taki blok jest w 7 z 60 spraw i zawsze stoi za danymi stron. W `przyklad_52` Odwołujący z wpisem w CEIDG nie ma własnego KRS, więc reguła brała KRS wybranego wykonawcy.
+
+Pełny przebieg na serwerze (226 PDF-ów, 1295 s): wobec wydania dev.6 zmieniły się 3 pliki. Skan 0009 i `przyklad_52` są teraz zgodne ze wzorcem. W `przyklad_25` (pełnomocnictwo) model raz zapisuje podpisującą jako mocodawcę, a raz nie, niezależnie od wydania. F1 0,9968; przy tym samym wyniku `przyklad_25` co w przebiegu dev.6 przez `sudo` błędnych wartości jest o 2 mniej (0,9964 → 0,9968).
+
+Bez zmian zostały błędy, których nie da się naprawić bez ryzyka albo wcale:
+
+- `przyklad_30`: dwukolumnowy wydruk banku, Docling gubi przypisanie rachunków do nadawcy i odbiorcy;
+- `przyklad_51`: model wpisuje KRS drugiego Zamawiającego także pierwszemu;
+- skan 0010: dwóch pełnomocników;
+- pełnomocnictwo 0004: „S.A.” zamiast „spółka akcyjna”;
+- błędy OCR i niespójny wzorzec (pełnomocnictwo 0010).
 
 **Dokumenty negatywne i wstępna klasyfikacja (wydanie 2026.11.22-dev.6).** Testowano 28 PDF-ów: `przyklad_01`–`05` i `negatywne`, przez `sudo`, na wydaniu dev.5. Dokumenty spoza klas zajęły tam 173 z 215 s konwersji, czyli 81%, choć było ich 13 z 28. Silnik rozpoznaje rodzaj dokumentu dopiero na tekście z Doclinga, więc każdy negatyw przechodził pełną konwersję. Negatywy mają 9–35 stron, a z PDF-ów cyfrowych silnik czyta do 6 stron, więc taki dokument trwał 11–13 s. Broszura JPK trwała 30 s, najpewniej przez wiele tabel. Trzy negatywy to skany: OCR to 7–9 s na stronę.
 
