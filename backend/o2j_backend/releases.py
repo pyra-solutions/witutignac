@@ -22,7 +22,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, ValidationError
 
-from odwolania2json.config import Release, build_from_seed
+from odwolania2json.config import Release, build_from_seed, config_problems
 
 from . import REPO_ROOT
 
@@ -102,12 +102,20 @@ def _record_path(files: ConfigFiles, version: str) -> Path:
     return files.releases_dir / f"{check_version(version)}.json"
 
 
+def _raise_problems(release: Release, where: str) -> None:
+    """Te same sprawdzenia co `odwolania2json validate-config` (wtyczki, regexy, sekcje, słowniki, grupy)."""
+    problems = config_problems(release)
+    if problems:
+        raise ReleaseError(f"{where} nie przechodzi walidacji silnika:\n  " + "\n  ".join(problems))
+
+
 def build_draft(files: ConfigFiles, version: str = "draft") -> Release:
-    """Bieżąca konfiguracja z plików YAML, sprawdzona modelami silnika."""
+    """Bieżąca konfiguracja z plików YAML, sprawdzona modelami silnika i jak w `validate-config`."""
     try:
         release = build_from_seed(files.seed_dir)
     except (ValidationError, yaml.YAMLError, OSError) as e:
         raise ReleaseError(f"Konfiguracja w {files.seed_dir} nie przechodzi walidacji silnika:\n{e}") from e
+    _raise_problems(release, f"Konfiguracja w {files.seed_dir}")
     return release.model_copy(update={"version": version})
 
 
@@ -201,7 +209,8 @@ def activate_release(files: ConfigFiles, version: str) -> ReleaseRecord:
         raise ReleaseError(f"Nie ma wydania {version}")
     if snapshot_sha256(record.snapshot) != record.sha256:
         raise ReleaseError(f"Plik wydania {version} został zmieniony po publikacji (niezgodny SHA-256).")
-    Release.model_validate(record.snapshot)  # wydanie nadal pasuje do modelu silnika
+    # wydanie nadal pasuje do modelu silnika i do jego wtyczek (np. normalizator nie zniknął z kodu)
+    _raise_problems(Release.model_validate(record.snapshot), f"Wydanie {version}")
     files.active_file.parent.mkdir(parents=True, exist_ok=True)
     tmp = files.active_file.with_suffix(".json.tmp")
     tmp.write_text(release_file_text(record.snapshot), encoding="utf-8")

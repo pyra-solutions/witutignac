@@ -166,7 +166,7 @@ Przykładowa definicja pola:
 **Cykl wydania konfiguracji:**
 
 1. Zmiana w plikach YAML (docelowo także w GUI, które zapisze te same pliki).
-2. `validate-config`: sprawdzenie modeli, regexów oraz odwołań do sekcji, grup, słowników i wtyczek.
+2. `validate-config`: sprawdzenie modeli, regexów oraz odwołań do sekcji, grup, słowników i wtyczek. Publikacja (krok 4) powtarza te sprawdzenia i odrzuca konfigurację z błędami.
 3. Próba na kilku PDF-ach z `--trace-dir` i `evaluate` na zbiorze z wzorcami, porównana z aktywnym wydaniem.
 4. `backend/manage.py publish --version <wersja>` albo „Opublikuj” na ekranie Wydania w GUI: zapis niezmiennego wydania w `config/releases/` i aktywacja, czyli zapis `engine/config/release.json`. Plik trafia do repozytorium, z którego CLI uruchomią oceniający.
 5. Wycofanie zmian to `manage.py activate` z poprzednią wersją.

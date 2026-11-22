@@ -459,3 +459,21 @@ def test_party_sections_end_at_selected_contractor() -> None:
             "dotyczy: postępowania o udzielenie zamówienia")
     body, _ = section_text(text, "odwolujacy", secs)
     assert "BRONTEX" in body and "9993140838" in body and "9992630248" not in body
+
+
+def test_config_problems() -> None:
+    """Konfiguracja z repozytorium jest poprawna, a błędne odwołania i regexy są wykrywane."""
+    from odwolania2json.config import build_from_seed, config_problems
+
+    seed = Path(__file__).resolve().parents[2] / "config" / "seed"
+    release = build_from_seed(seed)
+    assert config_problems(release) == []
+
+    dt = next(d for d in release.document_types if d.code == "przelew")
+    dt.fields[0].normalizers[0].name = "nie_ma_takiego"
+    dt.classification.patterns[0].pattern = "PRZELEW("
+    dt.groups[0].llm_profile = "brak-profilu"
+    problems = config_problems(release)
+    assert any("nieznany normalizator nie_ma_takiego" in p for p in problems)
+    assert any("niepoprawny regex" in p for p in problems)
+    assert any("brak profilu LLM 'brak-profilu'" in p for p in problems)

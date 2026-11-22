@@ -92,64 +92,12 @@ def cmd_validate(a: argparse.Namespace) -> int:
 
 
 def _check(rel) -> None:  # noqa: ANN001
-    """Sprawdza odwołania: wtyczki, sekcje, słowniki, grupy, regexy, schemat drzewa."""
-    import re
+    """Sprawdza odwołania: wtyczki, sekcje, słowniki, grupy, regexy, schemat drzewa (config.config_problems)."""
+    from odwolania2json.config import config_problems
 
-    from odwolania2json import normalizers, validators  # noqa: F401
-    from odwolania2json.assemble import build_tree
-    from odwolania2json.registry import normalizers as nreg
-    from odwolania2json.registry import validators as vreg
-
-    problems = []
-    dict_codes = {d.code for d in rel.dictionaries}
-    for dt in rel.document_types:
-        secs = {s.name for s in dt.sections}
-        groups = {g.name for g in dt.groups}
-        try:
-            build_tree(dt.fields)
-        except ValueError as e:
-            problems.append(f"{dt.code}: {e}")
-        for s in dt.sections:
-            for p in s.start + s.end:
-                _rx(p, f"{dt.code}/sekcja {s.name}", problems, re)
-            if s.within and s.within not in secs:
-                problems.append(f"{dt.code}/sekcja {s.name}: nieznana sekcja nadrzędna {s.within}")
-        for p in dt.classification.patterns + dt.classification.filename_patterns:
-            _rx(p.pattern, f"{dt.code}/klasyfikacja", problems, re)
-        for f in dt.fields:
-            where = f"{dt.code}/{f.path}"
-            for n in f.normalizers:
-                if n.name not in nreg:
-                    problems.append(f"{where}: nieznany normalizator {n.name}")
-            for v in f.validators:
-                if v.name not in vreg:
-                    problems.append(f"{where}: nieznany walidator {v.name}")
-            for r in f.rules:
-                if r.section and r.section not in secs:
-                    problems.append(f"{where}: nieznana sekcja {r.section}")
-                if r.pattern:
-                    _rx(r.pattern, where, problems, re)
-                if r.dictionary and r.dictionary not in dict_codes:
-                    problems.append(f"{where}: nieznany słownik {r.dictionary}")
-            if f.group and f.group not in groups:
-                problems.append(f"{where}: nieznana grupa {f.group}")
-            if f.derive and f.derive.dictionary and f.derive.dictionary not in dict_codes:
-                problems.append(f"{where}: nieznany słownik {f.derive.dictionary}")
-        for g in dt.groups:
-            for s in g.sections:
-                if s not in secs:
-                    problems.append(f"{dt.code}/grupa {g.name}: nieznana sekcja {s}")
-            rel.llm_profile(g.llm_profile)
-        rel.conversion_profile(dt.conversion_profile)
+    problems = config_problems(rel)
     if problems:
         raise SystemExit("Błędy konfiguracji:\n  " + "\n  ".join(problems))
-
-
-def _rx(p: str, where: str, problems: list[str], re) -> None:  # noqa: ANN001
-    try:
-        re.compile(p)
-    except re.error as e:
-        problems.append(f"{where}: niepoprawny regex {p!r}: {e}")
 
 
 def cmd_plugins(_a: argparse.Namespace) -> int:

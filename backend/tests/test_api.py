@@ -75,6 +75,24 @@ def test_publish_and_activate(client, files, gui_state):
     assert client.post("/api/releases", json={"version": "v3"}).status_code == 409
 
 
+def test_publish_runs_engine_checks(client, files):
+    """Publikacja sprawdza konfigurację jak validate-config, nie tylko model Pydantic."""
+    path = files.seed_dir / "document_types" / "przelew.yaml"
+    text = path.read_text(encoding="utf-8")
+    path.write_text(text.replace("{name: date_iso}", "{name: nie_ma_takiego}", 1), encoding="utf-8")
+    r = client.post("/api/releases", json={"version": "v1"})
+    assert r.status_code == 409
+    assert "nieznany normalizator nie_ma_takiego" in r.json()["detail"]
+    assert client.get("/api/config/draft").status_code == 409
+    assert not files.active_file.exists()
+    assert not (files.releases_dir / "v1.json").exists()
+
+    path.write_text(text.replace("pattern: 'PRZELEW'", "pattern: 'PRZELEW('", 1), encoding="utf-8")
+    r = client.post("/api/releases", json={"version": "v1"})
+    assert r.status_code == 409
+    assert "niepoprawny regex" in r.json()["detail"]
+
+
 def test_draft(client, files):
     draft = client.get("/api/config/draft").json()
     assert draft["version"] == "draft"

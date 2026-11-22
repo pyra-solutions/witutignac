@@ -52,11 +52,12 @@ config/seed/*.yaml ──publish──▶ config/releases/<wersja>.json ──ac
 ```
 
 - **Publikacja** buduje wydanie z YAML tak samo jak `odwolania2json build-release` i sprawdza je modelami
-  silnika. Plik wydania powstaje tylko wtedy, gdy jeszcze nie istnieje, więc opublikowanej wersji nie da
-  się nadpisać.
+  silnika oraz tak jak `validate-config`: nazwy normalizatorów i walidatorów, regexy, sekcje, słowniki,
+  grupy i profile (`config_problems` w `engine/odwolania2json/config.py`). Plik wydania powstaje tylko wtedy,
+  gdy jeszcze nie istnieje, więc opublikowanej wersji nie da się nadpisać.
 - **Aktywacja** zapisuje snapshot wydania do `engine/config/release.json` w formacie bajt w bajt zgodnym
   z `build-release`. Wycofanie zmian to aktywacja poprzedniej wersji. Wydanie, którego plik zmieniono po
-  publikacji (niezgodny SHA-256), nie zostanie aktywowane.
+  publikacji (niezgodny SHA-256) albo które odwołuje się do wtyczki usuniętej z kodu, nie zostanie aktywowane.
 - **Status.** Aktywne jest wydanie o tym samym SHA-256 co `engine/config/release.json`. Gdy ten plik
   zbudowano poleceniem `build-release` bez publikacji, żadne wydanie nie jest aktywne.
 

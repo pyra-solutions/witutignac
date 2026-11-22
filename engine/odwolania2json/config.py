@@ -257,6 +257,75 @@ class Release(_Model):
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
+def config_problems(release: Release) -> list[str]:
+    """Błędy, których model Pydantic nie wykrywa: nieznane wtyczki, sekcje, słowniki, grupy i profile,
+    niepoprawne regexy, sprzeczne ścieżki pól. Pusta lista oznacza poprawną konfigurację.
+
+    Używają jej `validate-config`, `build-release`, `doctor` i publikacja wydań w backendzie."""
+    import re
+
+    from odwolania2json import normalizers, validators  # noqa: F401 — rejestracja wtyczek
+    from odwolania2json.assemble import build_tree
+    from odwolania2json.registry import normalizers as nreg
+    from odwolania2json.registry import validators as vreg
+
+    problems: list[str] = []
+
+    def rx(p: str, where: str) -> None:
+        try:
+            re.compile(p)
+        except re.error as e:
+            problems.append(f"{where}: niepoprawny regex {p!r}: {e}")
+
+    dict_codes = {d.code for d in release.dictionaries}
+    for dt in release.document_types:
+        secs = {s.name for s in dt.sections}
+        groups = {g.name for g in dt.groups}
+        try:
+            build_tree(dt.fields)
+        except ValueError as e:
+            problems.append(f"{dt.code}: {e}")
+        for s in dt.sections:
+            for p in s.start + s.end:
+                rx(p, f"{dt.code}/sekcja {s.name}")
+            if s.within and s.within not in secs:
+                problems.append(f"{dt.code}/sekcja {s.name}: nieznana sekcja nadrzędna {s.within}")
+        for p in dt.classification.patterns + dt.classification.filename_patterns:
+            rx(p.pattern, f"{dt.code}/klasyfikacja")
+        for f in dt.fields:
+            where = f"{dt.code}/{f.path}"
+            for n in f.normalizers:
+                if n.name not in nreg:
+                    problems.append(f"{where}: nieznany normalizator {n.name}")
+            for v in f.validators:
+                if v.name not in vreg:
+                    problems.append(f"{where}: nieznany walidator {v.name}")
+            for r in f.rules:
+                if r.section and r.section not in secs:
+                    problems.append(f"{where}: nieznana sekcja {r.section}")
+                if r.pattern:
+                    rx(r.pattern, where)
+                if r.dictionary and r.dictionary not in dict_codes:
+                    problems.append(f"{where}: nieznany słownik {r.dictionary}")
+            if f.group and f.group not in groups:
+                problems.append(f"{where}: nieznana grupa {f.group}")
+            if f.derive and f.derive.dictionary and f.derive.dictionary not in dict_codes:
+                problems.append(f"{where}: nieznany słownik {f.derive.dictionary}")
+        for g in dt.groups:
+            for s in g.sections:
+                if s not in secs:
+                    problems.append(f"{dt.code}/grupa {g.name}: nieznana sekcja {s}")
+            try:
+                release.llm_profile(g.llm_profile)
+            except KeyError as e:
+                problems.append(f"{dt.code}/grupa {g.name}: {e.args[0]}")
+        try:
+            release.conversion_profile(dt.conversion_profile)
+        except KeyError as e:
+            problems.append(f"{dt.code}: {e.args[0]}")
+    return problems
+
+
 def load_release(path: Path) -> Release:
     """Wczytuje wydanie z pliku JSON albo buduje je z katalogu YAML (seed)."""
     if path.is_dir():
