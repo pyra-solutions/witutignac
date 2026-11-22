@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Instalacja Odwołania2json na serwerze oceny (Ubuntu 24.04, 2 vCPU, bez GPU). Nie wymaga sudo.
 #
-#   cd /opt/solution && bash deploy/install.sh
+#   cd /opt/solution && bash odwolania2json/deploy/install.sh
 #
-# Wszystko trafia do katalogu projektu, więc run.sh działa także pod sudo (HOME=/root) i bez pobierania:
+# Uruchamiaj z katalogu, w którym są input/, output/ i .env z kluczem API (na serwerze /opt/solution).
+# Wszystko trafia do katalogu rozwiązania, więc run.sh działa także pod sudo (HOME=/root) i bez pobierania:
 #   .tools/python      Python 3.14 (uv; systemowy Python 3.12 jest za stary, projekt wymaga 3.13+)
 #   engine/.venv       pakiety w wersjach z engine/requirements.lock.txt (rapidocr trzyma tu swoje modele)
 #   .cache/huggingface modele układu strony Docling
@@ -12,6 +13,7 @@
 # Skrypt można uruchamiać wielokrotnie, np. po `git pull`.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+CALL_DIR="$PWD"
 cd "$ROOT"
 
 PY_VERSION="${PY_VERSION:-3.14}"
@@ -78,10 +80,10 @@ echo "OK: modele są na dysku, wyniki obu przebiegów identyczne."
 
 step "Diagnoza (plik .env, klucz API, próbne zapytanie do API)"
 mkdir -p logs
-if [ ! -f .env ]; then
-  echo "UWAGA: brak pliku $ROOT/.env. Utwórz go na wzór .env.example (EDEN_AI_API_KEY=...)." >&2
+if [ ! -f "$CALL_DIR/.env" ] && [ ! -f "$ROOT/.env" ]; then
+  echo "UWAGA: brak pliku $CALL_DIR/.env. Utwórz go na wzór $ROOT/.env.example (EDEN_AI_API_KEY=...)." >&2
 fi
-HF_HUB_OFFLINE=1 "$VENV_PY" -m odwolania2json doctor --report "$ROOT/logs/diagnoza.txt" --no-convert \
-  || echo "UWAGA: diagnoza zgłosiła problemy, szczegóły powyżej i w logs/diagnoza.txt." >&2
+(cd "$CALL_DIR" && HF_HUB_OFFLINE=1 "$VENV_PY" -m odwolania2json doctor --report "$ROOT/logs/diagnoza.txt" --no-convert) \
+  || echo "UWAGA: diagnoza zgłosiła problemy, szczegóły powyżej i w $ROOT/logs/diagnoza.txt." >&2
 
-step "Gotowe. Komenda oceny: cd $ROOT && sudo bash run.sh"
+step "Gotowe. Komenda oceny: cd $CALL_DIR && sudo bash $(realpath --relative-to="$CALL_DIR" "$ROOT")/run.sh"

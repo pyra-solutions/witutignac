@@ -12,14 +12,25 @@ start.bat             # Windows
 
 Skrypt przy pierwszym uruchomieniu tworzy `engine/.venv` i instaluje `engine/requirements.txt` (Python 3.13+). Potem przetwarza `./input/<sprawa>/*.pdf` do `./output/<sprawa>/<nazwa pliku>.json`.
 
-Na serwerze oceny organizatora (Ubuntu 24.04, 2 vCPU, Python 3.12 w systemie):
+Na serwerze oceny organizatora (Ubuntu 24.04, 2 vCPU, Python 3.12 w systemie) układ katalogów jest taki, jak wymaga organizator:
 
-```bash
-cd /opt/solution && bash deploy/install.sh   # raz, przed oceną, bez sudo
-cd /opt/solution && sudo bash run.sh         # komenda oceny z RUN.md
+```text
+/opt/solution/
+├── RUN.md              kopia RUN.md z repozytorium: komenda oceny
+├── .env                klucz API (EDEN_AI_API_KEY)
+├── input/              dokumenty do przetworzenia
+├── output/             wyniki
+└── odwolania2json/     repozytorium: kod, konfiguracja, Python, pakiety i modele
 ```
 
-`deploy/install.sh` instaluje Pythona 3.14 przez uv w `.tools/` i pakiety w wersjach z `engine/requirements.lock.txt`. Pobiera też modele Docling i RapidOCR do katalogu projektu. Na koniec robi przebieg próbny, powtarza go bez dostępu do Hugging Face i porównuje wyniki, a potem uruchamia diagnozę klucza API. `run.sh` niczego nie pobiera (`HF_HUB_OFFLINE=1`), działa bez cache i zapisuje dziennik do `logs/`. Pod `sudo` katalog domowy to `/root`, dlatego modele leżą w `/opt/solution/.cache`, a nie w `~/.cache`. `sudo bash run.sh diagnoza` uruchamia diagnozę środowiska.
+```bash
+cd /opt/solution && git clone -b diagnoza-klucz-bzp https://github.com/pyra-solutions/witutignac.git odwolania2json
+cd /opt/solution && bash odwolania2json/deploy/install.sh   # raz, przed oceną, bez sudo
+cp /opt/solution/odwolania2json/RUN.md /opt/solution/RUN.md
+cd /opt/solution && sudo bash odwolania2json/run.sh         # komenda oceny z RUN.md
+```
+
+`run.sh` bierze `input/`, `output/` i `.env` z katalogu, z którego uruchamia się komendę (`/opt/solution`). `deploy/install.sh` instaluje Pythona 3.14 przez uv w `.tools/` i pakiety w wersjach z `engine/requirements.lock.txt`. Pobiera też modele Docling i RapidOCR do katalogu projektu. Na koniec robi przebieg próbny, powtarza go bez dostępu do Hugging Face i porównuje wyniki, a potem uruchamia diagnozę klucza API. `run.sh` niczego nie pobiera (`HF_HUB_OFFLINE=1`), działa bez cache i zapisuje dziennik do `logs/`. Pod `sudo` katalog domowy to `/root`, dlatego modele leżą w `/opt/solution/odwolania2json/.cache`, a nie w `~/.cache`. `sudo bash odwolania2json/run.sh diagnoza` uruchamia diagnozę środowiska.
 
 Dodatkowe argumenty trafiają do polecenia `run`:
 

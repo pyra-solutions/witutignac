@@ -3,7 +3,7 @@
 ## Komenda
 
 ```bash
-cd /opt/solution && sudo bash run.sh
+cd /opt/solution && sudo bash odwolania2json/run.sh
 ```
 
 ## Modele AI używane podczas przetwarzania

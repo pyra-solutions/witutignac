@@ -254,24 +254,31 @@ def check_api(rep: Report, release) -> None:  # noqa: ANN001
         rep.add(ERR, f"HTTP {r.status_code} {text}")
 
 
-def check_data(rep: Report, repo_dir: Path) -> None:
+def data_dir_for(repo_dir: Path) -> Path:
+    """Katalog z input/, output/ i .env: bieżący, jeśli ma input/ i output/ (serwer oceny: /opt/solution,
+    kod w podkatalogu), inaczej katalog projektu. Tak samo szukają ich run.sh i silnik (.env z katalogu bieżącego)."""
+    cwd = Path.cwd()
+    return cwd if (cwd / "input").is_dir() and (cwd / "output").is_dir() else repo_dir
+
+
+def check_data(rep: Report, repo_dir: Path, data_dir: Path) -> None:
     rep.section("Dane wejściowe")
     for d, empty, hint in (
         (repo_dir / "hacknation-2026" / "dane", WARN,
          "Brak danych organizatora: w katalogu projektu wpisz git submodule update --init "
          "(repozytorium pobrane jako ZIP nie zawiera submodułu, trzeba użyć git clone)."),
-        (repo_dir / "input", INFO, "Domyślny katalog wejściowy jest pusty; dane organizatora: "
+        (data_dir / "input", INFO, "Domyślny katalog wejściowy jest pusty; dane organizatora: "
                                    "start.bat --input hacknation-2026\\dane"),
     ):
         n = sum(1 for p in d.rglob("*") if p.is_file() and p.suffix.lower() == ".pdf") if d.is_dir() else 0
         rep.add(OK if n else empty, f"{d}: {n} plików PDF", "" if n else hint)
 
 
-def check_write(rep: Report, repo_dir: Path) -> None:
+def check_write(rep: Report, data_dir: Path) -> None:
     from odwolania2json.cli import _cache_dir
 
     rep.section("Zapis wyników i cache")
-    for d in (repo_dir / "output", _cache_dir(None)):
+    for d in (data_dir / "output", _cache_dir(None)):
         if d is None:
             rep.add(INFO, "cache wyłączony (O2J_CACHE_DIR=none)")
             continue
@@ -285,7 +292,7 @@ def check_write(rep: Report, repo_dir: Path) -> None:
                     "Przenieś projekt do zwykłego katalogu użytkownika, np. C:\\Users\\<nazwa>\\witutignac.")
 
 
-def check_conversion(rep: Report, release, repo_dir: Path) -> None:  # noqa: ANN001
+def check_conversion(rep: Report, release, repo_dir: Path, data_dir: Path) -> None:  # noqa: ANN001
     from odwolania2json.pipeline import Engine
 
     rep.section("Konwersja PDF (Docling)")
@@ -294,7 +301,7 @@ def check_conversion(rep: Report, release, repo_dir: Path) -> None:  # noqa: ANN
         return
     sample = repo_dir / "hacknation-2026" / "szablon-aplikacja" / "input" / "case1" / "przyklad odwolanie.pdf"
     if not sample.is_file():
-        sample = next((p for d in (repo_dir / "input", repo_dir / "hacknation-2026" / "dane") if d.is_dir()
+        sample = next((p for d in (data_dir / "input", repo_dir / "hacknation-2026" / "dane") if d.is_dir()
                        for p in sorted(d.rglob("*.pdf"))), None)
     if sample is None:
         rep.add(WARN, "pominięte: nie ma żadnego PDF-a do próby")
@@ -321,7 +328,9 @@ def check_conversion(rep: Report, release, repo_dir: Path) -> None:  # noqa: ANN
 
 def run(repo_dir: Path, report_path: Path, *, api: bool = True, convert: bool = True) -> int:
     rep = Report()
-    rep._out(f"Diagnoza Odwołania2json, {datetime.now():%Y-%m-%d %H:%M}, katalog {repo_dir}")
+    data_dir = data_dir_for(repo_dir)
+    where = f"katalog {repo_dir}" + ("" if data_dir == repo_dir else f", dane i .env w {data_dir}")
+    rep._out(f"Diagnoza Odwołania2json, {datetime.now():%Y-%m-%d %H:%M}, {where}")
     release = None
 
     def load_config() -> None:
@@ -329,11 +338,11 @@ def run(repo_dir: Path, report_path: Path, *, api: bool = True, convert: bool = 
         release = check_config(rep)
 
     checks = [lambda: check_python(rep), lambda: check_packages(rep), load_config,
-              lambda: check_key(rep, release, repo_dir)]
+              lambda: check_key(rep, release, data_dir)]
     checks.append((lambda: check_api(rep, release)) if api
                   else (lambda: rep.add(INFO, "test API pominięty (--no-api)")))
-    checks += [lambda: check_data(rep, repo_dir), lambda: check_write(rep, repo_dir)]
-    checks.append((lambda: check_conversion(rep, release, repo_dir)) if convert
+    checks += [lambda: check_data(rep, repo_dir, data_dir), lambda: check_write(rep, data_dir)]
+    checks.append((lambda: check_conversion(rep, release, repo_dir, data_dir)) if convert
                   else (lambda: rep.add(INFO, "test konwersji pominięty (--no-convert)")))
     for check in checks:
         try:
