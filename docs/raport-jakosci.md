@@ -23,7 +23,7 @@ Sprawy kontrolne to co czwarta sprawa: 04, 08, …, 60, w tym 6 bardziej zróżn
 
 ## Serwer oceny organizatora (22.11.2026)
 
-Organizator ocenia rozwiązanie na maszynie wirtualnej Azure: Ubuntu 24.04, 2 vCPU (jeden rdzeń Xeon Platinum 8370C z dwoma wątkami sprzętowymi), 16 GB RAM, bez GPU. Oceniający uruchamiają komendę z [`RUN.md`](../RUN.md) i zabierają wyniki z `/opt/solution/output`. Pomiary w tej sekcji wykonano na tym serwerze: wydanie 2026.11.22-dev.5, LLM Qwen3.5-9B przez endpoint UE Eden AI, bez cache, komenda `bash run.sh`.
+Organizator ocenia rozwiązanie na maszynie wirtualnej Azure: Ubuntu 24.04, 2 vCPU (jeden rdzeń Xeon Platinum 8370C z dwoma wątkami sprzętowymi), 16 GB RAM, bez GPU. Oceniający uruchamiają komendę z [`RUN.md`](../RUN.md) i zabierają wyniki z `/opt/solution/output`. Pomiary w tej sekcji wykonano na tym serwerze: wydanie 2026.11.22-dev.5, LLM Qwen3.5-9B przez endpoint UE Eden AI, bez cache, komenda z [`RUN.md`](../RUN.md) (`run.sh`).
 
 **Czas dokumentu** jest około 2 razy dłuższy niż na laptopie z sekcji „Czas przetwarzania skanów”:
 

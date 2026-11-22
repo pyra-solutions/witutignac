@@ -55,6 +55,7 @@ $P -m odwolania2json evaluate --pred output --gold ścieżka/do/dane   # F1 wzgl
 $P -m odwolania2json build-release                                   # config/seed/*.yaml -> engine/config/release.json
 $P -m odwolania2json validate-config --config config/seed            # sprawdzenie konfiguracji
 $P -m odwolania2json plugins                                         # lista normalizatorów i walidatorów
+$P -m odwolania2json doctor                                          # diagnoza: Python, pakiety, .env i klucz, API, zapis, konwersja
 $P -m pytest engine/tests                                            # testy jednostkowe
 ```
 
@@ -103,20 +104,28 @@ Nowy rodzaj normalizatora lub walidatora to jedna funkcja z dekoratorem `@normal
 ```text
 engine/
 ├── odwolania2json/
-│   ├── cli.py          polecenia run, evaluate, build-release, validate-config, plugins
+│   ├── cli.py          polecenia run, evaluate, build-release, validate-config, plugins, doctor
 │   ├── config.py       model konfiguracji (Pydantic), wczytywanie YAML/JSON
-│   ├── convert.py      Docling -> Markdown, wykrywanie skanów, cache
+│   ├── convert.py      Docling -> Markdown, wykrywanie skanów, zapasowy OCR (RapidOCR), cache
+│   ├── layout.py       kolejność nagłówka w dwóch kolumnach na skanach
 │   ├── diacritics.py   przywracanie polskich znaków w tekście skanów (słownik w data/)
+│   ├── textutil.py     poprawki tekstu OCR, sekcje tekstu, weryfikacja źródła wartości
 │   ├── rules.py        klasyfikacja i ekstraktory deterministyczne
 │   ├── llm.py          klient API zgodnego z OpenAI, ponawianie, cache
 │   ├── assemble.py     drzewo pól: wynik JSON, schemat JSON dla LLM
-│   ├── pipeline.py     etapy potoku i arbitraż
-│   ├── normalizers.py  rejestr normalizatorów
-│   ├── validators.py   rejestr walidatorów (NIP, REGON, PESEL, KRS, IBAN...)
-│   └── evaluate.py     F1 pole po polu
+│   ├── pipeline.py     etapy potoku, wstępna klasyfikacja, budżet czasu, arbitraż, ślad ekstrakcji
+│   ├── registry.py     rejestry wtyczek (normalizatory, walidatory)
+│   ├── normalizers.py  normalizatory
+│   ├── validators.py   walidatory (NIP, REGON, PESEL, KRS, IBAN...)
+│   ├── evaluate.py     F1 pole po polu
+│   ├── doctor.py       diagnoza środowiska (diagnoza.bat, diagnoza.sh, run.sh diagnoza)
+│   └── data/           słownik polskich znaków (pl_diacritics.txt.gz)
 ├── config/release.json wydanie konfiguracji używane przez CLI
 ├── tools/              build_pl_diacritics.py: odtworzenie słownika polskich znaków z hunspell-pl
+├── spikes/             próba Doclinga z pierwszego dnia
 ├── tests/
-└── requirements.txt
+├── requirements.txt       zakresy wersji (Python 3.13+, PyTorch tylko CPU)
+└── requirements.lock.txt  dokładne wersje dla serwera oceny (deploy/install.sh)
 config/seed/            źródłowe pliki YAML konfiguracji
+run.sh, deploy/         uruchomienie i instalacja na serwerze oceny (RUN.md)
 ```

@@ -263,20 +263,25 @@ Pełne wyniki, poprawki i pozostałe błędy są w [raporcie jakości](raport-ja
 /
 ├── engine/                       # Python 3.13+, oceniany rdzeń
 │   ├── odwolania2json/
-│   │   ├── cli.py                # run, evaluate, build-release, validate-config, plugins
+│   │   ├── cli.py                # run, evaluate, build-release, validate-config, plugins, doctor
 │   │   ├── config.py             # modele Pydantic wydania, wczytywanie YAML i JSON
-│   │   ├── convert.py            # Docling -> Markdown, wykrywanie skanów, cache
+│   │   ├── convert.py            # Docling -> Markdown, wykrywanie skanów, zapasowy OCR, cache
+│   │   ├── layout.py             # kolejność nagłówka w dwóch kolumnach na skanach
+│   │   ├── diacritics.py         # przywracanie polskich znaków na skanach (słownik SJP w data/)
+│   │   ├── textutil.py           # poprawki tekstu OCR, sekcje, weryfikacja źródła
 │   │   ├── rules.py              # klasyfikacja i ekstraktory deterministyczne
 │   │   ├── llm.py                # klient API zgodnego z OpenAI, limity, ponawianie, cache
 │   │   ├── assemble.py           # drzewo pól: wynik JSON i schemat JSON dla LLM
-│   │   ├── pipeline.py           # etapy potoku, arbitraż, ślad ekstrakcji
-│   │   ├── normalizers.py        # rejestr normalizatorów
-│   │   ├── validators.py         # rejestr walidatorów (NIP, REGON, PESEL, KRS, IBAN…)
-│   │   └── evaluate.py           # F1 pole po polu
+│   │   ├── pipeline.py           # etapy potoku, wstępna klasyfikacja, budżet czasu, arbitraż, ślad
+│   │   ├── registry.py, normalizers.py, validators.py   # wtyczki (NIP, REGON, PESEL, KRS, IBAN…)
+│   │   ├── evaluate.py           # F1 pole po polu
+│   │   └── doctor.py             # diagnoza środowiska
 │   ├── config/release.json       # aktywne wydanie konfiguracji
+│   ├── tools/                    # odtworzenie słownika polskich znaków
 │   ├── spikes/                   # próba Docling
 │   ├── tests/
-│   └── requirements.txt          # z --extra-index-url dla PyTorch CPU
+│   ├── requirements.txt          # z --extra-index-url dla PyTorch CPU
+│   └── requirements.lock.txt     # dokładne wersje dla serwera oceny
 ├── config/
 │   ├── seed/                     # konfiguracja w YAML: typy dokumentów, słowniki, profile
 │   └── releases/                 # opublikowane, niezmienne wydania
@@ -287,6 +292,10 @@ Pełne wyniki, poprawki i pozostałe błędy są w [raporcie jakości](raport-ja
 ├── requirements.txt              # wszystkie zależności: silnik (engine/) i GUI (backend/)
 ├── start.bat  start_linux.sh  start.sh   # python -m odwolania2json run --input input --output output
 ├── gui.bat  gui.sh                # interfejs graficzny: http://127.0.0.1:8000
+├── diagnoza.bat  diagnoza.sh      # diagnoza środowiska, raport bez wartości klucza
+├── RUN.md  run.sh                # komenda oceny na serwerze organizatora i jej skrypt
+├── deploy/install.sh             # instalacja na serwerze oceny (Python 3.14, pakiety, modele)
+├── hacknation-2026/              # submoduł: dane i wzorce organizatora
 └── docs/                         # plan, silnik, LLM, raport jakości
 ```
 
