@@ -381,3 +381,46 @@ def test_doctor_report_without_secrets(tmp_path: Path, monkeypatch: pytest.Monke
     text = report.read_text(encoding="utf-8")
     assert "== Plik .env i klucz API ==" in text and "Podsumowanie" in text
     assert "tajny-klucz-123" not in text
+
+
+# --- wstępna klasyfikacja PDF-ów cyfrowych (settings.preclassify_pages) ---------------------------------
+
+_APPEAL_TEXT = (
+    "Prezes Krajowej Izby Odwoławczej\nODWOŁANIE\nOdwołujący: Alfa Sp. z o.o.\nZamawiający: Gmina Beta\n"
+    "W imieniu Odwołującego wnoszę odwołanie od czynności Zamawiającego.\nZarzut nr 1\n" * 2
+)
+_NOTICE_TEXT = "Ogłoszenie o zamówieniu\nRoboty budowlane\nSekcja I: Zamawiający\n" + "Opis zamówienia. " * 40
+
+
+def _preclass_engine(monkeypatch: pytest.MonkeyPatch, text: str, pages: int = 2):  # noqa: ANN202
+    from odwolania2json import pipeline
+    from odwolania2json.cli import DEFAULT_SEED
+    from odwolania2json.config import load_release
+
+    rel = load_release(DEFAULT_SEED)
+    rel = rel.model_copy(update={"settings": rel.settings.model_copy(update={"preclassify_pages": pages})})
+    monkeypatch.setattr(pipeline, "text_layer", lambda path, n: (text, 2))
+    return pipeline, pipeline.Engine(rel, None, use_llm=False)
+
+
+def test_preclassify_rejects_clear_negative(monkeypatch: pytest.MonkeyPatch) -> None:
+    pipeline, eng = _preclass_engine(monkeypatch, _NOTICE_TEXT)
+    prep = pipeline.Prepared(pdf=Path("ogloszenie.pdf"), rel=Path("ogloszenie.pdf"))
+    assert eng._reject_digital_early(Path("ogloszenie.pdf"), prep)
+    assert prep.preclass and prep.preclass["pages"] == 2 and prep.scores
+    out, trace = eng.finalize(prep)
+    assert out is None and trace["preclassification"]["decision"].startswith("nieobsługiwany")
+
+
+def test_preclassify_keeps_case_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    pipeline, eng = _preclass_engine(monkeypatch, _APPEAL_TEXT)
+    prep = pipeline.Prepared(pdf=Path("x.pdf"), rel=Path("x.pdf"))
+    assert not eng._reject_digital_early(Path("x.pdf"), prep)
+    assert prep.preclass is None
+
+
+def test_preclassify_skips_scans_and_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    pipeline, eng = _preclass_engine(monkeypatch, "  \n ")  # skan: brak warstwy tekstowej
+    assert not eng._reject_digital_early(Path("skan.pdf"), pipeline.Prepared(pdf=Path("s.pdf"), rel=Path("s.pdf")))
+    pipeline, eng = _preclass_engine(monkeypatch, _NOTICE_TEXT, pages=0)
+    assert not eng._reject_digital_early(Path("o.pdf"), pipeline.Prepared(pdf=Path("o.pdf"), rel=Path("o.pdf")))

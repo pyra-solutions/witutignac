@@ -1,6 +1,6 @@
 # Ustawienia wydania konfiguracji. Pliki w config/seed/ są jedynym źródłem konfiguracji;
 # do silnika trafiają jako engine/config/release.json (build-release albo backend: manage.py publish).
-version: "2026.11.22-dev.5"
+version: "2026.11.22-dev.6"
 
 settings:
   # Wynik dla dokumentu spoza obsługiwanych typów (README: "pusty plik .json").
@@ -10,6 +10,12 @@ settings:
   llm_concurrency: 4
   # Budżet czasu partii (40 min z zapasem do limitu 45 min organizatora na 150 PDF-ów).
   batch_time_budget_s: 2400
+  # Tylko PDF-y cyfrowe: wstępna klasyfikacja z warstwy tekstowej 2 pierwszych stron, przed Doclingiem. Dokument,
+  # któremu do progu każdego rodzaju brakuje co najmniej 1 punktu, dostaje {} bez konwersji (długie negatywy:
+  # 11–30 s -> kilka ms). Na 226 PDF-ach organizatora: 13 z 13 cyfrowych negatywów odrzuconych, 180 z 180
+  # cyfrowych dokumentów spraw idzie pełną ścieżką (najmniejszy zapas negatywu do progu: 1,5 pkt).
+  preclassify_pages: 2
+  preclassify_margin: 1.0
   # Tylko skany: wartość z LLM może się różnić od tekstu OCR polskimi znakami, spacjami i pomyłkami 0/o, 1/l/i,
   # ale musi wystąpić w tekście w całości. Na 30 skanach organizatora F1 0,926 -> 0,935, bez nowych błędnych trafień.
   ocr_tolerant_grounding: true

@@ -214,6 +214,12 @@ class Settings(_Model):
     # Budżet czasu całej partii w sekundach (np. 2400 s = 40 min przy limicie 45 min). Po przekroczeniu
     # progu szacowanego czasu silnik zmniejsza liczbę stron OCR / rozmiar modelu na pozostałych skanach.
     batch_time_budget_s: float | None = Field(default=None, gt=0)
+    # Wstępna klasyfikacja PDF-ów cyfrowych z warstwy tekstowej pierwszych N stron, przed Doclingiem (0 = wyłączona).
+    # Dokument, któremu do progu każdego rodzaju brakuje co najmniej `preclassify_margin` punktów, dostaje
+    # `unsupported_output` bez konwersji. Skany (warstwa tekstowa poniżej 80 znaków na stronę) i dokumenty bliższe
+    # progu idą pełną ścieżką, a ostateczną klasyfikację robi się jak dotąd na tekście z Doclinga.
+    preclassify_pages: int = Field(default=0, ge=0)
+    preclassify_margin: float = Field(default=1.0, ge=0)
 
 
 class Release(_Model):

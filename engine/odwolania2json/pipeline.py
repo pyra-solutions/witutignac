@@ -20,6 +20,7 @@ from odwolania2json.convert import (
     rapidocr_pages_text,
     rapidocr_transfer_text,
     restore_dashes,
+    text_layer,
 )
 from odwolania2json.diacritics import restore_diacritics
 from odwolania2json.llm import DEFAULT_SYSTEM_PROMPT, LlmClient, LlmError
@@ -43,6 +44,8 @@ class Prepared:
     errors: list[str] = field(default_factory=list)
     # słowa z przywróconymi polskimi znakami (przed, po)
     diacritics: list[tuple[str, str]] = field(default_factory=list)
+    # wstępna klasyfikacja z warstwy tekstowej, gdy odrzuciła dokument bez konwersji
+    preclass: dict[str, Any] | None = None
 
 
 class Engine:
@@ -78,6 +81,8 @@ class Engine:
         try:
             # profil konwersji zależy od typu, a typ od treści: konwertujemy profilem domyślnym
             prof = profile or self.release.conversion_profile("default")
+            if conv is None and self._reject_digital_early(pdf, prep):
+                return prep
             prep.conv = conv if conv is not None else self.converter.convert(pdf, prof)
             if prep.conv.scanned:
                 prep.conv.markdown = fix_ocr_pl(prep.conv.markdown)
@@ -96,6 +101,28 @@ class Engine:
             log.exception("błąd przygotowania %s", pdf)
             prep.errors.append(f"{type(e).__name__}: {e}")
         return prep
+
+    def _reject_digital_early(self, pdf: Path, prep: Prepared) -> bool:
+        """Wstępna klasyfikacja PDF-u cyfrowego z warstwy tekstowej pierwszych stron, bez Doclinga.
+
+        True, gdy dokument wyraźnie nie jest żadnym z obsługiwanych rodzajów: każdemu rodzajowi brakuje do progu
+        co najmniej `preclassify_margin` punktów. Skany i dokumenty bliższe progu idą pełną ścieżką
+        (False), więc ostateczną klasyfikację dokumentów spraw robi się jak dotąd na tekście z Doclinga."""
+        s = self.release.settings
+        if s.preclassify_pages <= 0:
+            return False
+        raw, n = text_layer(pdf, s.preclassify_pages)
+        per_page = len(raw.strip()) / max(n, 1)
+        if per_page < DoclingConverter.SCAN_CHARS_PER_PAGE:
+            return False  # skan albo pusta warstwa tekstowa: rozstrzyga OCR w pełnej ścieżce
+        _, scores = classify(raw, pdf.stem, self.release)
+        for dt in self.release.document_types:
+            if scores.get(dt.code, 0.0) > dt.classification.min_score - s.preclassify_margin:
+                return False
+        prep.scores = scores
+        prep.preclass = {"pages": n, "chars_per_page": round(per_page), "margin": s.preclassify_margin,
+                         "decision": "nieobsługiwany bez konwersji (warstwa tekstowa)"}
+        return True
 
     def _maybe_transfer_fallback(self, pdf: Path, prof: ConversionProfile, prep: Prepared) -> None:
         """Dla skanów potwierdzeń przelewów o słabym albo zniekształconym tekście uruchamia zapasowy OCR
@@ -207,6 +234,8 @@ class Engine:
                 trace["conversion"]["layout"] = c.notes
             if prep.diacritics:
                 trace["conversion"]["restored_diacritics"] = [f"{a} -> {b}" for a, b in prep.diacritics]
+        if prep.preclass:
+            trace["preclassification"] = prep.preclass
         trace["llm"] = prep.llm_meta
         if prep.doc_type is None or prep.conv is None:
             return None, trace
@@ -427,9 +456,14 @@ class Engine:
             # LLM rusza od razu, równolegle z konwersją kolejnych dokumentów
             preps[prep.pdf] = prep
             c = prep.conv
+            if c is not None:
+                how = f" ({c.pages} s., {'cache' if c.from_cache else f'{c.seconds:.1f} s'})"
+            elif prep.preclass:
+                how = f" (bez konwersji: warstwa tekstowa {prep.preclass['pages']} s.)"
+            else:
+                how = ""
             log.info("[%d/%d] %s -> %s%s", len(preps), len(pdfs), prep.rel,
-                     prep.doc_type.code if prep.doc_type else "nieobsługiwany",
-                     "" if c is None else f" ({c.pages} s., {'cache' if c.from_cache else f'{c.seconds:.1f} s'})")
+                     prep.doc_type.code if prep.doc_type else "nieobsługiwany", how)
             if llm_pool is not None:
                 llm_jobs.append(llm_pool.submit(self.run_llm, prep))
 
