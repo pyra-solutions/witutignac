@@ -9,11 +9,14 @@
     "build": {
       "executor": "@angular/build:application",
       "outputs": [
-        "{options.outputPath}"
+        "{options.outputPath.base}"
       ],
       "defaultConfiguration": "production",
       "options": {
-        "outputPath": "dist/apps/web",
+        "outputPath": {
+          "base": "backend/o2j_backend/static",
+          "browser": ""
+        },
         "browser": "apps/web/src/main.ts",
         "tsConfig": "apps/web/tsconfig.app.json",
         "inlineStyleLanguage": "scss",
@@ -72,6 +75,9 @@
         "development": {
           "buildTarget": "web:build:development"
         }
+      },
+      "options": {
+        "proxyConfig": "apps/web/proxy.conf.json"
       }
     },
     "test": {
@@ -91,7 +97,7 @@
       "executor": "@nx/web:file-server",
       "options": {
         "buildTarget": "web:build",
-        "staticFilePath": "dist/apps/web/browser",
+        "staticFilePath": "backend/o2j_backend/static",
         "spa": true
       }
     }

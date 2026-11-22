@@ -101,6 +101,10 @@ ul {
   color: var(--app-accent);
 }
 
+.chip--note {
+  border-style: dashed;
+}
+
 .warnings li,
 .source-note {
   display: flex;
@@ -122,6 +126,15 @@ ul {
 .source-note {
   flex-direction: column;
   color: var(--app-text-muted);
+
+  p {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.note {
+  color: var(--app-text);
 }
 
 .instruction {

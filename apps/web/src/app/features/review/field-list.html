@@ -13,7 +13,7 @@
                 <mat-hint>{{ hint(field) }}</mat-hint>
               </mat-form-field>
               <div class="edit-actions">
-                <button mat-flat-button type="submit">
+                <button mat-flat-button type="submit" [disabled]="saving()">
                   <mat-icon svgIcon="save" aria-hidden="true" />Zapisz
                 </button>
                 <button mat-button type="button" (click)="cancel()">Anuluj</button>
@@ -40,6 +40,7 @@
                   mat-icon-button
                   type="button"
                   class="edit-button"
+                  [disabled]="saving()"
                   [attr.aria-label]="'Popraw pole: ' + group.section + ', ' + field.label"
                   (click)="startEdit(field)"
                 >
@@ -49,12 +50,16 @@
             </div>
 
             <div class="meta">
-              <span class="chip"><span class="visually-hidden">Metoda: </span>{{ method(field) }}</span>
-              @if (field.confidence !== null) {
-                <span class="chip"><span class="visually-hidden">Pewność: </span>{{ confidence(field) }}</span>
+              @if (source(field); as label) {
+                <span class="chip" [class.chip--corrected]="field.corrected">
+                  <span class="visually-hidden">Źródło: </span>{{ label }}
+                </span>
               }
-              @if (field.corrected) {
-                <span class="chip chip--corrected">poprawione ręcznie</span>
+              @if (field.page) {
+                <span class="chip"><span class="visually-hidden">Strona </span>s. {{ field.page }}</span>
+              }
+              @if (field.notes.length && !selected) {
+                <span class="chip chip--note">uwagi silnika: {{ field.notes.length }}</span>
               }
             </div>
 
@@ -67,14 +72,28 @@
             }
 
             @if (selected) {
-              <p class="source-note">
-                @if (!field.candidates.length) {
-                  Wartość wyliczona (słownik, reguła albo flaga), bez fragmentu do podświetlenia.
-                } @else if (sourceFound() === false) {
-                  Nie znaleziono tej wartości dosłownie w tekście PDF.
+              <div class="source-note">
+                @if (field.quote) {
+                  <p>Fragment tekstu dla reguły: <q>{{ field.quote }}</q></p>
                 }
-                <span class="instruction">Reguła pola: {{ instruction(field) }}</span>
-              </p>
+                @if (field.corrected) {
+                  <p>Wartość z silnika: {{ field.originalValue ?? 'brak' }}</p>
+                }
+                @for (note of field.notes; track note) {
+                  <p class="note">{{ note }}</p>
+                }
+                @if (!field.candidates.length) {
+                  <p>Wartość wyliczona (słownik, reguła albo flaga), bez fragmentu do podświetlenia.</p>
+                } @else if (sourceFound() === false) {
+                  <p>Nie znaleziono tej wartości dosłownie w warstwie tekstowej PDF (np. skan albo inna pisownia).</p>
+                }
+                <p class="instruction">
+                  Kolejność źródeł: {{ strategy(field) }}.
+                  @if (instruction(field)) {
+                    Instrukcja pola: {{ instruction(field) }}
+                  }
+                </p>
+              </div>
             }
           }
         </li>

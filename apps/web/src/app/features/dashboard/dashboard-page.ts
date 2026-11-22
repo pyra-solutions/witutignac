@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
-import { CONFIG_RELEASES, DOCUMENT_TYPES, findDocumentType } from '../../core/config/mock-config';
+import { ConfigStore } from '../../core/config/config.store';
 import { CasesStore } from '../../core/data/cases.store';
 import { Notice } from '../../shared/ui/notice';
 import { PageHeader } from '../../shared/ui/page-header';
@@ -15,19 +15,25 @@ import { StatusBadge } from '../../shared/ui/status-badge';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
-      <app-page-header heading="Pulpit" description="Stan spraw i dokumentów oraz aktywna konfiguracja ekstrakcji.">
+      <app-page-header heading="Pulpit" description="Stan spraw i dokumentów, silnik ekstrakcji i aktywna konfiguracja.">
         <a actions mat-flat-button routerLink="/sprawy/nowa">
           <mat-icon svgIcon="upload_file" aria-hidden="true" />Nowa sprawa
         </a>
       </app-page-header>
 
-      <app-notice>
-        Makieta: sprawy pochodzą z danych treningowych organizatora (przykłady 01–03), a wartości pól ze wzorcowych
-        plików JSON. Silnik ekstrakcji nie jest jeszcze podłączony.
-      </app-notice>
+      @if (config.error() || store.error(); as message) {
+        <app-notice tone="warning">{{ message }}</app-notice>
+      } @else if (system(); as s) {
+        @if (!s.llm.enabled) {
+          <app-notice tone="warning">
+            Model językowy jest wyłączony: brak klucza API w pliku <span class="mono">.env</span> (zmienna
+            <span class="mono">EDEN_AI_API_KEY</span>). Silnik działa na samych regułach i odczytuje mniej pól.
+          </app-notice>
+        }
+      }
 
-      @if (store.loading()) {
-        <mat-progress-bar mode="indeterminate" aria-label="Wczytywanie spraw" />
+      @if (store.loading() || config.loading()) {
+        <mat-progress-bar mode="indeterminate" aria-label="Wczytywanie" />
       }
 
       <section class="kpis" aria-label="Podsumowanie">
@@ -42,14 +48,43 @@ import { StatusBadge } from '../../shared/ui/status-badge';
         <div class="card kpi">
           <span class="kpi-label">Do weryfikacji</span>
           <span class="kpi-value">{{ store.toReview().length }}</span>
-          <span class="kpi-note">ostrzeżenia walidacji, np. sumy kontrolne</span>
+          <span class="kpi-note">ostrzeżenia walidatorów, np. sumy kontrolne NIP</span>
         </div>
         <div class="card kpi">
           <span class="kpi-label">Konfiguracja</span>
-          <span class="kpi-value kpi-value--text">{{ release.version }} · {{ release.status }}</span>
-          <span class="kpi-note">{{ typeCount }} typy dokumentów</span>
+          <span class="kpi-value kpi-value--text mono">{{ config.version() ?? '—' }}</span>
+          <span class="kpi-note">
+            <a routerLink="/konfiguracja/typy-dokumentow">typy dokumentów: {{ config.documentTypes().length }}</a>
+          </span>
         </div>
       </section>
+
+      @if (system(); as s) {
+        <section class="card" aria-labelledby="engine-heading">
+          <h2 id="engine-heading">Silnik ekstrakcji</h2>
+          <dl class="definition-list">
+            <dt>Model językowy</dt>
+            <dd>
+              @if (s.llm.enabled) {
+                <span class="mono">{{ s.llm.model }}</span> (profil {{ s.llm.profile }}) ·
+                <a routerLink="/konfiguracja/modele-llm">szczegóły</a>
+              } @else {
+                wyłączony, tylko reguły
+              }
+            </dd>
+            <dt>Klucz API</dt>
+            <dd>{{ s.llm.key }}</dd>
+            <dt>Konwersja PDF</dt>
+            <dd>Docling {{ s.docling_version ?? '—' }}, lokalnie na CPU</dd>
+            <dt>Kolejka</dt>
+            <dd aria-live="polite">
+              {{ s.pending_documents ? 'dokumenty w przetwarzaniu: ' + s.pending_documents : 'pusta' }}
+            </dd>
+            <dt>Dane aplikacji</dt>
+            <dd class="mono">{{ s.data_dir }}</dd>
+          </dl>
+        </section>
+      }
 
       <section class="card card--flush" aria-labelledby="review-heading">
         <div class="section-head">
@@ -74,7 +109,7 @@ import { StatusBadge } from '../../shared/ui/status-badge';
                     <td>
                       <a [routerLink]="['/sprawy', row.caseId, 'dokumenty', row.id]">{{ row.fileName }}</a>
                     </td>
-                    <td>{{ row.caseId }}</td>
+                    <td><a [routerLink]="['/sprawy', row.caseId]">{{ row.caseName }}</a></td>
                     <td>{{ row.typeName }}</td>
                     <td class="num">{{ row.warnings }}</td>
                     <td><app-status-badge [status]="row.status" /></td>
@@ -84,7 +119,13 @@ import { StatusBadge } from '../../shared/ui/status-badge';
             </table>
           </div>
         } @else if (!store.loading()) {
-          <p class="empty">Brak dokumentów z ostrzeżeniami.</p>
+          <p class="empty">
+            @if (store.documents().length) {
+              Brak dokumentów z ostrzeżeniami.
+            } @else {
+              Brak spraw. <a routerLink="/sprawy/nowa">Dodaj pierwszą sprawę</a>.
+            }
+          </p>
         }
       </section>
     </div>
@@ -144,17 +185,23 @@ import { StatusBadge } from '../../shared/ui/status-badge';
 })
 export class DashboardPage {
   protected readonly store = inject(CasesStore);
-  protected readonly release = CONFIG_RELEASES[0];
-  protected readonly typeCount = DOCUMENT_TYPES.length;
+  protected readonly config = inject(ConfigStore);
+  protected readonly system = this.config.system;
 
   protected readonly reviewRows = computed(() =>
     this.store.toReview().map((doc) => ({
       id: doc.id,
       caseId: doc.caseId,
+      caseName: this.store.findCase(doc.caseId)?.name ?? doc.caseId,
       fileName: doc.fileName,
-      typeName: findDocumentType(doc.typeCode)?.name ?? doc.typeCode,
-      warnings: doc.fields.reduce((sum, f) => sum + f.warnings.length, 0),
+      typeName: this.config.typeName(doc.typeCode),
+      warnings: doc.warningCount + doc.errors.length,
       status: doc.status,
     })),
   );
+
+  constructor() {
+    // Stan kolejki i klucza API przy każdym wejściu na pulpit.
+    void this.config.refreshSystem();
+  }
 }

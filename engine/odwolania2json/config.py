@@ -162,6 +162,14 @@ class ConversionProfile(_Model):
     # RapidOCR: skala obrazu strony dla OCR (1.0 = 72 dpi, 3.0 = 216 dpi) i rozmiar modelu PP-OCRv6.
     ocr_scale: float = 3.0
     ocr_model_size: Literal["tiny", "small", "medium"] = "small"
+    # Skany: nagłówek z kolumną etykiet („Odwołujący:” | dane w prawej kolumnie) Docling wypisuje jako
+    # wszystkie etykiety, potem wszystkie wartości. Włączone: kolejność „etykieta, jej wartości”
+    # odtwarzana z położenia elementów na stronie (layout.py).
+    scanned_label_columns: bool = False
+    # Skany: ile pierwszych stron czytać OCR (None = max_pages). OCR to ok. 5 s/str., a wartości pól są
+    # prawie zawsze na stronach 1–2; 3 strony zamiast 6 skracają konwersję długiego skanu o połowę
+    # bez zmiany F1 na 30 skanach organizatora (docs/raport-jakosci.md).
+    scanned_max_pages: int | None = Field(default=None, ge=1)
 
 
 class LlmProfile(_Model):
@@ -195,6 +203,10 @@ class Settings(_Model):
     # Na skanach przywraca polskie znaki zgubione przez OCR ("odwolania" -> "odwołania") słownikiem SJP
     # i pisownią z tego samego dokumentu, przed regułami i LLM (diacritics.py).
     ocr_restore_diacritics: bool = False
+    # Liczba procesów konwersji (Docling + OCR) działających równolegle. Jeden proces Docling zajmuje już
+    # ok. 5–6 rdzeni, więc na 6-rdzeniowym laptopie 2–4 procesy nie skracały czasu, a każdy to ok. 2,5 GB RAM
+    # (docs/raport-jakosci.md). Więcej niż 1 ma sens tylko na maszynie z wieloma rdzeniami.
+    convert_workers: int = Field(default=1, ge=1)
 
 
 class Release(_Model):

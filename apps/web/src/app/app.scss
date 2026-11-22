@@ -91,6 +91,11 @@
   }
 }
 
+.env-badge--error {
+  border-color: #fff;
+  background: var(--app-error);
+}
+
 .app-body {
   flex: 1 1 auto;
   background: var(--app-bg);

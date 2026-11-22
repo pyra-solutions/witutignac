@@ -67,6 +67,14 @@ def test_email_and_ocr_fix() -> None:
     assert fix_ocr_pl("ASTERION SP. Z O.0.") == "ASTERION SP. Z O.O."
     assert fix_ocr_pl("Orbisol Budownictwo Sp. Z 0.0. (dalej") == "Orbisol Budownictwo Sp. z o.o. (dalej"
     assert fix_ocr_pl("spółka z 0.0.") == "spółka z o.o."
+    # gravis i daszek (szum OCR) -> litera bez znaku; umlaut zostaje
+    assert fix_ocr_pl("Tervana Systèmy, Brzozowskì, przepisôw, Àrkomed") == "Tervana Systemy, Brzozowski, przepisow, Arkomed"
+    assert fix_ocr_pl("Hans Müller") == "Hans Müller"
+    # przecinek w adresie e-mail -> kropka; przecinek ze spacją albo przed tekstem bez @ zostaje
+    assert fix_ocr_pl("e-mail: a,wrobel@wrobel-kancelaria.example") == "e-mail: a.wrobel@wrobel-kancelaria.example"
+    assert fix_ocr_pl("Kowalski, jan@firma.pl") == "Kowalski, jan@firma.pl"
+    assert fix_ocr_pl("tel. 123,e-mail: jan@firma.pl") == "tel. 123,e-mail: jan@firma.pl"
+    assert fix_ocr_pl("Nowak,Kowalski") == "Nowak,Kowalski"
     # bez zmian: słowa, samotne "o", adresy i ciągi z literami
     for s in ("o 12 dni", "Lodo 2", "www.k2o.pl", "biuro2o@firma.pl", "nr 2026/BZP0O767819/01", "Monk d w o o2e",
               "Sp. z o.o.", "SP. Z O.O.", "art. 10 ust. 2", "OO", "z 0", "raz 0.5."):

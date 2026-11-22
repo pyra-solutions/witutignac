@@ -168,7 +168,8 @@ fields:
     strategy: llm_first
     grounding: token_prefix
     rules:
-      - pattern: '(?:reprezentowan\w*|działając\w*)\s+przez\s*:?\s*(?:adw\.|adwokat\w*|r\.\s*pr\.|radc\w+\s+prawn\w+|mec\.|apl\.\s*adw\.)?\s*([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)'
+      - pattern: '(?:reprezentowan\w*|działając\w*)\s+przez\s*:?\s*(?:adw\.|adwokat\w*|r\.\s*pr\.|radc\w+\s+prawn\w+|mec\.|apl\.\s*adw\.)?\s*(?!Kancelari)([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)'
+        # „Kancelaria Prawna” po „reprezentowany przez radcę prawnego”, gdy nazwisko jest zamazane (anonimizacja)
         section: odwolujacy
         ignore_case: false
     normalizers: [{name: collapse_ws}]

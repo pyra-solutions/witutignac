@@ -11,6 +11,12 @@ PAGE_BREAK = "<!-- page break -->"
 # OCR czyta polskie "Ń" jako hiszpańskie "Ñ" (np. "PAÑSTWOWEJ", "ZAMÓWIEÑ"). W polskich dokumentach
 # "Ñ" nie występuje, więc w tekście skanów zamieniamy je z powrotem.
 _OCR_PL = str.maketrans({"Ñ": "Ń", "ñ": "ń"})
+# Gravis i daszek („Systèmy”, „Brzozowskì”, „przepisôw”) to szum OCR: w polskich dokumentach nie występują.
+# Litera bez znaku; „przepisow” -> „przepisów” robi potem przywracanie polskich znaków (diacritics.py).
+# Umlauty (ö, ü, ä) zostają: bywają w nazwiskach (Müller).
+_OCR_PL.update(str.maketrans("àèìòùÀÈÌÒÙâêîôûÂÊÎÔÛ", "aeiouAEIOUaeiouAEIOU"))
+# Przecinek zamiast kropki w adresie e-mail, bez spacji: "a,wrobel@kancelaria.pl" -> "a.wrobel@kancelaria.pl".
+_OCR_MAIL_COMMA = re.compile(r"(?<![^\W_])([^\W_]+),(?=[^\W_][\w.+-]*@[\w-]+\.\w)")
 
 # Samodzielny ciąg cyfr i liter o/O (bez liter ani cyfr tuż przed i tuż po), np. "9994328o29", "(3o-799)".
 _OCR_DIGIT_RUN = re.compile(r"(?<![^\W_])[0-9oO]++(?![^\W_])")
@@ -44,11 +50,14 @@ def fix_ocr_pl(text: str) -> str:
 
     - "Ñ" -> "Ń",
     - litera o/O w liczbie -> 0 ("KRS: 9994328o29" -> "9994328029", "(3o-799)" -> "(30-799)"),
-    - zero w skrócie formy prawnej -> o ("Sp. z 0.o." -> "Sp. z o.o.").
+    - zero w skrócie formy prawnej -> o ("Sp. z 0.o." -> "Sp. z o.o."),
+    - gravis i daszek -> litera bez znaku ("Systèmy" -> "Systemy"),
+    - przecinek w adresie e-mail -> kropka ("a,wrobel@" -> "a.wrobel@").
     Słowa z literami i cyframi (np. "k2o", "biuro2o") zostają bez zmian.
     """
     text = text.translate(_OCR_PL)
     text = _OCR_DIGIT_RUN.sub(_digit_run, text)
+    text = _OCR_MAIL_COMMA.sub(r"\1.", text)
     return _OCR_ZOO.sub(_zoo, text)
 
 

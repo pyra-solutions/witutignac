@@ -1,16 +1,8 @@
-import { findDictionary } from '../config/mock-config';
-import { ExtractionStrategy, FieldDefinition, DocumentTypeDefinition } from '../models/config.model';
-import { FieldResult } from '../models/case.model';
-import { AllowedValues, validate } from './validators';
+import { TraceDto } from '../api/api.models';
+import { DocumentTypeDefinition, FieldDefinition } from '../models/config.model';
+import { FieldResult, FieldSource } from '../models/case.model';
 
 type Json = unknown;
-
-const MOCK_CONFIDENCE: Record<ExtractionStrategy, number> = {
-  regex: 0.97,
-  llm: 0.9,
-  slownik: 1,
-  regula: 0.95,
-};
 
 const MONTHS_GENITIVE = [
   'stycznia',
@@ -27,11 +19,23 @@ const MONTHS_GENITIVE = [
   'grudnia',
 ];
 
+/** Normalizatory identyfikatorów: takie wartości pokazujemy czcionką o stałej szerokości. */
+const IDENTIFIER_NORMALIZERS = ['digits_only', 'iban_digits', 'ted_number', 'bzp_number'];
+
 interface Instance {
   key: string;
   section: string;
   label: string;
   value: string | number | null;
+}
+
+export interface FlattenContext {
+  /** Ślad ekstrakcji silnika: źródło, cytat i strona każdej wartości. */
+  trace?: TraceDto | null;
+  /** Wynik silnika przed poprawkami człowieka. */
+  original?: Json;
+  /** Ostrzeżenia walidatorów silnika po kluczu z indeksami. */
+  validation?: Record<string, string[]>;
 }
 
 function asRecord(node: Json): Record<string, Json> | null {
@@ -86,50 +90,68 @@ function expand(root: Json, field: FieldDefinition, sectionLabels: Record<string
   return out;
 }
 
-export function allowedValuesFor(field: FieldDefinition): AllowedValues {
-  if (!field.dictionary) return [];
-  const dictionary = findDictionary(field.dictionary);
-  if (!dictionary) return [];
-  return dictionary.valueKind === 'id' ? dictionary.entries.map((e) => e.id) : dictionary.entries.map((e) => e.label);
-}
-
-export function warningsFor(field: FieldDefinition, value: string | number | null): string[] {
-  if (value === null || value === '') {
-    return field.nullable ? [] : ['Brak wartości w polu wymaganym'];
-  }
-  const allowed = allowedValuesFor(field);
-  return field.validators
-    .map((v) => validate(v, value, allowed))
-    .filter((w): w is string => w !== null);
+export function isIdentifier(field: FieldDefinition): boolean {
+  return field.normalizers.some((n) => IDENTIFIER_NORMALIZERS.includes(n));
 }
 
 /** Teksty, których szukamy w PDF, żeby podświetlić źródło wartości. */
-export function candidatesFor(field: FieldDefinition, value: string | number | null): string[] {
+export function candidatesFor(field: FieldDefinition, value: string | number | null, extra: Json[] = []): string[] {
   if (value === null || value === '') return [];
-  if (field.type === 'flaga' || field.type === 'enum' || field.strategies[0] === 'slownik') return [];
+  if (field.type === 'flaga' || field.type === 'enum' || field.strategy === 'derived') return [];
 
+  const out: string[] = [];
   const text = String(value);
-  if (field.type === 'data') {
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
-    if (!match) return [text];
-    const [, y, m, d] = match;
-    return [`${Number(d)} ${MONTHS_GENITIVE[Number(m) - 1]} ${y}`, `${d}.${m}.${y}`, text];
-  }
-  if (field.type === 'kwota' && typeof value === 'number') {
+  const date = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (field.type === 'data' && date) {
+    const [, y, m, d] = date;
+    out.push(`${Number(d)} ${MONTHS_GENITIVE[Number(m) - 1]} ${y}`, `${d}.${m}.${y}`, text);
+  } else if (field.type === 'kwota' && typeof value === 'number') {
     const formatted = new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
-    return [formatted, value.toFixed(2).replace('.', ','), text];
-  }
-  if (field.normalizers.includes('ted_number')) {
+    out.push(formatted, value.toFixed(2).replace('.', ','), text);
+  } else if (field.normalizers.includes('ted_number')) {
     const match = /^(\d+)-(\d{4})$/.exec(text);
-    return match ? [text, match[1]] : [text];
+    out.push(...(match ? [text, match[1]] : [text]));
+  } else {
+    out.push(text);
   }
-  return [text];
+  // Surowy tekst sprzed normalizacji (np. „200,00 PLN”, numer rachunku ze spacjami).
+  for (const raw of extra) {
+    if (typeof raw === 'string' && raw.trim()) out.push(raw.trim());
+  }
+  return [...new Set(out)];
 }
 
-export function flattenResult(definition: DocumentTypeDefinition, result: Json): FieldResult[] {
-  return definition.fields.flatMap((field) =>
-    expand(result, field, definition.sectionLabels).map((instance) => {
-      const method = field.strategies[0];
+function sourceOf(value: unknown): FieldSource | null {
+  return value === 'rules' || value === 'llm' || value === 'derived' || value === 'default' ? value : null;
+}
+
+function comparable(text: string): string {
+  return text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+}
+
+function display(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null;
+  return typeof value === 'string' ? value : JSON.stringify(value);
+}
+
+export function flattenResult(definition: DocumentTypeDefinition, result: Json, ctx: FlattenContext = {}): FieldResult[] {
+  const traceFields = ctx.trace?.fields ?? {};
+  return definition.fields.flatMap((field) => {
+    const originals = new Map(
+      expand(ctx.original ?? result, field, definition.sectionLabels).map((i) => [i.key, i.value] as const),
+    );
+    return expand(result, field, definition.sectionLabels).map((instance) => {
+      const entry = traceFields[instance.key] ?? {};
+      const originalValue = originals.has(instance.key) ? (originals.get(instance.key) ?? null) : null;
+      const corrected = ctx.original !== undefined && instance.value !== originalValue;
+      const ownValidators = field.validators.map((v) => v.split(' ')[0]);
+      const notes = (entry.warnings ?? []).filter((w) => !ownValidators.some((v) => w.startsWith(`${v}:`)));
+      if (entry.dropped) notes.push(`Wartość pominięta: ${entry.dropped}.`);
+      // Odczyty reguły i LLM pokazujemy, gdy się różnią (pomijając spacje, interpunkcję i wielkość liter).
+      const ruleValue = display(entry.rule_value);
+      const llmValue = display(entry.llm_value);
+      const differ = ruleValue !== null && llmValue !== null && comparable(ruleValue) !== comparable(llmValue);
+      const alternatives = differ ? [`reguła: ${ruleValue}`, `LLM: ${llmValue}`] : [];
       return {
         key: instance.key,
         path: field.path,
@@ -137,15 +159,17 @@ export function flattenResult(definition: DocumentTypeDefinition, result: Json):
         label: instance.label,
         type: field.type,
         value: instance.value,
-        originalValue: instance.value,
-        method,
-        confidence: instance.value === null ? null : MOCK_CONFIDENCE[method],
-        candidates: candidatesFor(field, instance.value),
-        warnings: warningsFor(field, instance.value),
-        corrected: false,
+        originalValue,
+        source: corrected ? 'manual' : sourceOf(entry.source),
+        page: corrected ? null : (entry.page ?? null),
+        quote: corrected ? null : (entry.quote ?? null),
+        notes: alternatives.length > 1 ? [`Odczyty źródeł: ${alternatives.join('; ')}.`, ...notes] : notes,
+        candidates: candidatesFor(field, instance.value, corrected ? [] : [entry.raw, entry.rule_value]),
+        warnings: ctx.validation?.[instance.key] ?? [],
+        corrected,
       } satisfies FieldResult;
-    }),
-  );
+    });
+  });
 }
 
 /** Zamienia tekst wpisany przez człowieka na typ wartości z definicji pola. */
@@ -161,8 +185,13 @@ export function parseInput(field: FieldDefinition, raw: string): string | number
     case 'flaga':
       return ['1', 'tak', 'true'].includes(text.toLowerCase()) ? 1 : 0;
     case 'enum': {
+      const numeric = field.allowed?.some((a) => typeof a === 'number') ?? field.engineType === 'integer';
       const number = Number(text);
-      return Number.isInteger(number) ? number : text;
+      return numeric && Number.isInteger(number) ? number : text;
+    }
+    case 'data': {
+      const pl = /^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/.exec(text);
+      return pl ? `${pl[3]}-${pl[2].padStart(2, '0')}-${pl[1].padStart(2, '0')}` : text;
     }
     default:
       return text;
@@ -171,7 +200,7 @@ export function parseInput(field: FieldDefinition, raw: string): string | number
 
 /** Ustawia wartość pod kluczem z indeksami list, np. `Odwolujacy[0].nip`, w kopii obiektu. */
 export function setValueAtKey(result: Json, key: string, value: string | number | null): Json {
-  const copy = structuredClone(result) as Record<string, Json>;
+  const copy = (asRecord(result) ? structuredClone(result) : {}) as Record<string, Json>;
   const tokens = key.split('.').map((part) => {
     const match = /^(.+)\[(\d+)\]$/.exec(part);
     return match ? { name: match[1], index: Number(match[2]) } : { name: part, index: null };

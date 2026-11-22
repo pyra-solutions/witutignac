@@ -39,8 +39,8 @@ Rdzeń oceniany przez organizatora musi być w Pythonie, a o wyniku etapu 1 decy
 | Silnik (`engine/`) | potok ekstrakcji; polecenia `run`, `evaluate`, `build-release`, `validate-config`, `plugins` | gotowy, F1 0,960 na samych regułach (60 spraw) |
 | CLI (`start.bat`, `start_linux.sh`, `start.sh`) | przy pierwszym uruchomieniu tworzy środowisko i instaluje zależności, potem przetwarza `./input` do `./output` | gotowy |
 | Konfiguracja (`config/seed/`, `config/releases/`, `engine/config/release.json`) | definicje typów dokumentów, słowniki, profile Docling i LLM; niezmienne wydania | gotowa dla trzech typów: odwołanie, pełnomocnictwo, potwierdzenie przelewu |
-| Backend FastAPI (`backend/`) | API dla GUI: wydania, podgląd szkicu konfiguracji, dostawcy LLM; publikacja i aktywacja wydań | API do odczytu gotowe; edycja konfiguracji przez API do zrobienia |
-| GUI w Angularze (`apps/web/`) | sprawy, weryfikacja pól z podglądem PDF, konfiguracja, wydania, jakość | wszystkie ekrany jako makieta na danych przykładowych; podłączenie do API do zrobienia |
+| Backend FastAPI (`backend/`) | API dla GUI: sprawy (wgranie PDF, przetwarzanie silnikiem w tle, wyniki, ślad, poprawki, audyt), wydania i konfiguracja; serwuje zbudowane GUI | gotowy; edycja konfiguracji przez API do zrobienia |
+| GUI w Angularze (`apps/web/`, uruchomienie: `gui.bat`, `gui.sh`) | wgranie spraw, weryfikacja pól z podglądem PDF i śladem ekstrakcji, konfiguracja, wydania, jakość, audyt | gotowe, podłączone do backendu; konfiguracja tylko do odczytu |
 | API LLM | Eden AI, model Qwen3.5-9B u FlexAI (UE) | gotowe; F1 0,993 na 15 sprawach kontrolnych |
 
 Silnik to jeden rdzeń. CLI i backend wywołują ten sam kod, a backend korzysta z modeli konfiguracji silnika (Pydantic), więc format wydania definiuje wyłącznie silnik.
@@ -189,25 +189,25 @@ Backend obsługuje GUI i nie jest potrzebny do uruchomienia ekstrakcji. Pracuje 
 
 | Gotowe | Do zrobienia |
 | --- | --- |
-| `GET /api/releases`, `/api/releases/active`, `/api/releases/{wersja}`: wydania ze statusem | edycja konfiguracji przez API z walidacją i zapisem do YAML |
-| `GET /api/config/draft`: bieżąca konfiguracja z YAML | uruchomienie ekstrakcji na wgranym PDF bez publikacji wydania |
-| `GET /api/llm-providers`: dostawcy LLM | wyniki i ślady ekstrakcji dla ekranu weryfikacji |
-| `manage.py publish`, `activate`, `releases`, `serve` | ewaluacja F1 wydania z poziomu GUI |
+| Sprawy z GUI: wgranie PDF lub ZIP, kolejka w tle z tym samym `Engine` co CLI, wyniki, ślad, Markdown, PDF, ZIP z wynikami | edycja konfiguracji przez API z walidacją i zapisem do YAML |
+| Poprawki i zatwierdzenie dokumentu z walidacją walidatorami silnika; dziennik audytu (`gui-data/audit.jsonl`) | uruchomienie ekstrakcji szkicem konfiguracji bez publikacji wydania |
+| Wydania, aktywna konfiguracja, szkic z YAML, dostawcy i modele LLM, schematy JSON wysyłane do LLM | ewaluacja F1 wydania z poziomu GUI |
+| `manage.py publish`, `activate`, `releases`, `serve` | |
 
 ## Frontend Angular
 
-Najważniejszy jest ekran weryfikacji. Po lewej jest PDF, po prawej pola, a kliknięcie pola pokazuje jego źródło w dokumencie. Reszta interfejsu służy konfiguracji bez programowania. Wszystkie ekrany istnieją jako makieta na danych przykładowych (`apps/web/public/mock`, `mock-config.ts`). Następny krok to podłączenie ich do API backendu.
+Najważniejszy jest ekran weryfikacji. Po lewej jest PDF, po prawej pola, a kliknięcie pola pokazuje jego źródło w dokumencie. Wszystkie ekrany pracują na danych z backendu: sprawy przetwarza ten sam silnik co CLI, a konfigurację GUI czyta z aktywnego wydania. Zbudowane GUI leży w `backend/o2j_backend/static`, więc do uruchomienia wystarczy Python (`gui.bat`, `gui.sh`); Node.js jest potrzebny tylko do zmian w kodzie interfejsu.
 
 | Ekran | Co pozwala zrobić |
 | --- | --- |
-| Pulpit | ostatnie sprawy, dokumenty do weryfikacji, aktywne wydanie konfiguracji |
-| Sprawy i nowa sprawa | lista spraw, przeciągnięcie wielu PDF lub archiwum ZIP, postęp etapów przetwarzania każdego dokumentu |
-| Weryfikacja dokumentu | PDF obok listy pól; dla każdego pola wartość, źródło i ostrzeżenia walidatorów; ręczna poprawka; podgląd Markdown z Docling i wynikowego JSON |
-| Typy dokumentów | klasyfikacja, pola, grupy ekstrakcji i profil Docling każdego typu |
+| Pulpit | liczba spraw i dokumentów, dokumenty do weryfikacji, stan silnika (model LLM, klucz API, kolejka), aktywne wydanie |
+| Sprawy i nowa sprawa | lista spraw, przeciągnięcie wielu PDF lub archiwum ZIP, postęp przetwarzania, pobranie wyników jako ZIP, ponowne przetworzenie |
+| Weryfikacja dokumentu | PDF obok listy pól; dla każdego pola wartość, źródło (reguła, LLM, wyliczone), strona, cytat i ostrzeżenia walidatorów; ręczna poprawka i zatwierdzenie; Markdown z Docling, wynikowy JSON i przebieg (klasyfikacja, OCR, wywołania LLM z dostawcą i regionem) |
+| Typy dokumentów | klasyfikacja, pola, grupy ekstrakcji, schemat JSON wysyłany do LLM i plik YAML każdego typu |
 | Słowniki, modele LLM, profile Docling | słowniki, dostawcy i profile modeli, ustawienia konwersji |
 | Wydania konfiguracji | lista wydań, aktywne wydanie |
-| Jakość | ewaluacja F1 na zbiorze kontrolnym i pomiary konwersji Docling |
-| Audyt i deklaracja dostępności | historia zmian; deklaracja wymagana od podmiotów publicznych |
+| Jakość | wyniki F1 z raportu jakości |
+| Audyt i deklaracja dostępności | dziennik: wgranie, przetworzenie, poprawki pól, zatwierdzenia; deklaracja wymagana od podmiotów publicznych |
 
 **Technika.** Angular 22 w monorepo Nx: komponenty standalone, sygnały, tryb bez zone.js, Angular Material 3 i CDK. PDF wyświetla pdf.js (`pdfjs-dist`). Krój Source Sans 3 (licencja OFL) jest serwowany z aplikacji, bez zewnętrznych CDN.
 
@@ -279,11 +279,13 @@ Pełne wyniki, poprawki i pozostałe błędy są w [raporcie jakości](raport-ja
 ├── config/
 │   ├── seed/                     # konfiguracja w YAML: typy dokumentów, słowniki, profile
 │   └── releases/                 # opublikowane, niezmienne wydania
-├── backend/                      # FastAPI na plikach; publikacja i aktywacja wydań
-├── apps/web/                     # Angular (Nx)
+├── backend/                      # FastAPI na plikach: API dla GUI, zbudowane GUI (o2j_backend/static), wydania
+├── apps/web/                     # Angular (Nx): kod źródłowy GUI
+├── gui-data/                     # sprawy wgrane przez GUI (poza repozytorium)
 ├── input/  output/               # wymagane przez organizatora
-├── requirements.txt              # zależności ekstrakcji (wskazuje engine/requirements.txt)
+├── requirements.txt              # wszystkie zależności: silnik (engine/) i GUI (backend/)
 ├── start.bat  start_linux.sh  start.sh   # python -m odwolania2json run --input input --output output
+├── gui.bat  gui.sh                # interfejs graficzny: http://127.0.0.1:8000
 └── docs/                         # plan, silnik, LLM, raport jakości
 ```
 
@@ -303,11 +305,11 @@ Rozwiązanie konkursowe działa na jednym komputerze. Wdrożenie dla wielu użyt
 - [x] Silnik: CLI `input → output`, reguły, LLM ze schematem, weryfikacja źródła, ślad ekstrakcji, cache, ewaluacja F1.
 - [x] Klasyfikacja tylko po treści: wszystkie 16 dokumentów negatywnych dostaje `{}`.
 - [x] Konfiguracja w YAML, wydania w plikach, backend FastAPI bez bazy danych.
-- [x] GUI: makieta wszystkich ekranów.
+- [x] GUI: wszystkie ekrany.
 - [x] Wybór modelu pomiarem F1: Qwen3.5-9B przez Eden AI u FlexAI (F1 0,993 na 15 sprawach kontrolnych).
-- [ ] Podłączenie GUI do API: wydania, konfiguracja, ekran weryfikacji ze śladem ekstrakcji.
+- [x] Podłączenie GUI do API: wydania, konfiguracja, ekran weryfikacji ze śladem ekstrakcji.
 - [ ] Edycja konfiguracji przez API z zapisem do YAML.
-- [ ] Uruchomienie ekstrakcji z GUI na wgranym PDF.
+- [x] Uruchomienie ekstrakcji z GUI na wgranym PDF (22.11.2026).
 - [ ] Zestawienie licencji i instrukcja instalacji bez internetu.
 - [ ] Demo: dodanie czwartego typu dokumentu (np. przystąpienia do postępowania odwoławczego) samą konfiguracją.
 

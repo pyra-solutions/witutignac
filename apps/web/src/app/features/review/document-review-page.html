@@ -1,43 +1,85 @@
 <div class="page">
-  @if (store.loading()) {
+  @if (store.loading() && !doc()) {
     <mat-progress-bar mode="indeterminate" aria-label="Wczytywanie dokumentu" />
   } @else if (doc(); as d) {
     <app-page-header
       [heading]="typeName() + ': ' + d.fileName"
-      description="Wybierz pole, żeby zobaczyć jego źródło w dokumencie. Popraw wartości przed zatwierdzeniem."
+      [description]="
+        fields().length
+          ? 'Wybierz pole, żeby zobaczyć jego źródło w dokumencie. Popraw wartości przed zatwierdzeniem.'
+          : ''
+      "
       [breadcrumbs]="breadcrumbs()"
     >
-      <button actions mat-stroked-button type="button" (click)="download()">
+      <button actions mat-stroked-button type="button" [disabled]="!processed()" (click)="download()">
         <mat-icon svgIcon="download" aria-hidden="true" />Pobierz {{ d.outputFileName }}
       </button>
-      <button actions mat-flat-button type="button" [disabled]="d.status === 'zatwierdzony'" (click)="approve()">
-        <mat-icon svgIcon="task_alt" aria-hidden="true" />
-        {{ d.status === 'zatwierdzony' ? 'Zatwierdzony' : 'Zatwierdź dokument' }}
-      </button>
+      <!-- Jeden poziom @if: element z [actions] musi być bezpośrednio w bloku, żeby trafił do slotu nagłówka. -->
+      @if (fields().length && d.status === 'zatwierdzony') {
+        <button actions mat-stroked-button type="button" [disabled]="saving()" (click)="approve(false)">
+          <mat-icon svgIcon="undo" aria-hidden="true" />Cofnij zatwierdzenie
+        </button>
+      } @else if (fields().length) {
+        <button actions mat-flat-button type="button" [disabled]="saving()" (click)="approve(true)">
+          <mat-icon svgIcon="task_alt" aria-hidden="true" />Zatwierdź dokument
+        </button>
+      }
     </app-page-header>
 
     <div class="summary" aria-live="polite">
       <app-status-badge [status]="d.status" />
-      <span>Pola: <strong>{{ stats().fields }}</strong></span>
-      <span>Z ostrzeżeniami: <strong>{{ stats().warnings }}</strong></span>
-      <span>Poprawione: <strong>{{ stats().corrected }}</strong></span>
+      @if (d.stage) {
+        <span>{{ d.stage }}…</span>
+      }
+      @if (fields().length) {
+        <span>Pola wypełnione: <strong>{{ stats().filled }} z {{ stats().fields }}</strong></span>
+        <span>Z reguł: <strong>{{ stats().rules }}</strong></span>
+        <span>Z LLM: <strong>{{ stats().llm }}</strong></span>
+        <span>Z ostrzeżeniami: <strong>{{ stats().warnings }}</strong></span>
+        <span>Poprawione: <strong>{{ stats().corrected }}</strong></span>
+      }
+      @if (d.reviewed && d.status !== 'zatwierdzony') {
+        <button mat-button type="button" [disabled]="saving()" (click)="discard()">Przywróć wynik silnika</button>
+      }
     </div>
 
-    <app-notice>
-      Makieta: wartości pól pochodzą ze wzorcowego pliku JSON organizatora, a metoda i pewność są przykładowe.
-      Ostrzeżenia liczą prawdziwe walidatory. Zakładka Markdown pokazuje rzeczywisty wynik konwersji Docling.
-    </app-notice>
+    @if (saveError()) {
+      <app-notice tone="warning">{{ saveError() }}</app-notice>
+    }
+    @if (d.status === 'nieobslugiwany') {
+      <app-notice>
+        Silnik nie rozpoznał tego pliku jako obsługiwanego rodzaju dokumentu, więc wynik to pusty obiekt
+        <span class="mono">{{ '{}' }}</span>. Wyniki klasyfikacji są w zakładce „Przebieg”.
+      </app-notice>
+    } @else if (d.status === 'blad') {
+      <app-notice tone="warning">
+        Nie udało się przetworzyć pliku: {{ d.errors.join('; ') || 'nieznany błąd' }}. Wynik to
+        <span class="mono">{{ '{}' }}</span>.
+      </app-notice>
+    } @else if (!processed()) {
+      <app-notice>Dokument jest w trakcie przetwarzania. Wynik pojawi się tutaj automatycznie.</app-notice>
+    } @else if (d.errors.length) {
+      <app-notice tone="warning">Uwagi silnika: {{ d.errors.join('; ') }}</app-notice>
+    }
 
     <ng-template #fieldsTpl>
-      <app-field-list
-        [fields]="d.fields"
-        [definitions]="definition()?.fields ?? []"
-        [selectedKey]="selectedKey()"
-        [sourceFound]="sourceFound()"
-        [locked]="d.status === 'zatwierdzony'"
-        (selectField)="select($event)"
-        (saveField)="save($event)"
-      />
+      @if (fields().length) {
+        <app-field-list
+          [fields]="fields()"
+          [definitions]="definition()?.fields ?? []"
+          [dictionaries]="config.dictionaries()"
+          [selectedKey]="selectedKey()"
+          [sourceFound]="sourceFound()"
+          [locked]="d.status === 'zatwierdzony'"
+          [saving]="saving()"
+          (selectField)="select($event)"
+          (saveField)="save($event)"
+        />
+      } @else if (processed()) {
+        <p class="muted">Brak pól do weryfikacji.</p>
+      } @else {
+        <mat-progress-bar mode="indeterminate" aria-label="Przetwarzanie dokumentu" />
+      }
     </ng-template>
 
     <ng-template #pdfTpl>
@@ -46,20 +88,34 @@
 
     <ng-template #markdownTpl>
       <p class="tab-note muted">
-        Wynik Docling 2.151.1 dla oryginalnego PDF (profil „PDF – domyślny”). Ten tekst trafia do LLM.
+        Tekst po konwersji Docling{{ d.scanned ? ', z OCR i poprawkami polskich znaków' : '' }}. Ten tekst czytają reguły
+        i model językowy.
       </p>
-      @if (markdown() === null) {
+      @if (!processed() || markdown() === null) {
         <mat-progress-bar mode="indeterminate" aria-label="Wczytywanie Markdown" />
       } @else if (markdown()) {
         <pre class="code" tabindex="0" aria-label="Markdown z Docling">{{ markdown() }}</pre>
       } @else {
-        <p>Brak pliku Markdown dla tego dokumentu.</p>
+        <p>Brak tekstu dla tego dokumentu.</p>
       }
     </ng-template>
 
     <ng-template #jsonTpl>
-      <p class="tab-note muted">Plik wynikowy {{ d.outputFileName }} z uwzględnieniem poprawek.</p>
+      <p class="tab-note muted">
+        Plik wynikowy {{ d.outputFileName }}{{ d.reviewed ? ' z poprawkami' : '' }}, w strukturze z repozytorium
+        organizatora (oczekiwane-json).
+      </p>
       <pre class="code" tabindex="0" aria-label="JSON wynikowy">{{ json() }}</pre>
+    </ng-template>
+
+    <ng-template #traceTpl>
+      @if (trace(); as t) {
+        <app-trace-summary [trace]="t" />
+      } @else if (processed()) {
+        <p class="muted">Brak śladu ekstrakcji dla tego dokumentu.</p>
+      } @else {
+        <mat-progress-bar mode="indeterminate" aria-label="Przetwarzanie dokumentu" />
+      }
     </ng-template>
 
     @if (isWide()) {
@@ -77,6 +133,9 @@
             </mat-tab>
             <mat-tab label="JSON">
               <div class="tab-body"><ng-container [ngTemplateOutlet]="jsonTpl" /></div>
+            </mat-tab>
+            <mat-tab label="Przebieg">
+              <div class="tab-body"><ng-container [ngTemplateOutlet]="traceTpl" /></div>
             </mat-tab>
           </mat-tab-group>
         </section>
@@ -101,9 +160,14 @@
           <mat-tab label="JSON">
             <div class="tab-body"><ng-container [ngTemplateOutlet]="jsonTpl" /></div>
           </mat-tab>
+          <mat-tab label="Przebieg">
+            <div class="tab-body"><ng-container [ngTemplateOutlet]="traceTpl" /></div>
+          </mat-tab>
         </mat-tab-group>
       </section>
     }
+  } @else if (store.error()) {
+    <app-empty-state icon="error" heading="Błąd wczytywania">{{ store.error() }}</app-empty-state>
   } @else {
     <app-empty-state icon="search" heading="Nie znaleziono dokumentu">
       Dokument „{{ documentId() }}” w sprawie „{{ caseId() }}” nie istnieje.

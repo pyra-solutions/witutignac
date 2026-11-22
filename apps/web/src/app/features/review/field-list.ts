@@ -13,9 +13,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { METHOD_LABELS, formatConfidence, formatFieldValue } from '../../core/format';
+import { isIdentifier } from '../../core/extraction/flatten';
+import { SOURCE_LABELS, STRATEGY_LABELS, formatFieldValue } from '../../core/format';
 import { FieldResult } from '../../core/models/case.model';
-import { FieldDefinition } from '../../core/models/config.model';
+import { Dictionary, FieldDefinition } from '../../core/models/config.model';
 
 interface FieldGroup {
   id: string;
@@ -24,10 +25,10 @@ interface FieldGroup {
 }
 
 const HINTS: Partial<Record<FieldResult['type'], string>> = {
-  data: 'Format RRRR-MM-DD; puste pole oznacza brak wartości.',
+  data: 'Format RRRR-MM-DD albo DD.MM.RRRR; puste pole oznacza brak wartości.',
   kwota: 'Liczba, np. 10000,00.',
+  liczba: 'Liczba.',
   flaga: '1 = tak, 0 = nie.',
-  enum: 'Wartość ze słownika.',
 };
 
 @Component({
@@ -40,10 +41,12 @@ const HINTS: Partial<Record<FieldResult['type'], string>> = {
 export class FieldList {
   readonly fields = input.required<FieldResult[]>();
   readonly definitions = input.required<FieldDefinition[]>();
+  readonly dictionaries = input<Dictionary[]>([]);
   readonly selectedKey = input<string | null>(null);
   /** Wynik szukania źródła w PDF dla zaznaczonego pola. */
   readonly sourceFound = input<boolean | null>(null);
   readonly locked = input(false);
+  readonly saving = input(false);
 
   readonly selectField = output<string>();
   readonly saveField = output<{ key: string; raw: string }>();
@@ -71,27 +74,37 @@ export class FieldList {
     effect(() => this.editInput()?.nativeElement.focus());
   }
 
+  private definition(field: FieldResult): FieldDefinition | undefined {
+    return this.definitionsByPath().get(field.path);
+  }
+
   protected display(field: FieldResult): string {
-    return formatFieldValue(field, this.definitionsByPath().get(field.path));
+    const definition = this.definition(field);
+    const dictionary = this.dictionaries().find((d) => d.code === definition?.dictionary);
+    return formatFieldValue(field, definition, dictionary);
   }
 
-  protected method(field: FieldResult): string {
-    return METHOD_LABELS[field.method];
+  protected source(field: FieldResult): string | null {
+    return field.source ? SOURCE_LABELS[field.source] : null;
   }
 
-  protected confidence(field: FieldResult): string {
-    return formatConfidence(field.confidence);
+  protected strategy(field: FieldResult): string {
+    const definition = this.definition(field);
+    return definition ? STRATEGY_LABELS[definition.strategy] : '';
   }
 
   protected isIdentifier(field: FieldResult): boolean {
-    return (this.definitionsByPath().get(field.path)?.normalizers.length ?? 0) > 0;
+    const definition = this.definition(field);
+    return definition ? isIdentifier(definition) : false;
   }
 
   protected instruction(field: FieldResult): string {
-    return this.definitionsByPath().get(field.path)?.instruction ?? '';
+    return this.definition(field)?.instruction ?? '';
   }
 
   protected hint(field: FieldResult): string {
+    const allowed = this.definition(field)?.allowed;
+    if (field.type === 'enum' && allowed?.length) return `Dozwolone wartości: ${allowed.join(', ')}.`;
     return HINTS[field.type] ?? 'Puste pole oznacza brak wartości (null).';
   }
 

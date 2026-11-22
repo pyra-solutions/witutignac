@@ -1,32 +1,76 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { LLM_PROFILES, LLM_PROVIDERS } from '../../core/config/mock-config';
-import { formatPrice } from '../../core/format';
-import { ProviderRole } from '../../core/models/config.model';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { ConfigStore } from '../../core/config/config.store';
+import { formatNumber } from '../../core/format';
 import { Notice } from '../../shared/ui/notice';
 import { PageHeader } from '../../shared/ui/page-header';
 
-const ROLE_LABELS: Record<ProviderRole, string> = {
-  ocena: 'Do oceny',
-  zapasowy: 'Zapasowy',
-  docelowy: 'Docelowy',
-};
-
 @Component({
   selector: 'app-llm-page',
-  imports: [PageHeader, Notice],
+  imports: [MatProgressBarModule, PageHeader, Notice],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
       <app-page-header
         heading="Modele LLM"
-        description="Dostawcy API zgodnego z OpenAI i profile modeli. Wszystkie modele mają otwarte wagi, a dane są przetwarzane w UE."
+        description="Dostawcy API zgodnego z OpenAI i profile modeli z aktywnego wydania. Wszystkie modele mają otwarte wagi, a dane są przetwarzane w UE."
       />
 
-      <app-notice>
-        W etapie 2 mniejszy model daje więcej punktów, więc wybieramy najmniejszy, który utrzyma F1 na zbiorze
-        kontrolnym. Wszystkie profile używają temperatury 0 i odpowiedzi wymuszonej schematem JSON. Ceny i parametry
-        pochodzą z publicznego katalogu OVHcloud (stan na 21.11.2026).
-      </app-notice>
+      @if (config.system(); as s) {
+        <app-notice [tone]="s.llm.enabled ? 'info' : 'warning'">
+          @if (s.llm.enabled) {
+            Silnik używa profilu <span class="mono">{{ s.llm.profile }}</span>: model
+            <span class="mono">{{ s.llm.model }}</span> przez <span class="mono">{{ s.llm.base_url }}</span>. Klucz:
+            {{ s.llm.key }}.
+          } @else {
+            Model językowy jest wyłączony (brak klucza API). Dodaj klucz do pliku <span class="mono">.env</span> w katalogu
+            głównym, na wzór <span class="mono">.env.example</span>, i uruchom aplikację ponownie.
+          }
+        </app-notice>
+      }
+      @if (config.loading()) {
+        <mat-progress-bar mode="indeterminate" aria-label="Wczytywanie konfiguracji" />
+      }
+
+      <section class="card card--flush" aria-labelledby="profiles-heading">
+        <h2 id="profiles-heading" class="section-title">Profile modeli</h2>
+        <div class="table-wrap">
+          <table class="app-table">
+            <thead>
+              <tr>
+                <th scope="col">Profil</th>
+                <th scope="col">Model</th>
+                <th scope="col" class="num">Parametry (mld)</th>
+                <th scope="col">Licencja</th>
+                <th scope="col">Dostawca API</th>
+                <th scope="col">Ustawienia</th>
+                <th scope="col">Uwagi</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of profiles(); track row.code) {
+                <tr>
+                  <td class="mono">
+                    {{ row.code }}
+                    @if (row.isDefault) {
+                      <span class="chip">domyślny</span>
+                    }
+                  </td>
+                  <td class="model">{{ row.model ?? '—' }}</td>
+                  <td class="num">{{ num(row.info?.paramsBillions ?? null) }}</td>
+                  <td>{{ row.info?.license || '—' }}</td>
+                  <td>{{ row.provider?.name ?? row.baseUrl ?? '—' }}</td>
+                  <td class="small">
+                    temperatura {{ num(row.temperature) }}, do {{ row.maxTokens }} tokenów, odpowiedź
+                    {{ row.structuredOutput }}, klucz {{ row.apiKeyEnv }}
+                  </td>
+                  <td class="muted small">{{ row.info?.note ?? '' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section class="card card--flush" aria-labelledby="providers-heading">
         <h2 id="providers-heading" class="section-title">Dostawcy</h2>
@@ -35,18 +79,16 @@ const ROLE_LABELS: Record<ProviderRole, string> = {
             <thead>
               <tr>
                 <th scope="col">Dostawca</th>
-                <th scope="col">Rola</th>
                 <th scope="col">Przetwarzanie danych</th>
                 <th scope="col">Adres API</th>
                 <th scope="col">Uwagi</th>
               </tr>
             </thead>
             <tbody>
-              @for (provider of providers; track provider.code) {
+              @for (provider of config.providers(); track provider.code) {
                 <tr>
                   <td>{{ provider.name }}</td>
-                  <td>{{ roleLabels[provider.role] }}</td>
-                  <td>{{ provider.dataLocation }}</td>
+                  <td>{{ provider.dataLocation ?? '—' }}</td>
                   <td class="mono">{{ provider.baseUrl }}</td>
                   <td class="muted">{{ provider.note }}</td>
                 </tr>
@@ -55,36 +97,10 @@ const ROLE_LABELS: Record<ProviderRole, string> = {
           </table>
         </div>
       </section>
-
-      <section class="card card--flush" aria-labelledby="profiles-heading">
-        <h2 id="profiles-heading" class="section-title">Profile modeli</h2>
-        <div class="table-wrap">
-          <table class="app-table">
-            <thead>
-              <tr>
-                <th scope="col">Model</th>
-                <th scope="col" class="num">Parametry (mld)</th>
-                <th scope="col">Licencja</th>
-                <th scope="col" class="num">USD za 1 mln tokenów: wejście / wyjście</th>
-                <th scope="col">Kontekst</th>
-                <th scope="col">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (profile of profiles; track profile.code) {
-                <tr>
-                  <td class="model">{{ profile.model }}</td>
-                  <td class="num">{{ number(profile.paramsBillions) }}</td>
-                  <td>{{ profile.license }}</td>
-                  <td class="num">{{ price(profile.priceIn) }} / {{ price(profile.priceOut) }}</td>
-                  <td>{{ profile.context }}</td>
-                  <td>{{ profile.status }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <p class="muted">
+        Metadane dostawców i modeli: <span class="mono">config/seed/llm_providers.yaml</span>. Porównanie modeli i opis
+        użycia: <span class="mono">docs/llm.md</span>.
+      </p>
     </div>
   `,
   styles: `
@@ -97,12 +113,32 @@ const ROLE_LABELS: Record<ProviderRole, string> = {
       font-size: 0.875rem;
       white-space: nowrap;
     }
+    .small {
+      font-size: 0.875rem;
+    }
+    .chip {
+      margin-left: 6px;
+      padding: 0 8px;
+      border-radius: 999px;
+      border: 1px solid var(--app-accent);
+      color: var(--app-accent);
+      font-family: inherit;
+      font-size: 0.75rem;
+    }
   `,
 })
 export class LlmPage {
-  protected readonly providers = LLM_PROVIDERS;
-  protected readonly profiles = LLM_PROFILES;
-  protected readonly roleLabels = ROLE_LABELS;
-  protected readonly price = formatPrice;
-  protected readonly number = (value: number) => new Intl.NumberFormat('pl-PL').format(value);
+  protected readonly config = inject(ConfigStore);
+
+  protected readonly profiles = computed(() =>
+    this.config.llmProfiles().map((p) => ({
+      ...p,
+      info: this.config.models().find((m) => m.model === p.model),
+      provider: this.config.providers().find((pr) => p.baseUrl && pr.baseUrl.replace(/\/$/, '') === p.baseUrl.replace(/\/$/, '')),
+    })),
+  );
+
+  protected num(value: number | null): string {
+    return formatNumber(value);
+  }
 }

@@ -33,3 +33,6 @@ __screenshots__/
 diagnoza.txt
 output/*
 !output/.gitkeep
+
+# Interfejs graficzny: sprawy wgrane przez GUI (PDF-y, wyniki, dziennik)
+gui-data/

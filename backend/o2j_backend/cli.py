@@ -1,4 +1,4 @@
-"""Polecenia backendu: publikacja i aktywacja wydań konfiguracji, lista wydań, serwer API."""
+"""Polecenia backendu: publikacja i aktywacja wydań konfiguracji, lista wydań, serwer API i GUI."""
 
 import argparse
 import getpass
@@ -47,8 +47,20 @@ def cmd_releases(_: argparse.Namespace) -> int:
 
 
 def cmd_serve(a: argparse.Namespace) -> int:
+    import logging
+    import threading
+    import webbrowser
+
     import uvicorn
 
+    # Komunikaty silnika (konwersja, klucz API, LLM) na konsoli, tak jak w CLI.
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
+    for noisy in ("docling", "httpx", "RapidOCR", "rapidocr", "transformers", "huggingface_hub"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+    url = f"http://{'127.0.0.1' if a.host in ('0.0.0.0', '::') else a.host}:{a.port}/"
+    print(f"Interfejs: {url}  (API: {url}docs). Zatrzymanie: Ctrl+C.", flush=True)
+    if a.open:
+        threading.Timer(2.0, webbrowser.open, [url]).start()
     uvicorn.run(
         "o2j_backend.api:app",
         host=a.host,
@@ -81,6 +93,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--port", type=int, default=8000)
     s.add_argument("--reload", action="store_true", help="restart po zmianie kodu (praca lokalna)")
+    s.add_argument("--open", action="store_true", help="otwórz interfejs w przeglądarce po starcie")
     s.set_defaults(fn=cmd_serve)
 
     a = p.parse_args(argv)

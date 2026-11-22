@@ -66,6 +66,17 @@ class ProviderInfo(BaseModel):
     note: str = ""
 
 
+class ModelInfo(BaseModel):
+    """Model z `config/seed/llm_providers.yaml` (sekcja models): wielkość i licencja dla GUI."""
+
+    model: str
+    name: str
+    vendor: str = ""
+    params_billions: float | None = None
+    license: str = ""
+    note: str = ""
+
+
 def canonical_json(snapshot: dict[str, Any]) -> str:
     return json.dumps(snapshot, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
@@ -100,15 +111,23 @@ def build_draft(files: ConfigFiles, version: str = "draft") -> Release:
     return release.model_copy(update={"version": version})
 
 
-def load_providers(files: ConfigFiles) -> list[ProviderInfo]:
+def _llm_meta(files: ConfigFiles, section: str, model: type[BaseModel]) -> list[Any]:
     path = files.seed_dir / "llm_providers.yaml"
     if not path.is_file():
         return []
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        return [ProviderInfo.model_validate(item) for item in data.get("providers") or []]
+        return [model.model_validate(item) for item in data.get(section) or []]
     except (ValidationError, yaml.YAMLError) as e:
         raise ReleaseError(f"Plik {path} jest niepoprawny:\n{e}") from e
+
+
+def load_providers(files: ConfigFiles) -> list[ProviderInfo]:
+    return _llm_meta(files, "providers", ProviderInfo)
+
+
+def load_models(files: ConfigFiles) -> list[ModelInfo]:
+    return _llm_meta(files, "models", ModelInfo)
 
 
 def active_sha256(files: ConfigFiles) -> str | None:

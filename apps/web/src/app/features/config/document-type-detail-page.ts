@@ -1,20 +1,23 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { RouterLink } from '@angular/router';
-import { CONVERSION_PROFILES, LLM_PROFILES, findDocumentType } from '../../core/config/mock-config';
-import { buildJsonSchema } from '../../core/extraction/json-schema';
-import { METHOD_LABELS } from '../../core/format';
-import { ExtractionStrategy } from '../../core/models/config.model';
+import { LlmSchemaDto } from '../../core/api/api.models';
+import { ConfigStore } from '../../core/config/config.store';
+import { FIELD_TYPE_LABELS, STRATEGY_LABELS, formatNumber } from '../../core/format';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { PageHeader } from '../../shared/ui/page-header';
 
 @Component({
   selector: 'app-document-type-detail-page',
-  imports: [RouterLink, MatTabsModule, PageHeader, EmptyState],
+  imports: [RouterLink, MatTabsModule, MatProgressBarModule, PageHeader, EmptyState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
-      @if (type(); as t) {
+      @if (config.loading()) {
+        <mat-progress-bar mode="indeterminate" aria-label="Wczytywanie konfiguracji" />
+      } @else if (type(); as t) {
         <app-page-header
           [heading]="t.name"
           [description]="t.description"
@@ -28,13 +31,17 @@ import { PageHeader } from '../../shared/ui/page-header';
                   <dt>Kod</dt>
                   <dd class="mono">{{ t.code }}</dd>
                   <dt>Plik wynikowy</dt>
-                  <dd class="mono">{{ t.outputFile }}</dd>
-                  <dt>Profil Docling</dt>
+                  <dd>nazwa pliku wejściowego z rozszerzeniem <span class="mono">.json</span></dd>
+                  <dt>Profil konwersji</dt>
                   <dd>
-                    <a routerLink="/konfiguracja/profile-docling">{{ profileName() }}</a>
+                    <a routerLink="/konfiguracja/profile-docling" class="mono">{{ t.conversionProfile }}</a>
                   </dd>
                   <dt>Liczba pól</dt>
                   <dd>{{ t.fields.length }}</dd>
+                  <dt>Sekcje dokumentu</dt>
+                  <dd>{{ sectionNames() }}</dd>
+                  <dt>Wydanie</dt>
+                  <dd class="mono">{{ config.version() }}</dd>
                 </dl>
               </div>
             </mat-tab>
@@ -42,22 +49,25 @@ import { PageHeader } from '../../shared/ui/page-header';
             <mat-tab label="Klasyfikacja">
               <div class="tab-body stack">
                 <p class="muted">
-                  Słowa kluczowe z wagami liczone na Markdown pierwszej strony. Przy niskiej pewności typ wybiera LLM
-                  z listy opisów typów; dokument spoza listy dostaje pusty plik JSON.
+                  Wzorce (wyrażenia regularne) z wagami szukane w tekście dokumentu. Typ wygrywa, gdy suma wag osiąga próg
+                  <strong>{{ num(t.minScore) }}</strong>; ujemne wagi wykluczają podobne pisma (np. wyroki, ogłoszenia BZP).
+                  Dokument bez typu dostaje pusty plik JSON. Nazwa pliku nie ma znaczenia.
                 </p>
                 <div class="table-wrap">
                   <table class="app-table">
                     <thead>
                       <tr>
-                        <th scope="col">Fraza</th>
+                        <th scope="col">Wzorzec</th>
                         <th scope="col" class="num">Waga</th>
+                        <th scope="col">Zakres</th>
                       </tr>
                     </thead>
                     <tbody>
-                      @for (rule of t.classifier; track rule.term) {
+                      @for (rule of t.classifier; track $index) {
                         <tr>
-                          <td>{{ rule.term }}</td>
-                          <td class="num">{{ rule.weight }}</td>
+                          <td class="mono pattern">{{ rule.pattern }}</td>
+                          <td class="num">{{ num(rule.weight) }}</td>
+                          <td>{{ rule.firstChars === null ? 'cały dokument' : 'pierwsze ' + rule.firstChars + ' znaków' }}</td>
                         </tr>
                       }
                     </tbody>
@@ -75,10 +85,10 @@ import { PageHeader } from '../../shared/ui/page-header';
                         <th scope="col">Ścieżka</th>
                         <th scope="col">Etykieta</th>
                         <th scope="col">Typ</th>
-                        <th scope="col">Strategie</th>
+                        <th scope="col">Źródła</th>
+                        <th scope="col" class="num">Reguły</th>
                         <th scope="col">Normalizatory</th>
                         <th scope="col">Walidatory</th>
-                        <th scope="col">Null</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -86,11 +96,11 @@ import { PageHeader } from '../../shared/ui/page-header';
                         <tr>
                           <td class="mono">{{ field.path }}</td>
                           <td>{{ field.label }}</td>
-                          <td>{{ field.type }}</td>
-                          <td>{{ strategies(field.strategies) }}</td>
+                          <td>{{ typeLabels[field.type] }}</td>
+                          <td>{{ strategyLabels[field.strategy] }}{{ field.derive ? ' (' + field.derive + ')' : '' }}</td>
+                          <td class="num">{{ field.ruleCount }}</td>
                           <td class="mono">{{ field.normalizers.join(', ') || '—' }}</td>
                           <td class="mono">{{ field.validators.join(', ') || '—' }}</td>
-                          <td>{{ field.nullable ? 'tak' : 'nie' }}</td>
                         </tr>
                       }
                     </tbody>
@@ -101,39 +111,71 @@ import { PageHeader } from '../../shared/ui/page-header';
 
             <mat-tab label="Grupy ekstrakcji">
               <div class="tab-body stack">
-                <p class="muted">Każda grupa to jedno wywołanie LLM z własnym fragmentem Markdown.</p>
+                <p class="muted">
+                  Każda grupa to jedno wywołanie LLM z wybranymi sekcjami tekstu dokumentu. Wartość z LLM silnik przyjmuje
+                  tylko wtedy, gdy występuje w tekście dokumentu.
+                </p>
                 <div class="table-wrap">
                   <table class="app-table">
                     <thead>
                       <tr>
                         <th scope="col">Grupa</th>
-                        <th scope="col">Kontekst dla LLM</th>
-                        <th scope="col">Model</th>
+                        <th scope="col">Tekst dla LLM</th>
+                        <th scope="col">Profil LLM</th>
                         <th scope="col" class="num">Pola</th>
                       </tr>
                     </thead>
                     <tbody>
                       @for (group of t.groups; track group.code) {
                         <tr>
-                          <td>{{ group.label }}</td>
-                          <td>{{ group.context }}</td>
-                          <td>{{ modelName(group.llmProfile) }}</td>
+                          <td>{{ group.label }} <span class="muted mono">({{ group.code }})</span></td>
+                          <td>
+                            {{ group.sections.length ? 'sekcje: ' + group.sections.join(', ') : 'cały dokument' }}, do
+                            {{ group.maxChars }} znaków
+                          </td>
+                          <td class="mono">{{ group.llmProfile }}</td>
                           <td class="num">{{ fieldCount(group.code) }}</td>
                         </tr>
                       }
                     </tbody>
                   </table>
                 </div>
+                @for (group of t.groups; track group.code) {
+                  @if (group.instruction) {
+                    <p><strong>Instrukcja grupy {{ group.label }}:</strong> {{ group.instruction }}</p>
+                  }
+                }
               </div>
             </mat-tab>
 
-            <mat-tab label="Schemat JSON">
+            <mat-tab label="Schemat dla LLM">
               <div class="tab-body stack">
                 <p class="muted">
-                  Schemat generowany z definicji pól. Silnik przekazuje go do LLM jako
-                  <span class="mono">response_format: json_schema</span>, więc odpowiedź ma zawsze tę strukturę.
+                  Schemat JSON, który silnik wysyła do modelu jako <span class="mono">response_format: json_schema</span>.
+                  Powstaje z definicji pól, więc odpowiedź ma zawsze strukturę z konfiguracji.
                 </p>
-                <pre class="code" tabindex="0" aria-label="Schemat JSON">{{ schema() }}</pre>
+                @for (s of schemas(); track s.group) {
+                  <h3 class="schema-title">Grupa <span class="mono">{{ s.group }}</span> · profil {{ s.llm_profile }}</h3>
+                  <pre class="code" tabindex="0" [attr.aria-label]="'Schemat JSON grupy ' + s.group">{{ pretty(s.schema) }}</pre>
+                } @empty {
+                  <p>Ten typ nie ma pól wypełnianych przez LLM.</p>
+                }
+              </div>
+            </mat-tab>
+
+            <mat-tab label="Plik YAML">
+              <div class="tab-body stack">
+                <p class="muted">
+                  Konfiguracja robocza z <span class="mono">config/seed/document_types/</span>. Zmiany w pliku działają po
+                  publikacji nowego wydania.
+                </p>
+                @if (source() === null) {
+                  <mat-progress-bar mode="indeterminate" aria-label="Wczytywanie pliku YAML" />
+                } @else if (source()) {
+                  <pre class="code" tabindex="0" aria-label="Plik YAML typu dokumentu">{{ source() }}</pre>
+                } @else {
+                  <p>Brak pliku YAML dla tego typu w konfiguracji roboczej.</p>
+                }
               </div>
             </mat-tab>
           </mat-tab-group>
@@ -154,6 +196,12 @@ import { PageHeader } from '../../shared/ui/page-header';
         padding: 12px;
       }
     }
+    .pattern {
+      overflow-wrap: anywhere;
+    }
+    .schema-title {
+      font-size: 1rem;
+    }
     .code {
       margin: 0;
       padding: 16px;
@@ -170,24 +218,45 @@ import { PageHeader } from '../../shared/ui/page-header';
 export class DocumentTypeDetailPage {
   readonly code = input.required<string>();
 
-  protected readonly type = computed(() => findDocumentType(this.code()));
-  protected readonly schema = computed(() => {
-    const type = this.type();
-    return type ? JSON.stringify(buildJsonSchema(type), null, 2) : '';
-  });
-  protected readonly profileName = computed(
-    () => CONVERSION_PROFILES.find((p) => p.code === this.type()?.conversionProfile)?.name ?? '—',
-  );
+  protected readonly config = inject(ConfigStore);
+  private readonly http = inject(HttpClient);
 
-  protected strategies(list: ExtractionStrategy[]): string {
-    return list.map((s) => METHOD_LABELS[s]).join(' → ');
+  protected readonly typeLabels = FIELD_TYPE_LABELS;
+  protected readonly strategyLabels = STRATEGY_LABELS;
+  protected readonly type = computed(() => this.config.documentType(this.code()));
+  protected readonly schemas = signal<LlmSchemaDto[]>([]);
+  protected readonly source = signal<string | null>(null);
+  protected readonly sectionNames = computed(() => this.type()?.sections.map((s) => s.name).join(', ') || '—');
+
+  constructor() {
+    effect((onCleanup) => {
+      const code = encodeURIComponent(this.code());
+      this.schemas.set([]);
+      this.source.set(null);
+      const a = this.http.get<LlmSchemaDto[]>(`/api/document-types/${code}/llm-schemas`).subscribe({
+        next: (s) => this.schemas.set(s),
+        error: () => this.schemas.set([]),
+      });
+      const b = this.http.get(`/api/document-types/${code}/source`, { responseType: 'text' }).subscribe({
+        next: (text) => this.source.set(text),
+        error: () => this.source.set(''),
+      });
+      onCleanup(() => {
+        a.unsubscribe();
+        b.unsubscribe();
+      });
+    });
   }
 
-  protected modelName(code: string): string {
-    return LLM_PROFILES.find((p) => p.code === code)?.model ?? code;
+  protected num(value: number): string {
+    return formatNumber(value);
+  }
+
+  protected pretty(value: unknown): string {
+    return JSON.stringify(value, null, 2);
   }
 
   protected fieldCount(group: string): number {
-    return this.type()?.fields.filter((f) => f.group === group).length ?? 0;
+    return this.type()?.fields.filter((f) => f.group === group && !f.derive).length ?? 0;
   }
 }

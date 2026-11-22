@@ -7,6 +7,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatSidenav, MatSidenavContent, MatSidenavModule } from '@angular/material/sidenav';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
+import { ConfigStore } from './core/config/config.store';
 import { AppIcon } from './core/icons';
 
 interface NavItem {
@@ -33,6 +34,7 @@ interface NavSection {
 })
 export class App {
   private readonly router = inject(Router);
+  protected readonly config = inject(ConfigStore);
 
   private readonly sidenav = viewChild.required(MatSidenav);
   private readonly content = viewChild.required(MatSidenavContent);

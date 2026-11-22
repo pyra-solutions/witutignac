@@ -1,4 +1,4 @@
-# Dostawcy API LLM: metadane dla GUI (API backendu: /api/llm-providers). Silnik tego pliku nie czyta.
+# Dostawcy i modele API LLM: metadane dla GUI (API backendu: /api/llm-providers, /api/llm-models). Silnik tego pliku nie czyta.
 # Profile LLM z release.yaml są przypisywane do dostawcy po base_url.
 providers:
   - code: edenai
@@ -6,3 +6,25 @@ providers:
     base_url: https://api.eu.edenai.run/v3
     data_location: UE; Eden AI SAS (Francja), hosting AWS Paryż; endpoint UE nie przekazuje treści zapytań poza UE (DPA §12.2)
     note: Dostawca do oceny. Bramka API zgodna z OpenAI; model Qwen3.5-9B u dostawcy FlexAI w regionie eu.
+
+# Modele z profili LLM (release.yaml): wielkość i licencja dla ekranu „Modele LLM” (API: /api/llm-models).
+# Profil jest przypisywany do modelu po polu model. Wielkość według kart modeli na Hugging Face (docs/llm.md).
+models:
+  - model: flexai/Qwen3.5-9B
+    name: Qwen3.5-9B
+    vendor: Alibaba Cloud (Qwen)
+    params_billions: 9.65
+    license: Apache 2.0
+    note: Model oceny. FlexAI podaje go bez fazy rozumowania; F1 0,993 na 15 sprawach kontrolnych.
+  - model: mistral/ministral-8b-2512
+    name: Ministral 3 8B
+    vendor: Mistral AI
+    params_billions: 8.92
+    license: Apache 2.0
+    note: Profil porównawczy; F1 0,939 na 15 sprawach kontrolnych.
+  - model: mistral/ministral-3b-2512
+    name: Ministral 3 3B
+    vendor: Mistral AI
+    params_billions: 3.85
+    license: Apache 2.0
+    note: Profil porównawczy; F1 0,966 na 15 sprawach kontrolnych.

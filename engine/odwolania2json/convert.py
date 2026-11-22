@@ -3,6 +3,7 @@
 import hashlib
 import json
 import logging
+import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -10,11 +11,15 @@ from pathlib import Path
 from typing import Any
 
 from odwolania2json.config import ConversionProfile
+from odwolania2json.layout import reorder_label_columns
 from odwolania2json.textutil import PAGE_BREAK
 
 log = logging.getLogger(__name__)
 
 GRADES = ["poor", "fair", "good", "excellent"]
+# Wersja algorytmu kolejności w layout.py. Zmiana algorytmu = nowa wersja, żeby cache nie zwracał
+# Markdownu ułożonego poprzednią wersją.
+LAYOUT_VERSION = 2
 
 
 @dataclass
@@ -34,13 +39,26 @@ class Converted:
     raw_text: str = ""
 
 
-def _profile_key(profile: ConversionProfile) -> str:
+def _profile_key(profile: ConversionProfile, scanned: bool = True) -> str:
     """Profil do klucza cache. Pola dodane później pomijamy, gdy mają wartość domyślną,
-    żeby wcześniejsze konwersje pozostały ważne."""
-    later = {"ocr_scale", "ocr_model_size"}
+    żeby wcześniejsze konwersje pozostały ważne. Opcje dotyczące tylko skanów nie zmieniają
+    klucza dokumentów z warstwą tekstową."""
+    later = {"ocr_scale", "ocr_model_size", "scanned_label_columns", "scanned_max_pages"}
     default = ConversionProfile()
     exclude = {f for f in later if getattr(profile, f) == getattr(default, f)}
-    return profile.model_dump_json(exclude=exclude)
+    if not scanned:
+        exclude.update({"scanned_label_columns", "scanned_max_pages"})
+    key = profile.model_dump_json(exclude=exclude)
+    if scanned and profile.scanned_label_columns:
+        key += f"|layout{LAYOUT_VERSION}"
+    return key
+
+
+def _pages_to_convert(profile: ConversionProfile, scanned: bool) -> int:
+    """Liczba pierwszych stron do konwersji: dla skanów `scanned_max_pages`, jeśli ustawione."""
+    if scanned and profile.scanned_max_pages:
+        return min(profile.max_pages, profile.scanned_max_pages)
+    return profile.max_pages
 
 
 def _sha256(path: Path) -> str:
@@ -144,7 +162,7 @@ class DoclingConverter:
         if scanned and profile.scanned_ocr_mode:
             ocr_mode = profile.scanned_ocr_mode
         ckey = hashlib.sha256(
-            f"{sha}|{self._version()}|{_profile_key(profile)}|{ocr_mode}".encode()
+            f"{sha}|{self._version()}|{_profile_key(profile, scanned)}|{ocr_mode}".encode()
         ).hexdigest()[:32]
         cached = self._load_cache(ckey)
         if cached:
@@ -156,34 +174,26 @@ class DoclingConverter:
         # max_num_pages odrzuca dłuższe dokumenty, więc ustawiamy je wysoko,
         # a liczbę przetwarzanych stron ogranicza page_range.
         res = self._converter(profile, ocr_mode).convert(path, max_num_pages=10_000,
-                                                        page_range=(1, max(profile.max_pages, 1)))
-        out = self._export(res, sha, scanned, ocr_mode)
+                                                        page_range=(1, max(_pages_to_convert(profile, scanned), 1)))
+        reorder = scanned and profile.scanned_label_columns
+        out = self._export(res.document, res.confidence, sha, scanned, ocr_mode, reorder)
         out.seconds = time.perf_counter() - t0
         self._save_cache(ckey, out)
         out.raw_text = raw
         return out
 
     @staticmethod
-    def _export(res: Any, sha: str, scanned: bool, ocr_mode: str) -> Converted:
-        from docling_core.types.doc import ContentLayer
-
-        doc = res.document
-        md = doc.export_to_markdown(
-            included_content_layers={ContentLayer.BODY, ContentLayer.FURNITURE},
-            page_break_placeholder=PAGE_BREAK,
-            escape_underscores=False,
-            escape_html=False,
-            traverse_pictures=True,
-        )
-        conf = res.confidence
+    def _export(doc: Any, conf: Any, sha: str, scanned: bool, ocr_mode: str, reorder: bool = False) -> Converted:
+        md, notes = export_markdown(doc, reorder)
         def grade(g: Any) -> str | None:
             if g is None:
                 return None
             return str(getattr(g, "value", g)).lower()
 
         return Converted(markdown=md, pages=len(doc.pages), sha256=sha,
-                         low_grade=grade(conf.low_grade), mean_grade=grade(conf.mean_grade),
-                         scanned=scanned, ocr_mode=ocr_mode)
+                         low_grade=grade(getattr(conf, "low_grade", None)),
+                         mean_grade=grade(getattr(conf, "mean_grade", None)),
+                         scanned=scanned, ocr_mode=ocr_mode, notes=notes)
 
     def _load_cache(self, key: str) -> Converted | None:
         if not self.cache_dir:
@@ -202,6 +212,55 @@ class DoclingConverter:
             return
         p = self.cache_dir / "convert" / f"{key}.json"
         p.parent.mkdir(parents=True, exist_ok=True)
-        tmp = p.with_suffix(".tmp")
+        tmp = p.with_suffix(f".{os.getpid()}.tmp")  # osobny plik dla każdego procesu konwersji
         tmp.write_text(json.dumps(conv.__dict__, ensure_ascii=False), encoding="utf-8")
         tmp.replace(p)
+
+
+def export_markdown(doc: Any, reorder: bool = False) -> tuple[str, list[str]]:
+    """Markdown z dokumentu Docling; przy `reorder` najpierw poprawia kolejność par etykieta–wartość
+    (layout.reorder_label_columns). Zwraca też opis tych zmian."""
+    from docling_core.types.doc import ContentLayer
+
+    notes = reorder_label_columns(doc) if reorder else []
+    md = doc.export_to_markdown(
+        included_content_layers={ContentLayer.BODY, ContentLayer.FURNITURE},
+        page_break_placeholder=PAGE_BREAK,
+        escape_underscores=False,
+        escape_html=False,
+        traverse_pictures=True,
+    )
+    return md, notes
+
+
+def page_count(path: Path, max_pages: int) -> int:
+    """Liczba stron do konwersji (do kolejności w puli procesów: najdłuższe dokumenty najpierw)."""
+    try:
+        import pypdfium2 as pdfium
+
+        pdf = pdfium.PdfDocument(str(path))
+        try:
+            return min(len(pdf), max_pages)
+        finally:
+            pdf.close()
+    except Exception:  # uszkodzony plik: błąd zgłosi konwersja
+        return 0
+
+
+# --- konwersja w osobnych procesach (pipeline.Engine.run, settings.convert_workers) ---------------------
+# Każdy proces ładuje własne modele Docling (ok. 2 GB RAM) i konwertuje kolejne dokumenty.
+
+_worker: DoclingConverter | None = None
+
+
+def worker_init(cache_dir: str | None) -> None:
+    global _worker
+    logging.basicConfig(level=logging.WARNING)
+    for noisy in ("docling", "RapidOCR", "rapidocr", "transformers", "huggingface_hub"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+    _worker = DoclingConverter(Path(cache_dir) if cache_dir else None)
+
+
+def worker_convert(pdf: str, profile_json: str) -> Converted:
+    assert _worker is not None, "worker_init nie został wywołany"
+    return _worker.convert(Path(pdf), ConversionProfile.model_validate_json(profile_json))

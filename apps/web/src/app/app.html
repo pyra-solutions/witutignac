@@ -22,7 +22,11 @@
     </span>
   </a>
   <span class="spacer"></span>
-  <span class="env-badge">Prototyp · dane przykładowe</span>
+  @if (config.error()) {
+    <span class="env-badge env-badge--error">Brak połączenia z serwerem</span>
+  } @else if (config.version(); as version) {
+    <span class="env-badge">Wydanie konfiguracji {{ version }}</span>
+  }
 </header>
 
 <mat-sidenav-container class="app-body">
@@ -61,7 +65,7 @@
       <span>Odwołania2json · prototyp przygotowany na HackNation 2026</span>
       <a routerLink="/deklaracja-dostepnosci">Deklaracja dostępności</a>
       <a href="https://github.com/Urzad-Zamowien-Publicznych/hacknation-2026" target="_blank" rel="noopener noreferrer">
-        Dane przykładowe: repozytorium organizatora
+        Wyzwanie: repozytorium organizatora
         <span class="visually-hidden">(otwiera się w nowej karcie)</span>
       </a>
     </footer>

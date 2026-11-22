@@ -1,50 +1,68 @@
 /**
- * Model konfiguracji: odpowiada elementom plików config/seed/*.yaml (typy dokumentów, pola, grupy
- * ekstrakcji, słowniki, profile LLM i Docling) oraz wydaniom w config/releases/.
- * W makiecie dane pochodzą z core/config/mock-config.ts; docelowo z API backendu (FastAPI).
+ * Model konfiguracji na ekranach. Budowany z aktywnego wydania silnika (engine/config/release.json,
+ * API /api/config/active), które powstaje z plików config/seed/*.yaml (core/config/map-release.ts).
  */
 
-export type ExtractionStrategy = 'llm' | 'regex' | 'slownik' | 'regula';
-
 export type FieldType = 'tekst' | 'data' | 'liczba' | 'kwota' | 'flaga' | 'enum';
+
+/** Kolejność źródeł pola w silniku; `derived` = wartość wyliczana z innych pól. */
+export type FieldStrategy = 'llm_first' | 'rules_first' | 'rules_only' | 'llm_only' | 'derived';
 
 export interface FieldDefinition {
   /** Ścieżka w wyjściowym JSON; `[]` oznacza listę, np. `Odwolujacy[].nip`. */
   path: string;
   label: string;
   type: FieldType;
-  nullable: boolean;
-  /** Kod grupy ekstrakcji (jedno wywołanie LLM na grupę). */
-  group: string;
-  /** Kolejność strategii; pierwsza jest główna. */
-  strategies: ExtractionStrategy[];
+  /** Typ w konfiguracji silnika: string, integer, number, date. */
+  engineType: string;
+  /** Grupa ekstrakcji LLM (jedno wywołanie na grupę). */
+  group: string | null;
+  strategy: FieldStrategy;
+  ruleCount: number;
+  /** Rodzaj wyliczenia dla pól pochodnych, np. `dictionary_lookup`. */
+  derive: string | null;
   normalizers: string[];
   validators: string[];
   dictionary?: string;
+  /** Dozwolone wartości (lista `enum` albo wartości pola wyliczanego). */
+  allowed?: (string | number)[];
+  grounding: string;
   instruction: string;
+}
+
+export interface ClassifierRule {
+  pattern: string;
+  weight: number;
+  /** Wzorzec szukany tylko w pierwszych N znakach dokumentu; null = w całym. */
+  firstChars: number | null;
+}
+
+export interface SectionDefinition {
+  name: string;
+  start: string[];
+  end: string[];
+  within: string | null;
+  maxChars: number | null;
 }
 
 export interface ExtractionGroup {
   code: string;
   label: string;
-  /** Jaki fragment Markdown trafia do LLM. */
-  context: string;
+  instruction: string;
+  /** Sekcje dokumentu, które trafiają do LLM; pusta lista = cały dokument. */
+  sections: string[];
+  maxChars: number;
   llmProfile: string;
-}
-
-export interface ClassifierRule {
-  term: string;
-  weight: number;
 }
 
 export interface DocumentTypeDefinition {
   code: string;
   name: string;
   description: string;
-  /** Wzorzec nazwy pliku wynikowego; README wymaga nazwy pliku wejściowego. */
-  outputFile: string;
   conversionProfile: string;
+  minScore: number;
   classifier: ClassifierRule[];
+  sections: SectionDefinition[];
   /** Etykiety sekcji i list w wyniku, np. `Odwolujacy` → „Odwołujący”. */
   sectionLabels: Record<string, string>;
   groups: ExtractionGroup[];
@@ -52,47 +70,48 @@ export interface DocumentTypeDefinition {
 }
 
 export interface DictionaryEntry {
-  id: number;
+  id: string | number;
   label: string;
-  note?: string;
+  keywords: string[];
 }
 
 export interface Dictionary {
   code: string;
   name: string;
-  description: string;
-  /** Co zapisujemy w polu wyniku: identyfikator pozycji czy jej etykietę. */
-  valueKind: 'id' | 'label';
   entries: DictionaryEntry[];
 }
-
-export type ProviderRole = 'ocena' | 'zapasowy' | 'docelowy';
 
 export interface LlmProvider {
   code: string;
   name: string;
   baseUrl: string;
-  dataLocation: string;
-  role: ProviderRole;
+  dataLocation: string | null;
+  note: string;
+}
+
+export interface LlmModelInfo {
+  model: string;
+  name: string;
+  vendor: string;
+  paramsBillions: number | null;
+  license: string;
   note: string;
 }
 
 export interface LlmProfile {
   code: string;
-  model: string;
-  provider: string;
-  paramsBillions: number;
-  license: string;
-  /** USD za 1 mln tokenów wejścia / wyjścia, wg katalogu dostawcy. */
-  priceIn: number;
-  priceOut: number;
-  context: string;
+  model: string | null;
+  baseUrl: string | null;
+  apiKeyEnv: string;
   temperature: number;
-  structuredOutput: boolean;
-  status: 'kandydat' | 'wybrany';
+  maxTokens: number;
+  timeoutS: number;
+  structuredOutput: string;
+  isDefault: boolean;
 }
 
 export interface ConversionSetting {
+  key: string;
   name: string;
   value: string;
   reason: string;
@@ -100,17 +119,14 @@ export interface ConversionSetting {
 
 export interface ConversionProfile {
   code: string;
-  name: string;
-  doclingVersion: string;
   settings: ConversionSetting[];
 }
 
-export type ReleaseStatus = 'szkic' | 'aktywne' | 'archiwalne';
-
 export interface ConfigRelease {
   version: string;
-  status: ReleaseStatus;
+  active: boolean;
   author: string;
-  date: string;
+  createdAt: string;
   summary: string;
+  sha256: string;
 }

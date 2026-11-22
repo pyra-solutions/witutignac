@@ -27,6 +27,11 @@ conversion_profiles:
     max_pages: 6
     num_threads: 4
     document_timeout_s: 180
+    # Skany: nagłówek „Odwołujący: | dane” w dwóch kolumnach układany jako etykieta, jej wartości (layout.py).
+    scanned_label_columns: true
+    # Skany: OCR tylko 3 pierwszych stron (cyfrowe PDF-y dalej do max_pages). Wartości pól są prawie zawsze
+    # na stronach 1–2; na 30 skanach F1 bez zmian, konwersja długiego skanu ok. 2× krótsza.
+    scanned_max_pages: 3
 
 llm_profiles:
   # Eden AI (bramka API, Eden AI SAS, Francja) do otwartych modeli z przetwarzaniem w UE. Endpoint UE

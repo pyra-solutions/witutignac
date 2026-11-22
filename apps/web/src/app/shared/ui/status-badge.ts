@@ -5,9 +5,13 @@ import { AppIcon } from '../../core/icons';
 import { DocumentStatus } from '../../core/models/case.model';
 
 const ICONS: Record<DocumentStatus, AppIcon> = {
+  'w-kolejce': 'schedule',
+  przetwarzanie: 'smart_toy',
   gotowy: 'check_circle',
   'do-weryfikacji': 'warning',
   zatwierdzony: 'task_alt',
+  nieobslugiwany: 'info',
+  blad: 'error',
 };
 
 /** Status dokumentu: kolor zawsze z ikoną i tekstem, nigdy sam kolor. */
@@ -40,9 +44,19 @@ const ICONS: Record<DocumentStatus, AppIcon> = {
       background: var(--app-warning-bg);
       color: var(--app-warning);
     }
-    :host(.badge--zatwierdzony) {
+    :host(.badge--zatwierdzony),
+    :host(.badge--przetwarzanie) {
       background: var(--app-accent-soft);
       color: var(--app-accent);
+    }
+    :host(.badge--w-kolejce),
+    :host(.badge--nieobslugiwany) {
+      background: var(--mat-sys-surface-container-high);
+      color: var(--app-text-muted);
+    }
+    :host(.badge--blad) {
+      background: var(--app-error-bg);
+      color: var(--app-error);
     }
   `,
 })

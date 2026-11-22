@@ -3,7 +3,8 @@
 import json
 import logging
 import re
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -17,7 +18,7 @@ from odwolania2json.diacritics import restore_diacritics
 from odwolania2json.llm import DEFAULT_SYSTEM_PROMPT, LlmClient, LlmError
 from odwolania2json.registry import validators
 from odwolania2json.rules import Candidate, classify, extract_all
-from odwolania2json.textutil import collapse, fix_ocr_pl, grounded, page_of, section_text
+from odwolania2json.textutil import alnum, collapse, fix_ocr_pl, grounded, page_of, section_text
 
 log = logging.getLogger(__name__)
 
@@ -63,12 +64,13 @@ class Engine:
         return LlmClient(prof, None).describe()
 
     # --- etapy ---------------------------------------------------------------
-    def prepare(self, pdf: Path, rel: Path) -> Prepared:
+    def prepare(self, pdf: Path, rel: Path, conv: Converted | None = None) -> Prepared:
+        """Konwersja (chyba że `conv` przyszedł z procesu konwersji), klasyfikacja i reguły."""
         prep = Prepared(pdf=pdf, rel=rel)
         try:
             # profil konwersji zależy od typu, a typ od treści: konwertujemy profilem domyślnym
             prof = self.release.conversion_profile("default")
-            prep.conv = self.converter.convert(pdf, prof)
+            prep.conv = conv if conv is not None else self.converter.convert(pdf, prof)
             if prep.conv.scanned:
                 prep.conv.markdown = fix_ocr_pl(prep.conv.markdown)
                 if self.release.settings.ocr_restore_diacritics:
@@ -152,6 +154,8 @@ class Engine:
                                    "ocr_mode": c.ocr_mode, "low_grade": c.low_grade,
                                    "mean_grade": c.mean_grade, "seconds": round(c.seconds, 2),
                                    "from_cache": c.from_cache}
+            if c.notes:
+                trace["conversion"]["layout"] = c.notes
             if prep.diacritics:
                 trace["conversion"]["restored_diacritics"] = [f"{a} -> {b}" for a, b in prep.diacritics]
         trace["llm"] = prep.llm_meta
@@ -168,7 +172,12 @@ class Engine:
             if f is None or f.derive:
                 continue
             tolerant = self.release.settings.ocr_tolerant_grounding and prep.conv.scanned
-            cands, warn = self._candidates(f, prep.rules.get(p), prep.llm.get(p), text, tolerant)
+            rule_cand, moved = prep.rules.get(p), self._rule_in_other_item(p, prep.rules.get(p), prep.llm)
+            if moved:
+                rule_cand = None
+            cands, warn = self._candidates(f, rule_cand, prep.llm.get(p), text, tolerant)
+            if moved:
+                warn.append(f"wartość z reguły jest według LLM w innym elemencie listy ({moved}), pominięta")
             # Pierwszy kandydat (w kolejności strategii), który przejdzie normalizację i walidację.
             # Wartość odrzucona przez walidator z poziomem 'error' oddaje miejsce następnemu źródłu.
             source, raw, val = None, (cands[0][1] if cands else None), None
@@ -231,6 +240,19 @@ class Engine:
                     del values[k]
                     ftrace.setdefault(k, {})["dropped"] = (
                         f"lista {top} ma {size} el., pole wymaga co najmniej {f.only_if_list_size_at_least}")
+
+    @staticmethod
+    def _rule_in_other_item(p: str, cand: Candidate | None, llm: dict[str, Any]) -> str | None:
+        """Reguła zwraca jedną wartość dla pierwszego elementu listy (np. REGON z sekcji „Zamawiający”).
+        Gdy LLM umieścił tę samą wartość w innym elemencie tej listy (dwóch Zamawiających), wartość
+        należy do tamtego elementu: zwraca jego ścieżkę, a reguła nie nadpisuje tego elementu."""
+        if cand is None or cand.value is None or "[" not in p:
+            return None
+        key = alnum(str(cand.value))
+        if not key:
+            return None
+        return next((q for q, v in llm.items() if q != p and v is not None and generic(q) == generic(p)
+                     and alnum(str(v)) == key), None)
 
     @staticmethod
     def _candidates(f: FieldDef, cand: Candidate | None, llm_val: Any, text: str,
@@ -331,24 +353,42 @@ class Engine:
         raise ValueError(f"nieznany rodzaj pola wyliczanego '{d.kind}'")
 
     # --- partia ----------------------------------------------------------------
-    def run(self, input_dir: Path, output_dir: Path, trace_dir: Path | None = None) -> list[dict[str, Any]]:
+    def run(self, input_dir: Path, output_dir: Path, trace_dir: Path | None = None,
+            workers: int | None = None) -> list[dict[str, Any]]:
         pdfs = sorted(p for p in input_dir.rglob("*") if p.is_file() and p.suffix.lower() == ".pdf")
-        log.info("Dokumentów PDF: %d; LLM: %s", len(pdfs), self.llm_status())
-        preps: list[Prepared] = []
-        for i, pdf in enumerate(pdfs, 1):
-            prep = self.prepare(pdf, pdf.relative_to(input_dir))
+        prof = self.release.conversion_profile("default")
+        n_workers = resolve_workers(workers if workers is not None else self.release.settings.convert_workers,
+                                    len(pdfs))
+        log.info("Dokumentów PDF: %d; konwersja: %d %s × %d wątki; LLM: %s", len(pdfs), n_workers,
+                 "proces" if n_workers == 1 else "procesy", prof.num_threads, self.llm_status())
+        preps: dict[Path, Prepared] = {}
+        llm_pool = ThreadPoolExecutor(max_workers=max(1, self.release.settings.llm_concurrency)) if self.use_llm else None
+        llm_jobs: list[Future[None]] = []
+
+        def prepared(prep: Prepared) -> None:
+            # LLM rusza od razu, równolegle z konwersją kolejnych dokumentów
+            preps[prep.pdf] = prep
             c = prep.conv
-            log.info("[%d/%d] %s -> %s%s", i, len(pdfs), prep.rel,
+            log.info("[%d/%d] %s -> %s%s", len(preps), len(pdfs), prep.rel,
                      prep.doc_type.code if prep.doc_type else "nieobsługiwany",
                      "" if c is None else f" ({c.pages} s., {'cache' if c.from_cache else f'{c.seconds:.1f} s'})")
-            preps.append(prep)
+            if llm_pool is not None:
+                llm_jobs.append(llm_pool.submit(self.run_llm, prep))
 
-        if self.use_llm:
-            with ThreadPoolExecutor(max_workers=max(1, self.release.settings.llm_concurrency)) as ex:
-                list(ex.map(self.run_llm, preps))
+        try:
+            if n_workers > 1:
+                self._prepare_parallel(pdfs, input_dir, n_workers, prepared)
+            else:
+                for pdf in pdfs:
+                    prepared(self.prepare(pdf, pdf.relative_to(input_dir)))
+            for job in llm_jobs:
+                job.result()
+        finally:
+            if llm_pool is not None:
+                llm_pool.shutdown(cancel_futures=True)
 
         summary = []
-        for prep in preps:
+        for prep in (preps[p] for p in pdfs):
             out, trace = self.finalize(prep)
             dst = output_dir / prep.rel.with_suffix(".json")
             dst.parent.mkdir(parents=True, exist_ok=True)
@@ -362,6 +402,52 @@ class Engine:
                 tp.write_text(json.dumps(trace, ensure_ascii=False, indent=2, default=str) + "\n", encoding="utf-8")
             summary.append({"file": str(prep.rel), "doc_type": trace["doc_type"], "errors": prep.errors})
         return summary
+
+    def _prepare_parallel(self, pdfs: list[Path], input_dir: Path, n_workers: int,
+                          prepared: Callable[[Prepared], None]) -> None:
+        """Konwersja w `n_workers` procesach; klasyfikacja, reguły i LLM w procesie głównym.
+
+        Najdłuższe dokumenty idą pierwsze, żeby na końcu partii nie czekać na jeden długi skan. Gdy proces
+        konwersji padnie (np. brak pamięci), pozostałe dokumenty są konwertowane po kolei w tym procesie.
+        """
+        import multiprocessing as mp
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+        from concurrent.futures.process import BrokenProcessPool
+
+        from odwolania2json.convert import page_count, worker_convert, worker_init
+
+        prof = self.release.conversion_profile("default")
+        order = sorted(pdfs, key=lambda p: page_count(p, prof.max_pages), reverse=True)
+        left = set(pdfs)
+        try:
+            # "spawn" także na Linuksie: tak samo jak na Windows i bez kopiowania wątków LLM przez fork()
+            with ProcessPoolExecutor(max_workers=n_workers, mp_context=mp.get_context("spawn"),
+                                     initializer=worker_init,
+                                     initargs=(str(self.cache_dir) if self.cache_dir else None,)) as ex:
+                jobs = {ex.submit(worker_convert, str(p), prof.model_dump_json()): p for p in order}
+                for job in as_completed(jobs):
+                    pdf = jobs[job]
+                    try:
+                        conv = job.result()
+                    except BrokenProcessPool:
+                        raise
+                    except Exception as e:  # jeden zły plik nie zatrzymuje całej partii
+                        log.error("błąd konwersji %s: %s: %s", pdf, type(e).__name__, e)
+                        left.discard(pdf)
+                        prepared(Prepared(pdf=pdf, rel=pdf.relative_to(input_dir),
+                                          errors=[f"{type(e).__name__}: {e}"]))
+                        continue
+                    left.discard(pdf)
+                    prepared(self.prepare(pdf, pdf.relative_to(input_dir), conv=conv))
+        except BrokenProcessPool:
+            log.warning("proces konwersji przerwany (np. brak pamięci); pozostałe %d dokumentów po kolei", len(left))
+            for pdf in sorted(left):
+                prepared(self.prepare(pdf, pdf.relative_to(input_dir)))
+
+
+def resolve_workers(value: int, n_docs: int) -> int:
+    """Liczba procesów konwersji: nie więcej niż dokumentów i co najmniej 1."""
+    return max(1, min(int(value), n_docs))
 
 
 def _path_order(dt: DocumentType) -> Any:

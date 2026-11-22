@@ -1,6 +1,8 @@
-# Backend platformy Odwołania2json (API i wydania konfiguracji w plikach) — Python 3.13+.
+# Backend platformy Odwołania2json (API, GUI i wydania konfiguracji w plikach) — Python 3.13+.
 # Zawiera zależności silnika, bo backend używa jego modeli konfiguracji i uruchamia ten sam kod ekstrakcji.
 -r ../engine/requirements.txt
 
 fastapi>=0.165,<1
 uvicorn[standard]>=0.54,<1
+# Odbiór wgrywanych plików (multipart/form-data) w FastAPI.
+python-multipart>=0.0.20,<1

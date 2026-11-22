@@ -17,6 +17,55 @@ Stan na 21.11.2026. Miara: F1 liczone pole po polu względem plików wzorcowych 
 
 Sprawy kontrolne to co czwarta sprawa: 04, 08, …, 60, w tym 6 bardziej zróżnicowanych spraw z drugiej połowy zbioru. Wcześniejsze pomiary z LLM wykonano na profilu deweloperskim z modelem gemma-4-26b-a4b przez API Google (profil usunięty od wydania 2026.11.21-dev.7). Docelowy model Qwen3.5-9B przez Eden AI zmierzyliśmy na tym samym zbiorze kontrolnym; porównanie z innymi modelami jest w [`llm.md`](llm.md).
 
+## Kolejność nagłówka w dwóch kolumnach na skanach (22.11.2026)
+
+Nagłówek odwołania to często tabela bez linii: po lewej etykiety („Odwołujący:”, „Zamawiający:”, „Dotyczy:”), po prawej dane stron. Na skanach Docling wypisuje najpierw wszystkie etykiety, potem wszystkie dane. Sekcja „Odwołujący” (od „Odwołujący:” do „Zamawiający:”) jest wtedy pusta, a sekcja „Zamawiający” zawiera dane Odwołującego. Stąd brały się NIP i nazwa Odwołującego wpisywane jako dane Zamawiającego (odwołania 0006 i 0008).
+
+**Rozwiązanie** (`layout.py`, opcja `scanned_label_columns` w profilu konwersji, tylko skany). Przed eksportem do Markdown silnik zmienia kolejność elementów w dokumencie Docling według ich położenia na stronie:
+
+- **Kolumna etykiet:** co najmniej dwa krótkie teksty zakończone „:” (do 4 słów), które nachodzą na siebie w poziomie. Krótki tekst bez dwukropka w tej kolumnie, między pierwszą a ostatnią etykietą, też jest etykietą („Adres do doręczeń” w prawdziwym odwołaniu z `szablon-aplikacja`).
+- **Wartości:** elementy na prawo od kolumny etykiet, do pierwszego elementu, który zaczyna się w kolumnie etykiet albo na lewo od niej (np. „Wpis od odwołania”, „ODWOŁANIE”).
+- **Przypisanie:** element na wysokości etykiety należy do niej. Tak jest także wtedy, gdy etykieta stoi w połowie bloku danych, jak „Zamawiający:” w prawdziwym odwołaniu. Pozostałe elementy idą do ostatniej etykiety, której górna krawędź jest nad górną krawędzią elementu.
+- **Zabezpieczenia:**
+  - Silnik przestawia całe elementy rozpoznane przez Docling, nie linie OCR, a tekst elementów zostaje bez zmian.
+  - Zmiana następuje tylko wtedy, gdy co najmniej dwie etykiety z dwukropkiem dostają wartości. Etykiety bez dwukropka się nie liczą.
+  - Tekst, który przerywa lewą kolumnę (np. akapit między „Zamawiający:” a „Dotyczy:”), dzieli ją na osobne odcinki, więc etykieta nigdy nie przeskakuje nad takim tekstem.
+  - Odcinek, w którym pod etykietą z dwukropkiem tuż pod nią stoi tekst, to układ jednokolumnowy (odwołania 0002 i 0005). Docling czyta go poprawnie, a elementy po prawej, np. adres KIO czy pieczęć, nie są wtedy wartościami, więc taki odcinek zostaje bez zmian.
+  - Ślad ekstrakcji zapisuje każdą zmianę (`conversion.layout`).
+- **Cache:** dla skanów z włączoną opcją klucz zawiera wersję algorytmu (`LAYOUT_VERSION` w `convert.py`), więc stary Markdown nie wraca z cache. Dokumenty z warstwą tekstową zachowują swoje wpisy.
+
+Pomiar samymi regułami (`--no-llm`). Docling przetworzył 30 skanów raz, a oba warianty liczone są z tych samych wyników OCR. Markdown bez zmiany kolejności jest identyczny z dotychczasowym cache.
+
+| Zbiór | F1 przed | F1 po | Trafienia | Błędne wartości |
+| --- | ---: | ---: | ---: | ---: |
+| 10 odwołań (skany) | 0,436 | **0,660** | 54 → 94 | 17 → 14 |
+| 30 skanów | 0,521 | **0,645** | 118 → 158 | 26 → 23 |
+| Cały zbiór (226 PDF) | 0,889 | **0,900** | 1895 → 1935 | 29 → 26 |
+
+- **Z poprawkami tekstu skanów opisanymi niżej:** 10 odwołań 0,667, 30 skanów 0,649, cały zbiór 0,900.
+- **Zmienione dokumenty:** 7 z 10 odwołań. Na 60 sprawach cyfrowych, 20 skanach pełnomocnictw i przelewów oraz 16 negatywach wynik jest identyczny plik po pliku.
+- **Pola:** NIP, KRS i REGON Odwołującego mają na skanach F1 1,000 (wcześniej 0,50–0,57). Nazwa Zamawiającego: 0,267 → 0,800, NIP Zamawiającego: 0,333 → 0,875, e-mail pełnomocnika: 0,462 → 0,842.
+- **Przelewy:** etykiety „Nazwa firmy:” i „Numer klienta:” zostają bez zmian. OCR łączy obie wartości w jeden element, a elementów nie dzielimy.
+- **Prawdziwe odwołanie z `szablon-aplikacja`:** nagłówek ma teraz kolejność „Odwołujący: dane, Adres do doręczeń, Zamawiający: Miejskie Przedsiębiorstwo Oczyszczania…”. Plik wzorca jest pusty, a dane stron zamazano przy anonimizacji, więc reguły nie wyciągają więcej pól. Zysk dotyczy LLM, który dostaje dane Zamawiającego zaraz po etykiecie. Reguła nazwiska pełnomocnika pomija od teraz nazwę kancelarii („reprezentowany przez radcę prawnego” → „Kancelaria Prawna” przy zamazanym nazwisku).
+- **Pozostałe błędy reguł na skanach odwołań:** dwóch Zamawiających w jednym odwołaniu (0004, lista „1) …”) i nazwa Lidera konsorcjum zapisana jako „1) … (Lider Konsorcjum)” (0007, pole `llm_first`).
+
+**Poprawki wykryte przy pomiarze.** Po zmianie kolejności reguły widzą właściwe sekcje i trafiają na pomyłki OCR, które wcześniej poprawiał tylko LLM. Doszły więc dwie poprawki:
+
+- **Tekst skanów** (`fix_ocr_pl`). Gravis i daszek („Systèmy”, „Brzozowskì”, „prowadzonègo”, „przepisôw”), którego nie ma w polskim tekście, zamienia się na literę bez znaku. Polskie znaki przywraca potem słownik, np. „przepisow” → „przepisów”. W tekście 30 skanów było takich słów 13. Umlauty zostają, bo bywają w nazwiskach. Przecinek wewnątrz adresu e-mail („a,wrobel@…”) zamienia się na kropkę.
+- **Listy.** Reguła zwraca jedną wartość dla pierwszego elementu listy. Jeśli LLM umieścił tę samą wartość w innym elemencie tej listy, wartość z reguły jest dla tego elementu pomijana, a ślad zapisuje ostrzeżenie. Przykład: w odwołaniu 0004 dwaj Zamawiający udzielają zamówienia wspólnie, a REGON drugiego trafiał do pierwszego.
+
+**Pełny przebieg z LLM** (Qwen3.5-9B, endpoint UE Eden AI). Odpowiedzi LLM dla dokumentów, których tekst się nie zmienił, pochodzą z cache, więc różnice wynikają tylko z tych zmian, a nie z wahań modelu.
+
+| Zbiór | F1 przed | F1 po | Błędne wartości | Brakujące wartości |
+| --- | ---: | ---: | ---: | ---: |
+| 30 skanów | 0,942 | **0,951** | 18 → 14 | 18 → 16 |
+| 10 odwołań (skany) | 0,952 | **0,966** | 8 → 4 | 9 → 7 |
+| Cały zbiór (226 PDF) | 0,988 | **0,990** | 23 → 19 | 32 → 30 |
+
+- **Naprawione:** 5 wartości w odwołaniach 0006 i 0008, gdzie KRS, NIP i REGON Odwołującego były wpisywane jako dane Zamawiającego.
+- **Nowy błąd:** w odwołaniu 0010 model wybiera drugiego z dwóch pełnomocników („Monika Zawadzka” zamiast „Andrzej Wróbel”). Ich kolejność w tekście się nie zmieniła.
+- **Bez zmian:** na 60 sprawach cyfrowych, w pełnomocnictwach i przelewach ze skanów oraz w 16 negatywach wyniki są identyczne plik po pliku. Zabezpieczenie list zadziałało w 16 dokumentach, ale tylko w 0004 zmieniło wynik.
+
 ## Porównanie silników OCR (21.11.2026)
 
 30 skanów organizatora (`dane/skany`, 71 stron), pełny silnik z LLM (Qwen3.5-9B, endpoint UE Eden AI), bez cache (`--cache none`), ta sama konfiguracja poza silnikiem OCR. Druga miara dotyczy samego OCR: ile spośród 226 wartości tekstowych ze wzorców występuje w tekście po OCR, dosłownie albo po pominięciu polskich znaków i interpunkcji. Pominięte są daty, identyfikatory słownika i wartości słownikowe, których nie ma w tekście.
@@ -43,6 +92,38 @@ Słabe miejsca RapidOCR na tych skanach, poza polskimi literami („ł”, „Ę
 
 **Poprawka tekstu skanów** (`textutil.fix_ocr_pl`, tylko dla plików bez warstwy tekstowej, przed klasyfikacją, regułami i LLM). Litera o/O w samodzielnym ciągu cyfr zamienia się na 0, a „z 0.o.” i „z 0.0.” na „z o.o.” z wielkością liter zgodną z „Sp.” albo „SP.”. Słowa z literami i cyframi (np. „k2o”, „biuro2o@…”) zostają bez zmian. Na tekście OCR 30 skanów zmienia 9 miejsc i wszystkie są poprawne. Dotąd te wartości ratował tylko LLM: reguła `KRS\W{0,3}(\d{10})` nie pasowała do „9994328o29”, a model sam poprawiał cyfrę. Same reguły na tym samym tekście OCR: +1 trafienie (KRS mocodawcy), bez nowych błędów. W pełnym silniku z LLM F1 skanów wynosi 0,932 wobec 0,934 przed zmianą. Różnią się 2 pola i oba wynikają z wariancji LLM, bo tekst tych dokumentów poprawka zostawia bez zmian. Zysk dotyczy więc głównie sytuacji, gdy LLM jest niedostępny.
 
+## Czas przetwarzania skanów (22.11.2026)
+
+Limit organizatora: 150 PDF-ów w 45 minut, czyli 18 s na dokument. Konwersja skanu to głównie OCR (około 90% czasu Doclinga; reszta to analiza układu strony). Pomiary na laptopie Dell Latitude 5411 (i7-10850H, 6 rdzeni, 12 wątków, 32 GB RAM), bez cache.
+
+**Kilka procesów konwersji nie skraca czasu.** 16 skanów (40 stron), sama konwersja:
+
+| Procesy × wątki | Czas | s/str. | Zajęte rdzenie | Szczyt RAM |
+| --- | ---: | ---: | ---: | ---: |
+| 1 × 4 (domyślnie) | 201 s | 5,03 | 5,6 | 2,9 GB |
+| 1 × 12 | 277 s | 6,93 | 10,9 | 2,8 GB |
+| 2 × 4 | 190 s | 4,75 | 9,8 | 5,1 GB |
+| 3 × 4 | 195 s | 4,87 | 11,3 | 7,1 GB |
+| 4 × 3 | 202 s | 5,04 | 11,6 | 8,7 GB |
+
+Jeden proces Doclinga zajmuje już około 5,6 rdzenia: strony idą potokowo w wątkach, a OCR i modele liczą wielowątkowo. Kolejne procesy konkurują o te same rdzenie i każdy dokument liczy się 2–3 razy dłużej. Tekst wynikowy jest we wszystkich wariantach identyczny. Silnik ma opcję `settings.convert_workers` (i `run --workers N`), domyślnie 1. Więcej procesów może pomóc tylko na maszynie z wieloma rdzeniami. Wywołania LLM startują teraz od razu po konwersji każdego dokumentu, równolegle z konwersją kolejnych, a nie dopiero po wszystkich.
+
+**Lżejsze modele OCR tracą jakość.** 30 skanów, pełny silnik z LLM:
+
+| RapidOCR PP-OCRv6 | F1 skanów | Wartości wzorców w tekście OCR | Konwersja |
+| --- | ---: | ---: | ---: |
+| detekcja i rozpoznawanie `small` (obecnie) | 0,940 | 88,9% | 5,8 s/str. |
+| detekcja `tiny` | 0,932 | 90,7% | 4,3 s/str. |
+| rozpoznawanie `tiny` | 0,892 | 83,2% | 3,4 s/str. |
+| oba `tiny` | 0,892 | 82,3% | 2,3 s/str. |
+| detekcja przez OpenVINO, rozpoznawanie `tiny` | 0,892 | 83,2% | 3,8 s/str. |
+
+Model rozpoznawania `tiny` obniża F1 o 0,05. OpenVINO przyspiesza samą detekcję około 2 razy, ale w pełnym potoku nie skraca czasu, a dodaje 180 MB zależności. Detekcja `tiny` daje mieszany wynik (odwołania lepiej, przelewy gorzej), więc zostaje model `small`. Skale OCR 3 i 4 dają ten sam obraz, bo RapidOCR i tak zmniejsza stronę do 2000 px na dłuższym boku (`max_side_len`).
+
+**Mniej stron skanu: ta sama jakość, o połowę krócej.** Wartości pól pochodzą prawie zawsze ze strony 1, rzadko ze strony 2: na 30 skanach 221 wartości ma źródło na stronie 1. Od 22.11.2026 profil konwersji ma `scanned_max_pages: 3`, czyli OCR czyta 3 pierwsze strony skanu, a cyfrowe PDF-y dalej do `max_pages` (6). Na 30 skanach F1 wynosi 0,940 wobec 0,940 przy 6 stronach (jeden błąd mniej, żadnego nowego), a odwołania mające 4–6 stron konwertują się w około 15 s zamiast około 32 s. W zeskanowanym odwołaniu z `szablon-aplikacja` zmienił się tylko powód czynności (OPZ zamiast SWZ; pismo dotyczy „treści SWZ”, a zarzuty Części II SWZ – Opisu Przedmiotu Zamówienia, więc oba odczyty są uzasadnione) i pola pełnomocnika, które zmieniają się między przebiegami także bez tej zmiany.
+
+**Szacunek dla 150 dokumentów** na tym laptopie, przy około 5 s na stronę skanu: 150 skanów po 3 strony to około 38 minut, a przy 6 stronach (do 21.11.2026) byłoby to około 75 minut. Zbiór organizatora (2,4 strony na skan, cyfrowe PDF-y około 1,4 s na stronę) mieści się z dużym zapasem. Na wolniejszym laptopie same długie skany wciąż mogą zbliżyć się do limitu.
+
 ## Wydanie 2026.11.22-dev.1: polskie znaki na skanach
 
 RapidOCR gubi część polskich znaków, najczęściej „ł” i wielkie litery z ogonkami: „odwolania”, „PELNOMOCNICTWO”, „DEBNICY”. LLM przepisuje wartości z tekstu dosłownie, razem z tym błędem. Od wydania 2026.11.22-dev.1 (`settings.ocr_restore_diacritics`, moduł `diacritics.py`) silnik przywraca znaki w tekście skanu, zaraz po `fix_ocr_pl`, przed klasyfikacją, regułami i LLM:
@@ -67,7 +148,7 @@ Pomiar na 30 skanach organizatora, pełny silnik z LLM, bez cache, oba przebiegi
 - **Ryzyko:** nazwisko pisane celowo bez polskich znaków. Generator organizatora pisze „Szymanski” (4 cyfrowe sprawy). Poprawka działa tylko na skanach, więc cyfrowych dokumentów nie dotyczy, ale na skanie takie nazwisko stałoby się „Szymański”.
 - **Nie poprawia:** słów niejednoznacznych bez pisowni w dokumencie („OPLATA”, „Lódź”, „byla”). Rozstrzygnęłaby je lista frekwencyjna słów, której nie dołączamy.
 
-**Reguły na skanach organizatora.** Same reguły dają na tych 30 skanach F1 około 0,45. Docling odczytuje nagłówek pisma jako dwie osobne kolumny: najpierw same etykiety („Odwołujący:”, „Zamawiający:”, „Dotyczy:”), potem same wartości. Reguły szukające w sekcji „Odwołujący” nie znajdują więc NIP-u, REGON-u ani nazwy, i na skanach prawie wszystkie pola pochodzą z LLM. Gdy API LLM nie odpowiada, wyniki dla takich skanów będą słabe.
+**Reguły na skanach organizatora.** Same reguły dają na tych 30 skanach F1 około 0,45. Docling odczytuje nagłówek pisma jako dwie osobne kolumny: najpierw same etykiety („Odwołujący:”, „Zamawiający:”, „Dotyczy:”), potem same wartości. Reguły szukające w sekcji „Odwołujący” nie znajdują więc NIP-u, REGON-u ani nazwy, i na skanach prawie wszystkie pola pochodzą z LLM. Gdy API LLM nie odpowiada, wyniki dla takich skanów będą słabe. Od 22.11.2026 silnik poprawia tę kolejność (sekcja „Kolejność nagłówka w dwóch kolumnach na skanach” wyżej).
 
 ## Wydanie 2026.11.21-dev.6: skany
 

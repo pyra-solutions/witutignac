@@ -7,7 +7,8 @@ export default [
     {
         ignores: [
             "**/dist",
-            "**/out-tsc"
+            "**/out-tsc",
+            "backend/o2j_backend/static"
         ]
     },
     {

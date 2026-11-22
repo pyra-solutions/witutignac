@@ -30,6 +30,12 @@ def _load(config: str | None):  # noqa: ANN202
     return load_release(path), path
 
 
+def _workers_arg(v: str) -> int:
+    if v.isdigit() and int(v) >= 1:
+        return int(v)
+    raise argparse.ArgumentTypeError("podaj liczbę procesów (1, 2, …)")
+
+
 def cmd_run(a: argparse.Namespace) -> int:
     from odwolania2json import normalizers, validators  # noqa: F401 — rejestracja wtyczek
     from odwolania2json.pipeline import Engine
@@ -42,7 +48,8 @@ def cmd_run(a: argparse.Namespace) -> int:
                                      release.fingerprint())
     t0 = time.perf_counter()
     engine = Engine(release, _cache_dir(a.cache), use_llm=not a.no_llm)
-    summary = engine.run(Path(a.input), Path(a.output), Path(a.trace_dir) if a.trace_dir else None)
+    summary = engine.run(Path(a.input), Path(a.output), Path(a.trace_dir) if a.trace_dir else None,
+                         workers=a.workers)
     errs = [s for s in summary if s["errors"]]
     unsupported = sum(1 for s in summary if s["doc_type"] is None)
     print(f"Gotowe: {len(summary)} dokumentów w {time.perf_counter() - t0:.0f} s; "
@@ -179,6 +186,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--trace-dir", help="katalog na ślady ekstrakcji (*.trace.json)")
     r.add_argument("--no-llm", action="store_true", help="tylko reguły, bez wywołań LLM")
     r.add_argument("--llm-profile", help="profil LLM z konfiguracji zamiast domyślnego (np. eden-ministral-8b)")
+    r.add_argument("--workers", type=_workers_arg,
+                   help="liczba procesów konwersji (domyślnie settings.convert_workers z konfiguracji, zwykle 1)")
     r.set_defaults(fn=cmd_run)
 
     e = sub.add_parser("evaluate", help="F1 względem plików wzorcowych")

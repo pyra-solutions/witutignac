@@ -39,6 +39,29 @@ PYTHONPATH=engine python -m odwolania2json run --input input --output output
 
 Na Windows zamiast `PYTHONPATH=engine` wykonaj najpierw `set PYTHONPATH=engine`.
 
+### Interfejs graficzny
+
+```bat
+gui.bat
+```
+
+Na Linuksie i macOS: `./gui.sh`. Skrypt korzysta z tego samego środowiska `engine/.venv` co `start.bat`
+(brakujące pakiety FastAPI i uvicorn doinstalowuje), uruchamia serwer na tym komputerze i otwiera
+w przeglądarce adres http://127.0.0.1:8000. Zatrzymanie: Ctrl+C w oknie skryptu. Inny port: zmienna `PORT`.
+
+W interfejsie można:
+
+- wgrać pliki PDF sprawy (albo archiwum ZIP) i przetworzyć je tym samym silnikiem co `start.bat`,
+- obejrzeć wynik obok PDF-u: przy każdym polu źródło wartości (reguła, LLM, wyliczona), strona, cytat
+  i ostrzeżenia walidatorów, a po kliknięciu pola jego podświetlenie w PDF,
+- zobaczyć tekst z Docling, wynikowy JSON i przebieg przetwarzania: wyniki klasyfikacji, OCR, wywołania LLM
+  z dostawcą i regionem przetwarzania,
+- poprawić pola, zatwierdzić dokument i pobrać wyniki sprawy jako ZIP w układzie katalogu `output`,
+- przejrzeć konfigurację silnika: typy dokumentów, słowniki, modele LLM, profile Docling, wydania i dziennik zmian.
+
+Sprawy z interfejsu trafiają do katalogu `gui-data/`, a nie do `input/` i `output/`.
+Node.js nie jest potrzebny: zbudowany interfejs jest w `backend/o2j_backend/static`.
+
 ### Klucz API modelu językowego
 
 Klucz musi być w pliku `.env` w katalogu głównym, na wzór `.env.example`:
@@ -98,7 +121,8 @@ Opcje dodatkowe przekazywane do skryptu, np. `start.bat --trace-dir slady`:
 | [docs/silnik.md](docs/silnik.md) | działanie silnika i dodawanie nowych rodzajów dokumentów samą konfiguracją |
 | [docs/raport-jakosci.md](docs/raport-jakosci.md) | wyniki własnych testów jakości (F1) |
 | [docs/plan.md](docs/plan.md) | plan rozwiązania i architektura |
-| [backend/README.md](backend/README.md) | platforma: API i wydania konfiguracji |
+| [backend/README.md](backend/README.md) | serwer interfejsu graficznego: API i wydania konfiguracji |
+| [apps/web/README.md](apps/web/README.md) | interfejs graficzny: ekrany i praca nad kodem |
 
 Nowy rodzaj dokumentu to nowy plik YAML w `config/seed/document_types/`, bez zmian w kodzie.
 
@@ -110,6 +134,7 @@ Nowy rodzaj dokumentu to nowy plik YAML w `config/seed/document_types/`, bez zmi
 | `config/seed/` | definicje rodzajów dokumentów, słowniki i profile modeli (YAML); jedyne źródło konfiguracji |
 | `config/releases/` | opublikowane, niezmienne wydania konfiguracji (historia `release.json`) |
 | `input/`, `output/` | pliki wejściowe i wyniki |
-| `backend/` | API (FastAPI) dla interfejsu graficznego, działa na plikach; niepotrzebne do uruchomienia ekstrakcji |
-| `apps/web/` | interfejs graficzny (Angular) |
+| `backend/` | serwer interfejsu graficznego (FastAPI) i zbudowany interfejs; niepotrzebny do uruchomienia ekstrakcji |
+| `apps/web/` | kod źródłowy interfejsu graficznego (Angular) |
+| `gui-data/` | sprawy wgrane przez interfejs graficzny (tworzony przy pierwszym użyciu, poza repozytorium) |
 | `docs/` | dokumentacja |
