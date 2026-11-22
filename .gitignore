@@ -36,3 +36,8 @@ output/*
 
 # Interfejs graficzny: sprawy wgrane przez GUI (PDF-y, wyniki, dziennik)
 gui-data/
+
+# Serwer oceny (deploy/install.sh, run.sh): Python, modele i dzienniki w katalogu projektu
+.tools/
+.cache/
+logs/

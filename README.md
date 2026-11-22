@@ -23,6 +23,7 @@ Wymagany jest Python 3.13 lub nowszy.
    ```
 
    Na Linuksie: `./start_linux.sh` (albo `./start.sh`, który działa też na macOS).
+   Na serwerze oceny organizatora: `sudo bash run.sh`, opis w [RUN.md](RUN.md).
 
 3. Wyniki znajdziesz w `output/<sprawa>/<nazwa pliku>.json`.
 
@@ -138,3 +139,4 @@ Nowy rodzaj dokumentu to nowy plik YAML w `config/seed/document_types/`, bez zmi
 | `apps/web/` | kod źródłowy interfejsu graficznego (Angular) |
 | `gui-data/` | sprawy wgrane przez interfejs graficzny (tworzony przy pierwszym użyciu, poza repozytorium) |
 | `docs/` | dokumentacja |
+| `deploy/` | instalacja na serwerze oceny (`deploy/install.sh`); uruchomienie: `run.sh`, opis w `RUN.md` |
