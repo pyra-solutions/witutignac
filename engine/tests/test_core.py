@@ -77,8 +77,10 @@ def test_email_and_ocr_fix() -> None:
     assert fix_ocr_pl("Nowak,Kowalski") == "Nowak,Kowalski"
     # bez zmian: słowa, samotne "o", adresy i ciągi z literami
     for s in ("o 12 dni", "Lodo 2", "www.k2o.pl", "biuro2o@firma.pl", "nr 2026/BZP0O767819/01", "Monk d w o o2e",
-              "Sp. z o.o.", "SP. Z O.O.", "art. 10 ust. 2", "OO", "z 0", "raz 0.5."):
+              "Sp. z o.o.", "SP. Z O.O.", "art. 10 ust. 2", "OO", "z 0", "raz 0.5.", "bluszcz oplata mur"):
         assert fix_ocr_pl(s) == s, s
+    assert fix_ocr_pl("OPLATA SKARBOWA OD PEINOMOCNICTWA") == "OPŁATA SKARBOWA OD PEŁNOMOCNICTWA"
+    assert fix_ocr_pl("opiata skarbowa od peinomocnictwa") == "opłata skarbowa od pełnomocnictwa"
 
 
 def test_ocr_tolerant_grounding() -> None:
@@ -89,6 +91,46 @@ def test_ocr_tolerant_grounding() -> None:
     # wartości spoza tekstu nadal są odrzucane, także krótkie (poniżej 4 znaków po złożeniu)
     assert not grounded("Orbisol Budownictwo", ocr, "tokens", ocr_tolerant=True)
     assert not grounded("Ul", "u1", "tokens", ocr_tolerant=True)
+
+
+def test_fuzzy_grounding() -> None:
+    ocr = (
+        "Budowa sali gimnastycznej wraz z zapleczem sanitarnym i infrastrukturą towarzyszącq, nr ZP/134/2026\n"
+        "opłata skarbowa od pełnomocnictwa dla adw Rafał Maknowsiu w postępowaniu przed Ki 2026"
+    )
+    title = "Budowa sali gimnastycznej wraz z zapleczem sanitarnym i infrastrukturą towarzyszącą"
+    assert not grounded(title, ocr, "fuzzy", ocr_tolerant=False)
+    assert grounded(title, ocr, "fuzzy", ocr_tolerant=True)
+    assert grounded("opłata skarbowa od pełnomocnictwa dla adw Rafał Maknowski w postępowaniu przed Ki 2026",
+                    ocr, "fuzzy", ocr_tolerant=True)
+    # liczby i kody postępowań muszą zgadzać się dokładnie
+    assert not grounded("Budowa sali gimnastycznej nr ZP/135/2026", ocr, "fuzzy", ocr_tolerant=True)
+    assert not grounded("Orbisol Budownictwo", ocr, "fuzzy", ocr_tolerant=True)
+    assert not grounded("Ul", "u1", "fuzzy", ocr_tolerant=True)
+
+
+def test_szczegoly_platnosci_rule_and_regon_error_validator() -> None:
+    from odwolania2json.config import build_from_seed
+    from odwolania2json.pipeline import Engine
+    from odwolania2json.rules import extract_all
+
+    rel = build_from_seed(Path("config/seed"))
+    przelew = next(d for d in rel.document_types if d.code == "przelew")
+    md = (
+        "Tryb realizacji Zlecona data wykonania Szczegóły płatności\n\n"
+        "10 000,00 PLN\n\nzwykły\n\n15.07.2026\n\n"
+        "WPIS OD ODW., ZAM: KOMENDA WOJEWÓDZKA PAŃSTWOWEJ STRAŻY POŻARNEJ W JA, PN/58/2026/DOS\n\n"
+        "Signature Not Verified"
+    )
+    cand = extract_all(przelew, md, rel).get("przelew_bankowy.tytul")
+    assert cand is not None
+    assert cand.value == "WPIS OD ODW., ZAM: KOMENDA WOJEWÓDZKA PAŃSTWOWEJ STRAŻY POŻARNEJ W JA, PN/58/2026/DOS"
+
+    odw = next(d for d in rel.document_types if d.code == "odwolanie")
+    regon_field = next(f for f in odw.fields if f.path == "Zamawiajacy[].regon")
+    warn: list[str] = []
+    assert not Engine._validate(regon_field, "9993202830", warn)
+    assert Engine._validate(regon_field, "999319720", warn)
 
 
 def test_profile_cache_key_ignores_default_ocr_options() -> None:

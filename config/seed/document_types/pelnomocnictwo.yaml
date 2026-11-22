@@ -63,18 +63,21 @@ fields:
 
   - path: 'mocodawca[].data.krs'
     group: pelnomocnictwo
-    instruction: Numer KRS mocodawcy będącego osobą prawną (10 cyfr).
+    instruction: Numer KRS mocodawcy będącego osobą prawną (10 cyfr), tylko jeśli jawnie podany jako KRS (brak = null; nie wpisuj numeru NIP).
     strategy: rules_first
     rules:
       - {pattern: 'KRS\W{0,3}(\d{10})', section: mocodawca}
       - {pattern: 'KRS\W{0,3}(\d{10})'}
     normalizers: [{name: digits_only}]
-    validators: [{name: krs}]
+    validators:
+      - {name: pattern, args: {re: '\d{10}'}, severity: error}
+      - {name: krs}
 
   - path: 'mocodawca[].data.nazwa'
     group: pelnomocnictwo
     instruction: Pełna nazwa mocodawcy (firma), bez adresu.
     strategy: llm_first
+    grounding: fuzzy
     rules:
       - pattern: 'pod\s+firmą\s+([\s\S]{3,160}?),\s*(?:ul\.|al\.|pl\.|os\.|z\s+siedzibą)'
       - pattern: 'Mocodawc\w*\s+jest\s+([\s\S]{3,160}?),\s*(?:ul\.|al\.|pl\.|os\.|z\s+siedzibą)'
@@ -99,7 +102,9 @@ fields:
       - {pattern: 'NIP\W{0,3}(\d[\d\- ]{8,12}\d)', section: mocodawca}
       - {pattern: 'NIP\W{0,3}(\d[\d\- ]{8,12}\d)'}
     normalizers: [{name: digits_only}]
-    validators: [{name: nip}]
+    validators:
+      - {name: pattern, args: {re: '\d{10}'}, severity: error}
+      - {name: nip}
 
   - path: 'mocodawca[].data.typ'
     derive:

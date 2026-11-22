@@ -90,18 +90,24 @@ fields:
     group: przelew
     instruction: Tytuł przelewu dokładnie jak w dokumencie, bez cudzysłowów.
     strategy: rules_first
+    grounding: fuzzy
     rules:
       - pattern: 'Tytuł\w*(?:\s+przelewu)?\s*:\s*["„“]([^"”“]{3,400})["”“]'
       # Etykieta "Tytuł"/"Tytułem" (OCR czyta ją też jako "Tytul" albo "Tytut"), po niej dwukropek, pionowa kreska
       # albo nowa linia. Pomijamy etykiety stojące między nazwą a wartością (np. "Tytułem / Kanał / <tytuł>").
       # Drugi akapit zaczynający się małą literą to dalszy ciąg tytułu przełamanego przez Docling.
       - pattern: 'Tytu[łlt]\w*(?:\s+przelewu)?\s*(?:[:|]|\n)\s*\|?\s*\n*\s*(?:(?:Kanał|Status|Kwota|Opis|Waluta|Opłata|Typ\s+\w+|Serwis\s+\w+)\s*:?\s*\n+\s*)*([^\n|]{3,400}(?:\n\n(?-i:[a-ząćęłńóśźż])[^\n|]{0,300})?)'
+      # Układ wielokolumnowy (np. Bank Bałtycki / Karpacki): po etykiecie "Szczegóły płatności" pojawiają się
+      # wartości wcześniejszych komórek (kwota, tryb realizacji, data), a bezpośrednio po dacie – tytuł przelewu.
+      - pattern: 'Szczeg[óo][łlit1]y\s+p[łlit1]atno[śs]ci\b[\s\S]{0,600}?[^\S\n]*\d[\d .,]*\s*(?:PLN|zł|EUR)[ \t]*\n+\s*(?:(?:zwyk[łli]y|natychmiastowy|ekspresowy|elixir|sorbnet|express)[ \t]*\n+\s*)?\d{1,4}[.\-/ ]+\d{1,2}[.\-/ ]+\d{2,4}[ \t]*\n+\s*(?!(?:Signature\s+Not|Dokument\s+(?:podpisany|sporządzony|wygenerowany)|Data\s+wystawienia))([^\n|]{3,400}(?:\n\n(?-i:[a-ząćęłńóśźż])[^\n|]{0,300})?)'
+      # Jednokolumnowe "Szczegóły płatności: <tytuł>" (z odrzuceniem numeru rachunku i kwoty)
+      - pattern: 'Szczeg[óo][łlit1]y\s+p[łlit1]atno[śs]ci\s*(?:[:|]|\n)\s*\|?\s*\n*\s*(?!(?:(?:PL)?\s*\d{2}(?:\s*\d{4}){6}\b|\d[\d .,]*\s*(?:PLN|zł|EUR)\b|Signature\s+Not|Dokument\s+(?:podpisany|sporządzony|wygenerowany)|Data\s+wystawienia))([^\n|]{3,400}(?:\n\n(?-i:[a-ząćęłńóśźż])[^\n|]{0,300})?)'
       # "Opis" tylko wtedy, gdy nie ma etykiety tytułu; pomijamy nazwy kolumn i rodzaj przelewu.
       - pattern: 'Opis\s*(?:[:|]|\n)\s*\|?\s*\n*\s*(?!(?:Kwota|Typ\b|Data\b|Waluta|Status|Kanał|PRZELEW\s+(?:ELIXIR|INTERNETOWY|KRAJOWY|ZWYKŁY|SORBNET|EXPRESS)))([^\n|]{3,400}(?:\n\n(?-i:[a-ząćęłńóśźż])[^\n|]{0,300})?)'
     normalizers:
       - {name: collapse_ws}
       # w części układów przed tytułem wpada sąsiednia etykieta tabeli
-      - {name: remove_prefix, args: {patterns: ['Typ\s+operacji', 'Status', 'Kanał', 'Tytuł\s+przelewu', 'Tytułem']}}
+      - {name: remove_prefix, args: {patterns: ['Typ\s+operacji', 'Status', 'Kanał', 'Tytuł\s+przelewu', 'Tytułem', 'Szczeg[óo][łlt]y\s+p[łlt]atno[śs]ci']}}
       # odcina doklejone dalsze pola wydruku, np. 'IDENTYFIKATOR OPERACJI ......... X'
       - {name: regex_replace, args: {pattern: '\s+[A-ZŁŚŻŹĆĘĄÓŃ]{2,}\.?(?:\s+[A-ZŁŚŻŹĆĘĄÓŃ]{2,}\.?)*\s*[.…]{3,}.*$', repl: '', ignore_case: false}}
       - {name: strip_quotes}

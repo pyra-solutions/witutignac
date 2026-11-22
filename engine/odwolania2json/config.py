@@ -88,8 +88,10 @@ class FieldDef(_Model):
     enum: list[Any] | None = None
     dictionary: str | None = None  # słownik dołączany do instrukcji dla LLM
     # Weryfikacja wartości z LLM w tekście: required (dosłownie, bez spacji i interpunkcji),
-    # tokens (każdy wyraz/liczba), token_prefix (początki wyrazów — dla odmienionych nazwisk), none.
-    grounding: Literal["required", "tokens", "token_prefix", "none"] = "required"
+    # tokens (każdy wyraz/liczba), token_prefix (początki wyrazów — dla odmienionych nazwisk),
+    # fuzzy (jak tokens na PDF cyfrowych; na skanach toleruje drobne literówki OCR w słowach,
+    # przy zachowaniu ścisłej zgodności liczb/kodów), none.
+    grounding: Literal["required", "tokens", "token_prefix", "fuzzy", "none"] = "required"
     default: Any = None
     # Pole ma sens tylko, gdy lista nadrzędna ma co najmniej tyle elementów (np. prowadzący
     # postępowanie przy kilku zamawiających); inaczej zostaje null.

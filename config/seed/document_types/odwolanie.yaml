@@ -119,17 +119,20 @@ fields:
 
   - path: Odwolujacy[].krs
     group: odwolanie
-    instruction: Numer KRS Odwołującego albo Lidera konsorcjum (10 cyfr), jeśli występuje.
+    instruction: Numer KRS Odwołującego albo Lidera konsorcjum (10 cyfr), jeśli jawnie podany jako KRS (brak = null; nie wpisuj numeru NIP).
     strategy: rules_first
     rules:
       - {pattern: 'KRS\W{0,3}(\d{10})', section: odwolujacy}
     normalizers: [{name: digits_only}]
-    validators: [{name: krs}]
+    validators:
+      - {name: pattern, args: {re: '\d{10}'}, severity: error}
+      - {name: krs}
 
   - path: Odwolujacy[].nazwa
     group: odwolanie
     instruction: Pełna nazwa Odwołującego (wykonawcy wnoszącego odwołanie). Przy konsorcjum nazwa Lidera konsorcjum. Bez adresu.
     strategy: llm_first
+    grounding: fuzzy
     rules:
       - pattern: 'Lider\w*\s+Konsorcjum\s*:\s*(?:#+\s*)?([^\n]+?)\s*(?:,?\s+(?:ul\.|al\.|pl\.|os\.)\s|\s+\d{2}-\d{3}\s|\n|$)'
         section: odwolujacy
@@ -148,7 +151,9 @@ fields:
     rules:
       - {pattern: 'NIP\W{0,3}(\d[\d\- ]{8,12}\d)', section: odwolujacy}
     normalizers: [{name: digits_only}]
-    validators: [{name: nip}]
+    validators:
+      - {name: pattern, args: {re: '\d{10}'}, severity: error}
+      - {name: nip}
 
   - path: Odwolujacy[].regon
     group: odwolanie
@@ -157,7 +162,9 @@ fields:
     rules:
       - {pattern: 'REGON\W{0,3}(\d{9}(?:\d{5})?)', section: odwolujacy}
     normalizers: [{name: digits_only}]
-    validators: [{name: regon}]
+    validators:
+      - {name: pattern, args: {re: '\d{9}|\d{14}'}, severity: error}
+      - {name: regon}
 
   - path: Odwolujacy[].przez-pelnomocnika
     derive: {kind: present, source: 'Odwolujacy[].pelnomocnik.imie_nazwisko', if_true: 1, if_false: 0}
@@ -178,6 +185,7 @@ fields:
     group: odwolanie
     instruction: Nazwa podmiotu zatrudniającego pełnomocnika (np. kancelarii) z adresu do korespondencji. Bez adresu.
     strategy: llm_first
+    grounding: fuzzy
     rules:
       - pattern: 'adres\w*\s+do\s+korespondencji\s*:\s*([\s\S]{3,160}?),\s*(?:ul\.|al\.|pl\.|os\.)'
         section: odwolujacy
@@ -193,17 +201,20 @@ fields:
 
   - path: Zamawiajacy[].krs
     group: odwolanie
-    instruction: Numer KRS Zamawiającego, tylko jeśli jawnie podany przy Zamawiającym.
+    instruction: Numer KRS Zamawiającego, tylko jeśli jawnie podany jako KRS przy Zamawiającym (brak = null; nie wpisuj numeru NIP).
     strategy: rules_first
     rules:
       - {pattern: 'KRS\W{0,3}(\d{10})', section: zamawiajacy}
     normalizers: [{name: digits_only}]
-    validators: [{name: krs}]
+    validators:
+      - {name: pattern, args: {re: '\d{10}'}, severity: error}
+      - {name: krs}
 
   - path: Zamawiajacy[].nazwa
     group: odwolanie
     instruction: Pełna nazwa Zamawiającego. Bez adresu.
     strategy: llm_first
+    grounding: fuzzy
     rules:
       - pattern: 'Zamawiając\w*[ \t]*:[ \t]*(?:#+[ \t]*)?((?!Prezes)[^\n]+?)[ \t]*(?:,?[ \t]+(?:ul\.|al\.|pl\.|os\.)\s|[ \t]+\d{2}-\d{3}\s|\n|$)'
         section: zamawiajacy
@@ -222,7 +233,9 @@ fields:
     rules:
       - {pattern: 'NIP\W{0,3}(\d[\d\- ]{8,12}\d)', section: zamawiajacy}
     normalizers: [{name: digits_only}]
-    validators: [{name: nip}]
+    validators:
+      - {name: pattern, args: {re: '\d{10}'}, severity: error}
+      - {name: nip}
 
   - path: Zamawiajacy[].regon
     group: odwolanie
@@ -231,7 +244,9 @@ fields:
     rules:
       - {pattern: 'REGON\W{0,3}(\d{9}(?:\d{5})?)', section: zamawiajacy}
     normalizers: [{name: digits_only}]
-    validators: [{name: regon}]
+    validators:
+      - {name: pattern, args: {re: '\d{9}|\d{14}'}, severity: error}
+      - {name: regon}
 
   - path: Zamawiajacy[].prowadzacy_postepowanie
     type: integer
@@ -273,6 +288,7 @@ fields:
     group: odwolanie
     instruction: Tytuł (nazwa) zamówienia lub postępowania, bez cudzysłowów.
     strategy: rules_first
+    grounding: fuzzy
     rules:
       - {pattern: 'pn\.?\s*["„“”]([^"„“”]{5,400})["”“]', section: dotyczy}
     normalizers: [{name: collapse_ws}, {name: strip_quotes}, {name: strip_punct, args: {chars: ' ,;:'}}]

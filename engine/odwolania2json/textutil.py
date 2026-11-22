@@ -3,6 +3,7 @@
 import re
 import unicodedata
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 
 from odwolania2json.config import Section
 
@@ -22,6 +23,18 @@ _OCR_MAIL_COMMA = re.compile(r"(?<![^\W_])([^\W_]+),(?=[^\W_][\w.+-]*@[\w-]+\.\w
 _OCR_DIGIT_RUN = re.compile(r"(?<![^\W_])[0-9oO]++(?![^\W_])")
 # "Sp. z 0.o.", "z 0.0.", "z o.0." -> "z o.o."
 _OCR_ZOO = re.compile(r"(?<![^\W_])((?:(sp|Sp|SP)\.\s?)?[zZ]\s)([0oO]\.\s?[0oO]\.)")
+# "oplata"/"opiata" przed słowami opłatowymi (SJP ma czasownik "oplata", więc słownik tego nie poprawia)
+_OCR_OPLATA = re.compile(
+    r"\b([Oo][Pp])[lLiI]([Aa][Tt][AaĄąYyĘę])\b(?=\s+(?:skarb\w*|s[ąa]dow\w*|od\b|za\b|manipul\w*))",
+    flags=re.IGNORECASE,
+)
+# RapidOCR myli "ł" z "i" w "pełnomocnictw..." ("peinomocnictwa")
+_OCR_PELNOMOCNICTWO = re.compile(r"\b([Pp][Ee])[iI]([Nn][Oo][Mm][Oo][Cc][Nn][Ii][Cc][Tt][Ww]\w*)\b")
+
+
+def _l_stroke(m: re.Match[str]) -> str:
+    head, tail = m.group(1), m.group(2)
+    return f"{head}{'Ł' if head.isupper() and tail.isupper() else 'ł'}{tail}"
 
 
 def _digit_run(m: re.Match[str]) -> str:
@@ -58,6 +71,8 @@ def fix_ocr_pl(text: str) -> str:
     text = text.translate(_OCR_PL)
     text = _OCR_DIGIT_RUN.sub(_digit_run, text)
     text = _OCR_MAIL_COMMA.sub(r"\1.", text)
+    text = _OCR_OPLATA.sub(_l_stroke, text)
+    text = _OCR_PELNOMOCNICTWO.sub(_l_stroke, text)
     return _OCR_ZOO.sub(_zoo, text)
 
 
@@ -131,27 +146,75 @@ def tokens(s: str) -> list[str]:
 _OCR_CONFUSABLE = str.maketrans({"0": "o", "1": "l", "i": "l", "|": "l"})
 
 
-def ocr_fold(s: str) -> str:
-    """Litery i cyfry bez polskich znaków, z utożsamieniem znaków mylonych przez OCR (0/o, 1/l/i)."""
+def _ocr_fold_token(s: str) -> str:
     s = unicodedata.normalize("NFKD", s.replace("ł", "l").replace("Ł", "L"))
     s = "".join(c for c in s if not unicodedata.combining(c)).casefold()
     return re.sub(r"[\W_]+", "", s).translate(_OCR_CONFUSABLE)
+
+
+def ocr_fold(s: str) -> str:
+    """Litery i cyfry bez polskich znaków, z utożsamieniem znaków mylonych przez OCR (0/o, 1/l/i)."""
+    return _ocr_fold_token(s)
+
+
+def _grounded_fuzzy(v: str, text: str) -> bool:
+    """Na skanach dopuszcza drobne literówki OCR w słowach alfabetycznych (dł. >= 4),
+    przy zachowaniu ścisłej zgodności wszystkich tokenów zawierających cyfry."""
+    toks = [t for t in re.findall(r"\w+", _fold(v)) if len(t) >= 2]
+    if not toks:
+        return True
+    hay_words = [h for h in re.findall(r"\w+", _fold(text)) if len(h) >= 2]
+    hay_fold = {_ocr_fold_token(h) for h in hay_words}
+    hay_fold.discard("")
+    alpha_hay = [h for h in hay_fold if not any(c.isdigit() for c in h)]
+    text_fold = ocr_fold(text)
+    total = 0
+    matched = 0
+    for t in toks:
+        tf = _ocr_fold_token(t)
+        if not tf:
+            continue
+        total += 1
+        if any(c.isdigit() for c in tf):
+            if tf in hay_fold or (len(tf) >= 3 and tf in text_fold):
+                matched += 1
+            else:
+                return False
+        elif (
+            tf in hay_fold
+            or (len(tf) >= 4 and tf in text_fold)
+            or (
+                len(tf) >= 4
+                and any(
+                    abs(len(h) - len(tf)) <= 2 and SequenceMatcher(None, tf, h).ratio() >= 0.75
+                    for h in alpha_hay
+                )
+            )
+        ):
+            matched += 1
+    return total == 0 or (matched >= 1 and matched / total >= 0.85)
 
 
 def grounded(value: object, text: str, mode: str, ocr_tolerant: bool = False) -> bool:
     """Czy wartość z LLM ma pokrycie w tekście dokumentu.
 
     Z `ocr_tolerant` (skany) wartość, która nie przeszła zwykłego porównania, wystarczy, że wystąpi
-    w tekście w całości po `ocr_fold` (co najmniej 4 znaki).
+    w tekście w całości po `ocr_fold` (co najmniej 4 znaki). Tryb `fuzzy` dopuszcza dodatkowo
+    drobne literówki OCR w słowach alfabetycznych (na PDF-ach cyfrowych działa jak `tokens`).
     """
     if mode == "none" or value is None:
         return True
-    if _grounded(str(value), text, mode):
+    s = str(value)
+    if _grounded(s, text, "tokens" if mode == "fuzzy" else mode):
         return True
     if not ocr_tolerant:
         return False
-    v = ocr_fold(str(value))
-    return len(v) >= 4 and v in ocr_fold(text)
+    v = ocr_fold(s)
+    if len(v) < 4:
+        return False
+    if v in ocr_fold(text):
+        return True
+    return mode == "fuzzy" and _grounded_fuzzy(s, text)
 
 
 def _grounded(v: str, text: str, mode: str) -> bool:

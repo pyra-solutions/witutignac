@@ -196,3 +196,12 @@ def test_regula_nie_nadpisuje_wartosci_innego_elementu_listy() -> None:
     assert Engine._rule_in_other_item("Zamawiajacy[0].regon", cand, {"Zamawiajacy[1].regon": "111"}) is None
     # wartość w innej liście (Odwołujący) się nie liczy
     assert Engine._rule_in_other_item("Zamawiajacy[0].regon", Candidate(value="123456785", start=0, end=9, rule=0, quote=""), llm) is None
+    # element poza limitem max_items (np. Odwolujacy[1] przy max_items=1) nie blokuje reguły dla [0]
+    from odwolania2json.config import ListDef
+    consortium_llm = {"Odwolujacy[0].pelnomocnik.imie_nazwisko": None, "Odwolujacy[1].pelnomocnik.imie_nazwisko": "Piotr Zalewski"}
+    assert Engine._rule_in_other_item(
+        "Odwolujacy[0].pelnomocnik.imie_nazwisko",
+        Candidate(value="Piotr Zalewski", start=0, end=14, rule=0, quote=""),
+        consortium_llm,
+        [ListDef(path="Odwolujacy", max_items=1)],
+    ) is None

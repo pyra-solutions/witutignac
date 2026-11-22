@@ -1,11 +1,12 @@
 {
-  "version": "2026.11.22-dev.1",
+  "version": "2026.11.22-dev.2",
   "settings": {
     "unsupported_output": "{}",
     "default_llm_profile": "eden-qwen3.5-9b",
     "llm_concurrency": 4,
     "ocr_tolerant_grounding": true,
-    "ocr_restore_diacritics": true
+    "ocr_restore_diacritics": true,
+    "convert_workers": 1
   },
   "conversion_profiles": [
     {
@@ -22,7 +23,9 @@
       "document_timeout_s": 180.0,
       "scanned_ocr_mode": "full_page",
       "ocr_scale": 3.0,
-      "ocr_model_size": "small"
+      "ocr_model_size": "small",
+      "scanned_label_columns": true,
+      "scanned_max_pages": 3
     }
   ],
   "llm_profiles": [
@@ -526,7 +529,7 @@
         {
           "path": "Odwolujacy[].krs",
           "type": "string",
-          "instruction": "Numer KRS Odwołującego albo Lidera konsorcjum (10 cyfr), jeśli występuje.",
+          "instruction": "Numer KRS Odwołującego albo Lidera konsorcjum (10 cyfr), jeśli jawnie podany jako KRS (brak = null; nie wpisuj numeru NIP).",
           "group": "odwolanie",
           "rules": [
             {
@@ -550,6 +553,13 @@
             }
           ],
           "validators": [
+            {
+              "name": "pattern",
+              "args": {
+                "re": "\\d{10}"
+              },
+              "severity": "error"
+            },
             {
               "name": "krs",
               "args": {},
@@ -622,7 +632,7 @@
           "derive": null,
           "enum": null,
           "dictionary": null,
-          "grounding": "required",
+          "grounding": "fuzzy",
           "default": null,
           "only_if_list_size_at_least": null
         },
@@ -653,6 +663,13 @@
             }
           ],
           "validators": [
+            {
+              "name": "pattern",
+              "args": {
+                "re": "\\d{10}"
+              },
+              "severity": "error"
+            },
             {
               "name": "nip",
               "args": {},
@@ -693,6 +710,13 @@
             }
           ],
           "validators": [
+            {
+              "name": "pattern",
+              "args": {
+                "re": "\\d{9}|\\d{14}"
+              },
+              "severity": "error"
+            },
             {
               "name": "regon",
               "args": {},
@@ -742,7 +766,7 @@
           "rules": [
             {
               "kind": "regex",
-              "pattern": "(?:reprezentowan\\w*|działając\\w*)\\s+przez\\s*:?\\s*(?:adw\\.|adwokat\\w*|r\\.\\s*pr\\.|radc\\w+\\s+prawn\\w+|mec\\.|apl\\.\\s*adw\\.)?\\s*([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)",
+              "pattern": "(?:reprezentowan\\w*|działając\\w*)\\s+przez\\s*:?\\s*(?:adw\\.|adwokat\\w*|r\\.\\s*pr\\.|radc\\w+\\s+prawn\\w+|mec\\.|apl\\.\\s*adw\\.)?\\s*(?!Kancelari)([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)",
               "group": 1,
               "section": "odwolujacy",
               "occurrence": "first",
@@ -805,7 +829,7 @@
           "derive": null,
           "enum": null,
           "dictionary": null,
-          "grounding": "required",
+          "grounding": "fuzzy",
           "default": null,
           "only_if_list_size_at_least": null
         },
@@ -846,7 +870,7 @@
         {
           "path": "Zamawiajacy[].krs",
           "type": "string",
-          "instruction": "Numer KRS Zamawiającego, tylko jeśli jawnie podany przy Zamawiającym.",
+          "instruction": "Numer KRS Zamawiającego, tylko jeśli jawnie podany jako KRS przy Zamawiającym (brak = null; nie wpisuj numeru NIP).",
           "group": "odwolanie",
           "rules": [
             {
@@ -870,6 +894,13 @@
             }
           ],
           "validators": [
+            {
+              "name": "pattern",
+              "args": {
+                "re": "\\d{10}"
+              },
+              "severity": "error"
+            },
             {
               "name": "krs",
               "args": {},
@@ -939,7 +970,7 @@
           "derive": null,
           "enum": null,
           "dictionary": null,
-          "grounding": "required",
+          "grounding": "fuzzy",
           "default": null,
           "only_if_list_size_at_least": null
         },
@@ -970,6 +1001,13 @@
             }
           ],
           "validators": [
+            {
+              "name": "pattern",
+              "args": {
+                "re": "\\d{10}"
+              },
+              "severity": "error"
+            },
             {
               "name": "nip",
               "args": {},
@@ -1010,6 +1048,13 @@
             }
           ],
           "validators": [
+            {
+              "name": "pattern",
+              "args": {
+                "re": "\\d{9}|\\d{14}"
+              },
+              "severity": "error"
+            },
             {
               "name": "regon",
               "args": {},
@@ -1188,7 +1233,7 @@
           "derive": null,
           "enum": null,
           "dictionary": null,
-          "grounding": "required",
+          "grounding": "fuzzy",
           "default": null,
           "only_if_list_size_at_least": null
         }
@@ -1349,7 +1394,7 @@
         {
           "path": "mocodawca[].data.krs",
           "type": "string",
-          "instruction": "Numer KRS mocodawcy będącego osobą prawną (10 cyfr).",
+          "instruction": "Numer KRS mocodawcy będącego osobą prawną (10 cyfr), tylko jeśli jawnie podany jako KRS (brak = null; nie wpisuj numeru NIP).",
           "group": "pelnomocnictwo",
           "rules": [
             {
@@ -1384,6 +1429,13 @@
             }
           ],
           "validators": [
+            {
+              "name": "pattern",
+              "args": {
+                "re": "\\d{10}"
+              },
+              "severity": "error"
+            },
             {
               "name": "krs",
               "args": {},
@@ -1505,7 +1557,7 @@
           "derive": null,
           "enum": null,
           "dictionary": null,
-          "grounding": "required",
+          "grounding": "fuzzy",
           "default": null,
           "only_if_list_size_at_least": null
         },
@@ -1547,6 +1599,13 @@
             }
           ],
           "validators": [
+            {
+              "name": "pattern",
+              "args": {
+                "re": "\\d{10}"
+              },
+              "severity": "error"
+            },
             {
               "name": "nip",
               "args": {},
@@ -2006,6 +2065,28 @@
             },
             {
               "kind": "regex",
+              "pattern": "Szczeg[óo][łlit1]y\\s+p[łlit1]atno[śs]ci\\b[\\s\\S]{0,600}?[^\\S\\n]*\\d[\\d .,]*\\s*(?:PLN|zł|EUR)[ \\t]*\\n+\\s*(?:(?:zwyk[łli]y|natychmiastowy|ekspresowy|elixir|sorbnet|express)[ \\t]*\\n+\\s*)?\\d{1,4}[.\\-/ ]+\\d{1,2}[.\\-/ ]+\\d{2,4}[ \\t]*\\n+\\s*(?!(?:Signature\\s+Not|Dokument\\s+(?:podpisany|sporządzony|wygenerowany)|Data\\s+wystawienia))([^\\n|]{3,400}(?:\\n\\n(?-i:[a-ząćęłńóśźż])[^\\n|]{0,300})?)",
+              "group": 1,
+              "section": null,
+              "occurrence": "first",
+              "unique": false,
+              "ignore_case": true,
+              "dictionary": null,
+              "value_key": "id"
+            },
+            {
+              "kind": "regex",
+              "pattern": "Szczeg[óo][łlit1]y\\s+p[łlit1]atno[śs]ci\\s*(?:[:|]|\\n)\\s*\\|?\\s*\\n*\\s*(?!(?:(?:PL)?\\s*\\d{2}(?:\\s*\\d{4}){6}\\b|\\d[\\d .,]*\\s*(?:PLN|zł|EUR)\\b|Signature\\s+Not|Dokument\\s+(?:podpisany|sporządzony|wygenerowany)|Data\\s+wystawienia))([^\\n|]{3,400}(?:\\n\\n(?-i:[a-ząćęłńóśźż])[^\\n|]{0,300})?)",
+              "group": 1,
+              "section": null,
+              "occurrence": "first",
+              "unique": false,
+              "ignore_case": true,
+              "dictionary": null,
+              "value_key": "id"
+            },
+            {
+              "kind": "regex",
               "pattern": "Opis\\s*(?:[:|]|\\n)\\s*\\|?\\s*\\n*\\s*(?!(?:Kwota|Typ\\b|Data\\b|Waluta|Status|Kanał|PRZELEW\\s+(?:ELIXIR|INTERNETOWY|KRAJOWY|ZWYKŁY|SORBNET|EXPRESS)))([^\\n|]{3,400}(?:\\n\\n(?-i:[a-ząćęłńóśźż])[^\\n|]{0,300})?)",
               "group": 1,
               "section": null,
@@ -2031,7 +2112,8 @@
                   "Status",
                   "Kanał",
                   "Tytuł\\s+przelewu",
-                  "Tytułem"
+                  "Tytułem",
+                  "Szczeg[óo][łlt]y\\s+p[łlt]atno[śs]ci"
                 ]
               },
               "severity": "warning"
@@ -2062,7 +2144,7 @@
           "derive": null,
           "enum": null,
           "dictionary": null,
-          "grounding": "required",
+          "grounding": "fuzzy",
           "default": null,
           "only_if_list_size_at_least": null
         },

@@ -172,7 +172,7 @@ class Engine:
             if f is None or f.derive:
                 continue
             tolerant = self.release.settings.ocr_tolerant_grounding and prep.conv.scanned
-            rule_cand, moved = prep.rules.get(p), self._rule_in_other_item(p, prep.rules.get(p), prep.llm)
+            rule_cand, moved = prep.rules.get(p), self._rule_in_other_item(p, prep.rules.get(p), prep.llm, dt.lists)
             if moved:
                 rule_cand = None
             cands, warn = self._candidates(f, rule_cand, prep.llm.get(p), text, tolerant)
@@ -242,17 +242,26 @@ class Engine:
                         f"lista {top} ma {size} el., pole wymaga co najmniej {f.only_if_list_size_at_least}")
 
     @staticmethod
-    def _rule_in_other_item(p: str, cand: Candidate | None, llm: dict[str, Any]) -> str | None:
+    def _rule_in_other_item(p: str, cand: Candidate | None, llm: dict[str, Any],
+                            lists: list[Any] | None = None) -> str | None:
         """Reguła zwraca jedną wartość dla pierwszego elementu listy (np. REGON z sekcji „Zamawiający”).
         Gdy LLM umieścił tę samą wartość w innym elemencie tej listy (dwóch Zamawiających), wartość
-        należy do tamtego elementu: zwraca jego ścieżkę, a reguła nie nadpisuje tego elementu."""
+        należy do tamtego elementu: zwraca jego ścieżkę, a reguła nie nadpisuje tego elementu.
+        Ignoruje elementy spoza limitu `max_items` listy, które zostaną odrzucone."""
         if cand is None or cand.value is None or "[" not in p:
             return None
         key = alnum(str(cand.value))
         if not key:
             return None
+        limits = {ld.path: ld.max_items for ld in (lists or []) if ld.max_items is not None and "[]" not in ld.path}
+
+        def _kept(path: str) -> bool:
+            top, _, rest = path.partition("[")
+            idx_s, _, _ = rest.partition("]")
+            return top not in limits or not idx_s.isdigit() or int(idx_s) < limits[top]
+
         return next((q for q, v in llm.items() if q != p and v is not None and generic(q) == generic(p)
-                     and alnum(str(v)) == key), None)
+                     and _kept(q) and alnum(str(v)) == key), None)
 
     @staticmethod
     def _candidates(f: FieldDef, cand: Candidate | None, llm_val: Any, text: str,
