@@ -1,6 +1,6 @@
 # Raport jakości ekstrakcji
 
-Stan na 21.11.2026. Miara: F1 liczone pole po polu względem plików wzorcowych z `dane/` (polecenie `evaluate`, zasady liczenia w `engine/odwolania2json/evaluate.py`). Organizator nie opublikował dokładnej definicji F1, więc wyniki są przybliżeniem.
+Stan na 22.11.2026. Miara: F1 liczone pole po polu względem plików wzorcowych z `dane/` (polecenie `evaluate`, zasady liczenia w `engine/odwolania2json/evaluate.py`). Organizator nie opublikował dokładnej definicji F1, więc wyniki są przybliżeniem.
 
 ## Wyniki
 
@@ -14,8 +14,73 @@ Stan na 21.11.2026. Miara: F1 liczone pole po polu względem plików wzorcowych 
 | Same reguły, klasyfikacja tylko po treści, słownik powodów z 21.11.2026 | 60 spraw i 16 dokumentów negatywnych (196 dokumentów) | 0,960 | 0,986 | 0,937 |
 | Same reguły, wydanie 2026.11.21-dev.3 | 15 spraw kontrolnych i 2 dokumenty negatywne | 0,971 | 0,990 | 0,953 |
 | **Reguły + LLM docelowy (Qwen3.5-9B przez Eden AI, FlexAI, UE), wydanie 2026.11.21-dev.3** | 15 spraw kontrolnych i 2 dokumenty negatywne | **0,993** | 0,990 | 0,996 |
+| Reguły + LLM, wydanie 2026.11.22-dev.5, serwer oceny organizatora | 5 spraw cyfrowych, 9 skanów i 4 dokumenty negatywne (28 dokumentów) | 1,000 | 1,000 | 1,000 |
+| **Reguły + LLM, wydanie 2026.11.22-dev.5, serwer oceny, 3 strony skanu i budżet czasu** | 150 skanów w 50 sprawach (30 skanów organizatora × 5) | **0,981** | 0,981 | 0,981 |
 
 Sprawy kontrolne to co czwarta sprawa: 04, 08, …, 60, w tym 6 bardziej zróżnicowanych spraw z drugiej połowy zbioru. Wcześniejsze pomiary z LLM wykonano na profilu deweloperskim z modelem gemma-4-26b-a4b przez API Google (profil usunięty od wydania 2026.11.21-dev.7). Docelowy model Qwen3.5-9B przez Eden AI zmierzyliśmy na tym samym zbiorze kontrolnym; porównanie z innymi modelami jest w [`llm.md`](llm.md).
+
+## Serwer oceny organizatora (22.11.2026)
+
+Organizator ocenia rozwiązanie na maszynie wirtualnej Azure: Ubuntu 24.04, 2 vCPU (jeden rdzeń Xeon Platinum 8370C z dwoma wątkami sprzętowymi), 16 GB RAM, bez GPU. Oceniający uruchamiają komendę z [`RUN.md`](../RUN.md) i zabierają wyniki z `/opt/solution/output`. Pomiary w tej sekcji wykonano na tym serwerze: wydanie 2026.11.22-dev.5, LLM Qwen3.5-9B przez endpoint UE Eden AI, bez cache, komenda `bash run.sh`.
+
+**Czas dokumentu** jest około 2 razy dłuższy niż na laptopie z sekcji „Czas przetwarzania skanów”:
+
+| Dokument | Czas konwersji |
+| --- | ---: |
+| odwołanie, skan, 3 strony | 27,5 s |
+| odwołanie, skan, 2 strony | 17,4 s |
+| odwołanie, skan, 1 strona | 8,1 s |
+| pełnomocnictwo albo przelew, skan (1 strona) | około 7 s |
+| PDF cyfrowy | 1,4–7 s |
+| dokument negatywny, 6 stron | 12–31 s |
+
+**Test jak u oceniających.** 28 dokumentów: sprawy `przyklad_01`–`05`, po 3 skany każdego rodzaju i 4 dokumenty negatywne. F1 1,000, 4,3 min, szczyt RAM 3,8 GB, wszystkie negatywne dostały `{}`. Modele Docling i RapidOCR były już na dysku i program niczego nie pobierał.
+
+**Budżet czasu.** 150 skanów po 3 strony zajęłoby na tym serwerze około 41 min przy limicie organizatora 45 min. Dlatego wydanie ma `settings.batch_time_budget_s: 2400` (40 min). Przed każdym dokumentem silnik prognozuje czas pozostałych dokumentów ze średniej dotychczasowej. Gdy prognoza przekracza 85% pozostałego budżetu, czyta ze skanów 2 strony. Gdy przekracza cały budżet, czyta 1 stronę. Gdy tempo wraca, wraca do 3 stron. Szczegóły są w [`silnik.md`](silnik.md). Warianty zmierzono na 150 skanach: 30 skanów organizatora × 5, w układzie 50 spraw po odwołaniu, pełnomocnictwie i przelewie.
+
+| Wariant | F1 | Czas 150 skanów | Uwagi |
+| --- | ---: | ---: | --- |
+| 3 strony, bez budżetu | 0,9855 | około 41 min | F1 z 30 unikalnych skanów (507 s); czas wyliczony z pomiarów |
+| **3 strony z budżetem (wydanie)** | **0,9806** | **38,4 min** | dwa przebiegi: 0,9790 i 0,9806; przycięte 8–9 z 50 odwołań |
+| 3 strony z budżetem, pliki ułożone według rodzaju | 0,9764 | 25,8 min | najgorsza kolejność: najpierw same długie odwołania, więc budżet przycina za wcześnie (17 odwołań do 1 strony) |
+| 2 strony, bez budżetu | 0,9773 | około 27 min | F1 z 30 unikalnych skanów; czas wyliczony |
+| 1 strona, bez budżetu | 0,9605 | około 19 min | F1 z 30 unikalnych skanów; czas wyliczony |
+
+Liczba stron zmienia tylko odwołania, bo pełnomocnictwa i przelewy organizatora mają po 1 stronie. F1 10 skanów odwołań:
+
+| Skan | 3 strony | 2 strony | 1 strona |
+| --- | ---: | ---: | ---: |
+| 0001 | 1,000 | 0,970 | 0,970 |
+| 0005 | 1,000 | 0,824 | 0,800 |
+| 0006 | 1,000 | 1,000 | 0,914 |
+| 0007 | 1,000 | 1,000 | 0,914 |
+| 0008 | 1,000 | 1,000 | 0,909 |
+| 0009 | 0,966 | 0,966 | 0,966 |
+| 0010 | 0,938 | 1,000 | 1,000 |
+| 0002, 0003, 0004 | 1,000 | 1,000 | 1,000 |
+
+- **0005.** Numer BZP, numer postępowania i powód czynności są na stronie 1, ale akapit „Dotyczy:” zasłania tam przebijający tekst z drugiej strony kartki. Zapasowy OCR z odcięciem szarego pasma odczytuje je poprawnie przy każdej liczbie stron. Silnik uruchamia go jednak dopiero wtedy, gdy tekst całego dokumentu ma co najmniej 12 zniekształconych fragmentów (`pipeline.py`). Przy 3 stronach próg jest przekroczony, przy 2 i 1 nie, więc ekstrakcja idzie z zaszumionego tekstu. Próg liczony na stronę usunąłby tę zależność; nie został jeszcze zmieniony.
+- **0001.** Data czynności jest na stronach 1 i 2. Przy krótszym tekście model jej nie podaje. Na pełnych 3 stronach zdarzyło się to raz na 5 kopii.
+- **0010.** Na stronie 1 jest dwóch pełnomocników. Przy 3 stronach model wybiera drugiego z nich, a przy 2 i 1 stronie pierwszego, jak we wzorcu.
+
+**Wniosek:** zostają 3 strony z budżetem. Przy mieszance PDF-ów cyfrowych i skanów budżet się nie włącza. Przy samych skanach kosztuje 0,005–0,007 F1 i utrzymuje czas poniżej 40 minut.
+
+**Pozostałe błędy** w teście 3 stron z budżetem: 40 błędnych pól w 150 dokumentach.
+
+| Błąd | Skan | Kopie | Przyczyna |
+| --- | --- | ---: | --- |
+| e-mail firmy jako e-mail pełnomocnika | odwołanie 0009 | 5 z 5 | firma działa bez pełnomocnika, a reguła `pelnomocnik.mail` bierze dowolny e-mail z sekcji „Odwołujący” |
+| drugi z dwóch pełnomocników | odwołanie 0010 | 5 z 5 | OCR: „przez.pełnomocnika: radca prawny Andrzej Wróbel adwokat Monika Zawadzka”; reguła nie pasuje przez kropkę, a model wybiera drugie nazwisko |
+| „S.A.” zamiast „spółka akcyjna” | pełnomocnictwo 0004 | 5 z 5 | model bierze nazwę z nagłówka, a wzorzec ma formę z treści (w OCR „spółkaakcyjna”) |
+| brak KRS lidera konsorcjum | pełnomocnictwo 0007 | 5 z 5 | numeru nie ma w tekście OCR: w miejscu „wpisana do rejestru… KRS” jest szum |
+| nazwa firmy przy osobie fizycznej | pełnomocnictwo 0010 | 5 z 5 | wzorce organizatora są niespójne: tu `nazwa` to null, a w sprawach 44, 47, 51 i 52 osoba fizyczna ma też nazwę firmy |
+| literówki w tytule przelewu | przelew 0008 | 5 z 5 | OCR: „Maknowsku” zamiast „Malinowski”, „skarbows” zamiast „skarbowa” |
+| skutek budżetu czasu | odwołania 0005 i 0001 | 3 kopie | 9 pól, opis wyżej |
+| zmienność odpowiedzi modelu | odwołanie 0001 | 1 z 5 | brak daty czynności na pełnych 3 stronach |
+
+**Powtarzalność.** Kopie tego samego skanu przetworzone z tą samą liczbą stron dają prawie zawsze identyczny wynik, mimo temperatury 0 nie zawsze. W 150 dokumentach ostatniego testu różniło się między kopiami jedno pole.
+
+**Wątki Doclinga.** Ustawienie z laptopa (4 wątki) porównaliśmy z liczbą vCPU serwera (2 wątki) na 3 skanach. Tekst wyszedł identyczny, a czas 51 s wobec 46 s. To mieści się w wahaniach między przebiegami, bo ten sam skan trwał 30–36 s, więc ustawienie zostało bez zmian.
 
 ## Kolejność nagłówka w dwóch kolumnach na skanach (22.11.2026)
 
@@ -122,7 +187,7 @@ Model rozpoznawania `tiny` obniża F1 o 0,05. OpenVINO przyspiesza samą detekcj
 
 **Mniej stron skanu: ta sama jakość, o połowę krócej.** Wartości pól pochodzą prawie zawsze ze strony 1, rzadko ze strony 2: na 30 skanach 221 wartości ma źródło na stronie 1. Od 22.11.2026 profil konwersji ma `scanned_max_pages: 3`, czyli OCR czyta 3 pierwsze strony skanu, a cyfrowe PDF-y dalej do `max_pages` (6). Na 30 skanach F1 wynosi 0,940 wobec 0,940 przy 6 stronach (jeden błąd mniej, żadnego nowego), a odwołania mające 4–6 stron konwertują się w około 15 s zamiast około 32 s. W zeskanowanym odwołaniu z `szablon-aplikacja` zmienił się tylko powód czynności (OPZ zamiast SWZ; pismo dotyczy „treści SWZ”, a zarzuty Części II SWZ – Opisu Przedmiotu Zamówienia, więc oba odczyty są uzasadnione) i pola pełnomocnika, które zmieniają się między przebiegami także bez tej zmiany.
 
-**Szacunek dla 150 dokumentów** na tym laptopie, przy około 5 s na stronę skanu: 150 skanów po 3 strony to około 38 minut, a przy 6 stronach (do 21.11.2026) byłoby to około 75 minut. Zbiór organizatora (2,4 strony na skan, cyfrowe PDF-y około 1,4 s na stronę) mieści się z dużym zapasem. Na wolniejszym laptopie same długie skany wciąż mogą zbliżyć się do limitu.
+**Szacunek dla 150 dokumentów** na tym laptopie, przy około 5 s na stronę skanu: 150 skanów po 3 strony to około 38 minut, a przy 6 stronach (do 21.11.2026) byłoby to około 75 minut. Zbiór organizatora (2,4 strony na skan, cyfrowe PDF-y około 1,4 s na stronę) mieści się z dużym zapasem. Na wolniejszym laptopie same długie skany wciąż mogą zbliżyć się do limitu. Pomiary na serwerze oceny organizatora (2 vCPU) i budżet czasu partii opisuje sekcja „Serwer oceny organizatora”.
 
 ## Wydanie 2026.11.22-dev.1: polskie znaki na skanach
 

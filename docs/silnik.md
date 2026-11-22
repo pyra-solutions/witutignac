@@ -12,6 +12,15 @@ start.bat             # Windows
 
 Skrypt przy pierwszym uruchomieniu tworzy `engine/.venv` i instaluje `engine/requirements.txt` (Python 3.13+). Potem przetwarza `./input/<sprawa>/*.pdf` do `./output/<sprawa>/<nazwa pliku>.json`.
 
+Na serwerze oceny organizatora (Ubuntu 24.04, 2 vCPU, Python 3.12 w systemie):
+
+```bash
+cd /opt/solution && bash deploy/install.sh   # raz, przed oceną, bez sudo
+cd /opt/solution && sudo bash run.sh         # komenda oceny z RUN.md
+```
+
+`deploy/install.sh` instaluje Pythona 3.14 przez uv w `.tools/` i pakiety w wersjach z `engine/requirements.lock.txt`. Pobiera też modele Docling i RapidOCR do katalogu projektu. Na koniec robi przebieg próbny, powtarza go bez dostępu do Hugging Face i porównuje wyniki, a potem uruchamia diagnozę klucza API. `run.sh` niczego nie pobiera (`HF_HUB_OFFLINE=1`), działa bez cache i zapisuje dziennik do `logs/`. Pod `sudo` katalog domowy to `/root`, dlatego modele leżą w `/opt/solution/.cache`, a nie w `~/.cache`. `sudo bash run.sh diagnoza` uruchamia diagnozę środowiska.
+
 Dodatkowe argumenty trafiają do polecenia `run`:
 
 | Argument | Działanie |
@@ -40,7 +49,14 @@ $P -m pytest engine/tests                                            # testy jed
 
 ## Jak przetwarzany jest dokument
 
-1. **Konwersja (Docling, CPU).** Wynik trafia do cache po SHA-256 pliku, wersji Docling i profilu konwersji. Plik bez warstwy tekstowej (skan) jest czytany OCR całych stron (RapidOCR PP-OCRv6 `pl`; porównanie z Tesseractem i EasyOCR w [`raport-jakosci.md`](raport-jakosci.md)), tylko 3 pierwsze strony (`scanned_max_pages`), bo OCR to około 5 s na stronę, a wartości pól są prawie zawsze na stronach 1–2. Dokumenty są konwertowane po kolei (`settings.convert_workers`, domyślnie 1: na 6-rdzeniowym laptopie kilka procesów nie skracało czasu), a wywołania LLM startują od razu po konwersji każdego dokumentu. W tekście skanów silnik poprawia typowe pomyłki OCR: „Ñ” na „Ń”, „o” w liczbach na „0” („9994328o29”), „Sp. z 0.o.” na „Sp. z o.o.”, gravis i daszek, których nie ma w polskim tekście („Systèmy” → „Systemy”), oraz przecinek w adresie e-mail („a,wrobel@” → „a.wrobel@”). Przywraca też polskie znaki zgubione przez OCR („odwolania” → „odwołania”) słownikiem SJP i pisownią z tego samego dokumentu (`settings.ocr_restore_diacritics`, `diacritics.py`; zasady i wynik w [`raport-jakosci.md`](raport-jakosci.md)). Na skanach z nagłówkiem w dwóch kolumnach (etykiety „Odwołujący:”, „Zamawiający:”, „Dotyczy:” po lewej, dane po prawej) Docling wypisuje najpierw wszystkie etykiety, potem wszystkie dane. Silnik układa wtedy elementy na nowo według ich położenia na stronie: etykieta, jej dane, następna etykieta (`scanned_label_columns` w profilu konwersji, `layout.py`).
+1. **Konwersja (Docling, CPU).** Wynik trafia do cache po SHA-256 pliku, wersji Docling i profilu konwersji. Plik bez warstwy tekstowej (skan) jest czytany OCR całych stron (RapidOCR PP-OCRv6 `pl`; porównanie z Tesseractem i EasyOCR w [`raport-jakosci.md`](raport-jakosci.md)), tylko 3 pierwsze strony (`scanned_max_pages`), bo OCR to około 5 s na stronę, a wartości pól są prawie zawsze na stronach 1–2. Dokumenty są konwertowane po kolei (`settings.convert_workers`, domyślnie 1: na 6-rdzeniowym laptopie kilka procesów nie skracało czasu), a wywołania LLM startują od razu po konwersji każdego dokumentu. Budżet czasu partii (`settings.batch_time_budget_s`, w wydaniu 2400 s przy limicie organizatora 45 min na 150 PDF-ów) działa tak:
+   - Po pierwszych dokumentach (przy 150: po 10) silnik przed każdym kolejnym prognozuje czas pozostałych ze średniej dotychczasowej.
+   - Gdy prognoza przekracza 85% pozostałego budżetu, czyta ze skanów 2 strony.
+   - Gdy przekracza cały budżet, czyta 1 stronę.
+   - Gdy na dokument zostaje mniej niż 5 s, czyta 1 stronę i używa modelu OCR `tiny`.
+   - Gdy tempo wraca, wraca do ustawień bazowych.
+
+   Liczba stron PDF-ów cyfrowych się nie zmienia, a każdą zmianę poziomu zapisuje dziennik („Budżet czasu …”). Pomiary na serwerze oceny są w [`raport-jakosci.md`](raport-jakosci.md). W tekście skanów silnik poprawia typowe pomyłki OCR: „Ñ” na „Ń”, „o” w liczbach na „0” („9994328o29”), „Sp. z 0.o.” na „Sp. z o.o.”, gravis i daszek, których nie ma w polskim tekście („Systèmy” → „Systemy”), oraz przecinek w adresie e-mail („a,wrobel@” → „a.wrobel@”). Przywraca też polskie znaki zgubione przez OCR („odwolania” → „odwołania”) słownikiem SJP i pisownią z tego samego dokumentu (`settings.ocr_restore_diacritics`, `diacritics.py`; zasady i wynik w [`raport-jakosci.md`](raport-jakosci.md)). Na skanach z nagłówkiem w dwóch kolumnach (etykiety „Odwołujący:”, „Zamawiający:”, „Dotyczy:” po lewej, dane po prawej) Docling wypisuje najpierw wszystkie etykiety, potem wszystkie dane. Silnik układa wtedy elementy na nowo według ich położenia na stronie: etykieta, jej dane, następna etykieta (`scanned_label_columns` w profilu konwersji, `layout.py`).
 2. **Klasyfikacja.** Wzorce z wagami z konfiguracji, sprawdzane wyłącznie w treści, bo organizator zastrzega, że nazwa pliku może być dowolna. Wzorce mogą mieć ujemną wagę dla cech dokumentów spoza klas, np. sygnatury orzeczenia KIO. Dokument, który nie osiąga progu żadnego typu, dostaje `{}` (ustawienie `unsupported_output`).
 3. **Reguły deterministyczne.** Regexy w nazwanych sekcjach tekstu i dopasowanie słowników.
 4. **LLM.** Jedno wywołanie na grupę pól, ze schematem JSON zbudowanym z definicji pól i wymuszoną odpowiedzią.

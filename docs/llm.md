@@ -55,4 +55,4 @@ Pomiar z 21.11.2026 na 15 sprawach kontrolnych (04, 08, …, 60): 47 plików PDF
 - **Tryb awaryjny.** Gdy API jest niedostępne albo odpowiedź jest niepoprawna, silnik zapisuje wynik z samych reguł.
 - **Bezpieczeństwo.** Treść dokumentu jest w znacznikach `<dokument>` i traktowana jako dane. Klucz API nie trafia do logów, cache ani śladu ekstrakcji.
 - **Limity dostawcy.** Klient pilnuje limitu tokenów na minutę, respektuje czas oczekiwania podany przez API (błąd 429) i ponawia zapytania po błędach serwera.
-- **Powtarzalność i koszt.** Odpowiedzi są zapisywane w cache po skrócie treści zapytania, więc ponowne przetworzenie tych samych dokumentów nie wywołuje modelu.
+- **Powtarzalność i koszt.** Odpowiedzi są zapisywane w cache po skrócie treści zapytania, więc ponowne przetworzenie tych samych dokumentów nie wywołuje modelu. Temperatura 0 nie gwarantuje identycznej odpowiedzi. Na serwerze oceny, w 150 dokumentach będących kopiami 30 skanów, jedno pole różniło się między kopiami tego samego skanu. Komenda oceny (`run.sh`) działa bez cache, więc każde uruchomienie wywołuje model od nowa.

@@ -1,6 +1,6 @@
 # Odwołania2json – plan rozwiązania
 
-Stan na 21.11.2026 · @Witut
+Stan na 22.11.2026 · @Witut
 
 Rdzeń rozwiązania to silnik ekstrakcji w Pythonie 3.13+. Docling uruchomiony lokalnie na CPU zamienia PDF na Markdown, a reguły i mały otwarty model językowy (LLM) przez API w UE wyodrębniają z niego pola. Wszystko, co zależy od rodzaju dokumentu, opisują pliki YAML, więc nowy rodzaj dokumentu nie wymaga zmian w kodzie. Wokół silnika powstają backend FastAPI i interfejs graficzny w Angularze. Całość działa na plikach, bez bazy danych, kolejki i Dockera.
 
@@ -13,7 +13,8 @@ Rdzeń oceniany przez organizatora musi być w Pythonie, a o wyniku etapu 1 decy
 | Python 3.13+, `requirements.txt`, uruchomienie przez CLI lub `start.bat` | README, sekcja 5 | Silnik i backend w Pythonie; `requirements.txt` w katalogu głównym instaluje wszystko, czego potrzebuje ekstrakcja |
 | Wejście `./input/<sprawa>/*.pdf`, wyjście `./output/<sprawa>/<nazwa pliku>.json` | README, sekcja 3 | Plik wynikowy ma tę samą nazwę co wejściowy; typ dokumentu rozpoznajemy z treści |
 | Dokumenty kategorii, których nie należy identyfikować, dają pusty plik `.json` | README, sekcja 6 (zmiana z 21.11.2026) | Klasyfikator ma próg pewności; dokument poniżej progu dostaje plik z zawartością `{}` |
-| Test na laptopie biurowym: 16 GB RAM, Intel i7, bez GPU | README, sekcja 6 (zmiana z 21.11.2026) | Docling na CPU z limitem wątków; żadnych usług w tle, bo laptop może nie pozwolić na Dockera |
+| Ocena na maszynie wirtualnej organizatora (Ubuntu 24.04, 2 vCPU, 16 GB RAM, bez GPU): komenda z `RUN.md` uruchamiana z `sudo` w `/opt/solution`, bez interakcji; modele i zależności pobrane wcześniej; klucze API w `/opt/solution/.env` | `VM.md` organizatora (22.11.2026; zastępuje laptop biurowy z README) | `RUN.md`, `run.sh` i `deploy/install.sh`; wszystko w `/opt/solution`, modele w katalogu projektu, bez usług w tle i bez Dockera |
+| Maksymalnie 45 minut na 150 PDF-ów | README, „Wyjątki” | `scanned_max_pages: 3` i budżet czasu partii 2400 s; na serwerze oceny 150 skanów w 38,4 min ([raport jakości](raport-jakosci.md)) |
 | LLM przez API firmy z serwerami w UE/EOG, która w polityce prywatności określa zakres i miejsce przetwarzania, dostarczone z kluczem API | README, sekcja 6 (zmiany z 21.11.2026) | Endpoint UE Eden AI (Eden AI SAS, Francja; hosting AWS Paryż) z modelem u FlexAI w regionie UE; klucz z limitem wydatków przekazany poza publicznym repozytorium |
 | Etap 1: F1 = 100% oceny | README, sekcja 7 | Najpierw jakość ekstrakcji |
 | Etap 2: F1 50%; mniejszy model LLM 1–20 pkt; rozszerzalność 1–20 pkt; inne funkcje, np. GUI, 1–10 pkt | README, sekcja 7 (zmiana z 21.11.2026) | Najmniejszy model, który utrzyma F1; nowe typy dokumentów bez kodu; GUI w Angularze |
@@ -47,7 +48,7 @@ Silnik to jeden rdzeń. CLI i backend wywołują ten sam kod, a backend korzysta
 
 **Dlaczego bez bazy danych i Dockera (decyzja z 21.11.2026).** Pierwsza wersja backendu trzymała konfigurację w PostgreSQL uruchamianym w Dockerze. Zrezygnowaliśmy z tego z czterech powodów:
 
-- Oceniający uruchamia rozwiązanie na laptopie biurowym. Docker na Windows wymaga WSL2, uprawnień administratora i wirtualizacji, a Docker Desktop nie jest open source.
+- Oceniający uruchamia rozwiązanie na laptopie biurowym. Docker na Windows wymaga WSL2, uprawnień administratora i wirtualizacji, a Docker Desktop nie jest open source. Od 22.11.2026 ocena odbywa się na serwerze organizatora z Dockerem, ale rozwiązanie nadal go nie potrzebuje.
 - Dockera ani bazy nie da się zainstalować z `requirements.txt`.
 - README premiuje konfigurację „jedynie przez pliki konfiguracyjne”. Baza obok plików YAML tworzyła drugie źródło prawdy.
 - Etap 1 ocenia tylko F1, na które baza nie ma wpływu.
@@ -310,6 +311,8 @@ Rozwiązanie konkursowe działa na jednym komputerze. Wdrożenie dla wielu użyt
 - [x] Podłączenie GUI do API: wydania, konfiguracja, ekran weryfikacji ze śladem ekstrakcji.
 - [ ] Edycja konfiguracji przez API z zapisem do YAML.
 - [x] Uruchomienie ekstrakcji z GUI na wgranym PDF (22.11.2026).
+- [x] Budżet czasu partii przy limicie 45 minut na 150 PDF-ów (22.11.2026).
+- [x] Wdrożenie na serwer oceny organizatora: `RUN.md`, `run.sh`, `deploy/install.sh`; test jak u oceniających (F1 1,000 na 28 dokumentach) i test 150 skanów (38,4 min, F1 0,981) (22.11.2026).
 - [ ] Zestawienie licencji i instrukcja instalacji bez internetu.
 - [ ] Demo: dodanie czwartego typu dokumentu (np. przystąpienia do postępowania odwoławczego) samą konfiguracją.
 
@@ -325,8 +328,8 @@ Największe ryzyko to różnica między syntetycznymi danymi treningowymi a real
 | Model zmyśla identyfikatory | Fałszywe trafienia obniżają F1 | Weryfikacja źródła, pierwszeństwo reguł dla identyfikatorów, temperatura 0 |
 | Przeuczenie na jednym generatorze danych | Wysokie F1 na treningu, niskie na teście | Zbiór kontrolny, symulowane skany, dokumenty negatywne |
 | API dostawcy LLM niedostępne w czasie oceny albo brak klucza | Brak części pól w wynikach | Ponawianie z odstępem, limity po stronie klienta, tryb awaryjny na samych regułach (F1 0,960) |
-| Pierwsze uruchomienie bez internetu | Instalacja zależności i modeli Docling się nie powiedzie | Wymóg sieci opisany w README; instalacja offline w kolejnych krokach |
-| Długa konwersja dużych skanów na CPU | Wolne przetwarzanie | `max_pages`, limit czasu na dokument, cache konwersji |
+| Pierwsze uruchomienie bez internetu | Instalacja zależności i modeli Docling się nie powiedzie | Wymóg sieci opisany w README; na serwerze oceny `deploy/install.sh` pobiera wszystko wcześniej, a `run.sh` działa bez Hugging Face |
+| Długa konwersja skanów na 2 vCPU serwera oceny | 150 samych skanów to około 41 min przy limicie 45 min | `scanned_max_pages: 3`, budżet czasu partii 2400 s: na 150 skanach 38,4 min kosztem 0,005–0,007 F1 |
 
 **Pytania do mentorów**
 
