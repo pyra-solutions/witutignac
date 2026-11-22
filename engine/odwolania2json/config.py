@@ -211,6 +211,9 @@ class Settings(_Model):
     # ok. 5–6 rdzeni, więc na 6-rdzeniowym laptopie 2–4 procesy nie skracały czasu, a każdy to ok. 2,5 GB RAM
     # (docs/raport-jakosci.md). Więcej niż 1 ma sens tylko na maszynie z wieloma rdzeniami.
     convert_workers: int = Field(default=1, ge=1)
+    # Budżet czasu całej partii w sekundach (np. 2400 s = 40 min przy limicie 45 min). Po przekroczeniu
+    # progu szacowanego czasu silnik zmniejsza liczbę stron OCR / rozmiar modelu na pozostałych skanach.
+    batch_time_budget_s: float | None = Field(default=None, gt=0)
 
 
 class Release(_Model):

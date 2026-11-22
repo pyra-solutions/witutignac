@@ -1,6 +1,6 @@
 # Ustawienia wydania konfiguracji. Pliki w config/seed/ są jedynym źródłem konfiguracji;
 # do silnika trafiają jako engine/config/release.json (build-release albo backend: manage.py publish).
-version: "2026.11.22-dev.4"
+version: "2026.11.22-dev.5"
 
 settings:
   # Wynik dla dokumentu spoza obsługiwanych typów (README: "pusty plik .json").
@@ -8,6 +8,8 @@ settings:
   # Profil oceny: Qwen3.5-9B przez endpoint UE Eden AI (dostawca FlexAI).
   default_llm_profile: eden-qwen3.5-9b
   llm_concurrency: 4
+  # Budżet czasu partii (40 min z zapasem do limitu 45 min organizatora na 150 PDF-ów).
+  batch_time_budget_s: 2400
   # Tylko skany: wartość z LLM może się różnić od tekstu OCR polskimi znakami, spacjami i pomyłkami 0/o, 1/l/i,
   # ale musi wystąpić w tekście w całości. Na 30 skanach organizatora F1 0,926 -> 0,935, bez nowych błędnych trafień.
   ocr_tolerant_grounding: true

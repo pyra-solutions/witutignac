@@ -1,0 +1,2214 @@
+{
+  "version": "2026.11.22-dev.5",
+  "sha256": "e9e3f64095036d275bae18b39eb35f86dc593f025621c7d8e869a55992015d39",
+  "author": "witut",
+  "summary": "Budżet czasu partii (batch_time_budget_s: 2400 s / 40 min)",
+  "created_at": "2026-11-22T02:47:52Z",
+  "snapshot": {
+    "version": "2026.11.22-dev.5",
+    "settings": {
+      "unsupported_output": "{}",
+      "default_llm_profile": "eden-qwen3.5-9b",
+      "llm_concurrency": 4,
+      "ocr_tolerant_grounding": true,
+      "ocr_restore_diacritics": true,
+      "convert_workers": 1,
+      "batch_time_budget_s": 2400.0
+    },
+    "conversion_profiles": [
+      {
+        "id": "default",
+        "ocr_engine": "rapidocr",
+        "ocr_lang": [
+          "pl"
+        ],
+        "ocr_mode": "default",
+        "replace_broken_text_layer": true,
+        "table_structure": true,
+        "max_pages": 6,
+        "num_threads": 4,
+        "document_timeout_s": 180.0,
+        "scanned_ocr_mode": "full_page",
+        "ocr_scale": 3.0,
+        "ocr_model_size": "small",
+        "scanned_label_columns": true,
+        "scanned_max_pages": 3,
+        "scanned_bleed_cutoff": 155
+      }
+    ],
+    "llm_profiles": [
+      {
+        "id": "eden-qwen3.5-9b",
+        "base_url": "https://api.eu.edenai.run/v3",
+        "model": "flexai/Qwen3.5-9B",
+        "api_key_env": "EDEN_AI_API_KEY",
+        "temperature": 0.0,
+        "max_tokens": 2048,
+        "seed": 42,
+        "timeout_s": 120.0,
+        "max_retries": 3,
+        "reasoning_effort": null,
+        "structured_output": "json_schema",
+        "system_prompt": "",
+        "extra_headers": {
+          "x-edenai-metadata": "enabled"
+        },
+        "tokens_per_minute": null,
+        "requests_per_minute": null
+      },
+      {
+        "id": "eden-ministral-8b",
+        "base_url": "https://api.eu.edenai.run/v3",
+        "model": "mistral/ministral-8b-2512",
+        "api_key_env": "EDEN_AI_API_KEY",
+        "temperature": 0.0,
+        "max_tokens": 2048,
+        "seed": 42,
+        "timeout_s": 120.0,
+        "max_retries": 3,
+        "reasoning_effort": null,
+        "structured_output": "json_schema",
+        "system_prompt": "",
+        "extra_headers": {
+          "x-edenai-metadata": "enabled"
+        },
+        "tokens_per_minute": null,
+        "requests_per_minute": null
+      },
+      {
+        "id": "eden-ministral-3b",
+        "base_url": "https://api.eu.edenai.run/v3",
+        "model": "mistral/ministral-3b-2512",
+        "api_key_env": "EDEN_AI_API_KEY",
+        "temperature": 0.0,
+        "max_tokens": 2048,
+        "seed": 42,
+        "timeout_s": 120.0,
+        "max_retries": 3,
+        "reasoning_effort": null,
+        "structured_output": "json_schema",
+        "system_prompt": "",
+        "extra_headers": {
+          "x-edenai-metadata": "enabled"
+        },
+        "tokens_per_minute": null,
+        "requests_per_minute": null
+      }
+    ],
+    "dictionaries": [
+      {
+        "code": "powody_czynnosci",
+        "name": "Powód odwołania (czynność zamawiającego)",
+        "entries": [
+          {
+            "id": 1,
+            "keywords": [
+              "o odrzuceniu ofert",
+              "(?<!nie )(?<!zaniechał )odrzucił\\w* ofert",
+              "odrzuceni\\w+ ofert"
+            ],
+            "opis": "Decyzja o odrzuceniu oferty"
+          },
+          {
+            "id": 2,
+            "keywords": [
+              "wyb[óo]r\\w* ofert(?![^\\n]{0,250}zaniechawszy\\s+unieważnienia)",
+              "dokonał\\w* wyboru(?![^\\n]{0,250}zaniechawszy\\s+unieważnienia)"
+            ],
+            "opis": "Ogłoszenie wyboru oferty"
+          },
+          {
+            "id": 3,
+            "keywords": [
+              "o wykluczeniu",
+              "(?<!nie )wykluczył"
+            ],
+            "opis": "Decyzja o wykluczeniu wykonawcy"
+          },
+          {
+            "id": 4,
+            "keywords": [
+              "opublikował\\w* Specyfikacj",
+              "publikacj\\w* (?:SWZ|Specyfikacj)"
+            ],
+            "opis": "Publikacja specyfikacji warunków zamówienia (SWZ)"
+          },
+          {
+            "id": 5,
+            "keywords": [
+              "zmodyfikował",
+              "modyfikacj\\w* treści",
+              "zmienił\\w* treść SWZ"
+            ],
+            "opis": "Modyfikacja treści SWZ"
+          },
+          {
+            "id": 6,
+            "keywords": [
+              "odpowiedzi i wyjaśnieni",
+              "udzielił\\w* odpowiedzi",
+              "wyjaśnie\\w+ treści (?:SWZ|Specyfikacj)"
+            ],
+            "opis": "Odpowiedzi/wyjaśnienia do SWZ"
+          },
+          {
+            "id": 7,
+            "keywords": [
+              "nie odrzucił",
+              "zaniechał\\w* odrzucenia",
+              "zaniechani\\w+ odrzucenia"
+            ],
+            "opis": "Zaniechanie odrzucenia oferty"
+          },
+          {
+            "id": 8,
+            "keywords": [
+              "nie wykluczył",
+              "zaniechał\\w* wykluczenia",
+              "zaniechani\\w+ wykluczenia"
+            ],
+            "opis": "Zaniechanie wykluczenia wykonawcy"
+          },
+          {
+            "id": 9,
+            "keywords": [
+              "(?<!nie )unieważni+[łl]\\w*",
+              "o unieważnieniu"
+            ],
+            "opis": "Decyzja o unieważnieniu postępowania"
+          },
+          {
+            "id": 10,
+            "keywords": [
+              "zaniechał\\w* unieważnienia",
+              "nie unieważnił",
+              "zaniechani\\w+ unieważnienia",
+              "zaniechawszy\\s+unieważnienia"
+            ],
+            "opis": "Zaniechanie unieważnienia postępowania"
+          },
+          {
+            "id": 11,
+            "keywords": [
+              "Opis\\w* Przedmiotu Zamówienia",
+              "\\bOPZ\\b"
+            ],
+            "opis": "Opis przedmiotu zamówienia (OPZ)"
+          },
+          {
+            "id": 12,
+            "keywords": [
+              "projektowan\\w* postanowie\\w* umow",
+              "istotn\\w* postanowie\\w* umow",
+              "wzor\\w* umowy"
+            ],
+            "opis": "Projektowane postanowienia umowy"
+          }
+        ]
+      }
+    ],
+    "document_types": [
+      {
+        "code": "odwolanie",
+        "name": "Odwołanie do Prezesa Krajowej Izby Odwoławczej",
+        "classification": {
+          "patterns": [
+            {
+              "pattern": "^\\W*ODWO[ŁL]ANIE\\W*$",
+              "weight": 2.0,
+              "first_chars": 6000
+            },
+            {
+              "pattern": "Odwołując\\w*\\s*:",
+              "weight": 1.0,
+              "first_chars": 4000
+            },
+            {
+              "pattern": "Zamawiając\\w*\\s*:",
+              "weight": 1.0,
+              "first_chars": 4000
+            },
+            {
+              "pattern": "Prezes\\w*\\s+Krajowej\\s+Izby\\s+Odwoławczej",
+              "weight": 1.0,
+              "first_chars": 6000
+            },
+            {
+              "pattern": "wnoszę\\s+(?:o|odwołanie)",
+              "weight": 1.0,
+              "first_chars": 8000
+            },
+            {
+              "pattern": "Zarzut\\w*\\s+nr",
+              "weight": 1.0,
+              "first_chars": null
+            },
+            {
+              "pattern": "Sygn\\.\\s*akt",
+              "weight": -2.0,
+              "first_chars": 300
+            },
+            {
+              "pattern": "^\\W*(?:WYROK|POSTANOWIENIE|UCHWAŁA)\\b",
+              "weight": -2.0,
+              "first_chars": 800
+            },
+            {
+              "pattern": "\\A\\W*Ogłoszenie\\s+o\\s+(?:zamówieniu|zmianie\\s+ogłoszenia|wyniku\\s+postępowania|wykonaniu\\s+umowy|zamiarze\\s+zawarcia\\s+umowy|konkursie|wynikach\\s+konkursu)",
+              "weight": -3.0,
+              "first_chars": 300
+            }
+          ],
+          "filename_patterns": [],
+          "min_score": 3.0,
+          "description": "Pismo wykonawcy wnoszące odwołanie od czynności lub zaniechania zamawiającego."
+        },
+        "conversion_profile": "default",
+        "sections": [
+          {
+            "name": "odwolujacy",
+            "start": [
+              "Odwołując\\w*\\s*:"
+            ],
+            "end": [
+              "Zamawiając\\w*\\s*:",
+              "^\\W*dotyczy\\s*:?",
+              "^\\W*ODWOŁANIE\\W*$",
+              "Działając\\s+w\\s+imieniu",
+              "Wartość\\s+zamówienia"
+            ],
+            "include_start": true,
+            "max_chars": 2500,
+            "within": null
+          },
+          {
+            "name": "zamawiajacy",
+            "start": [
+              "Zamawiając\\w*\\s*:"
+            ],
+            "end": [
+              "Odwołując\\w*\\s*:",
+              "^\\W*dotyczy\\s*:?",
+              "^\\W*ODWOŁANIE\\W*$",
+              "Działając\\s+w\\s+imieniu",
+              "Wartość\\s+zamówienia"
+            ],
+            "include_start": true,
+            "max_chars": 2500,
+            "within": null
+          },
+          {
+            "name": "dotyczy",
+            "start": [
+              "dotyczy\\s*:"
+            ],
+            "end": [
+              "Działając\\s+w\\s+imieniu",
+              "Wartość\\s+zamówienia",
+              "Wpis\\s+od\\s+odwołania",
+              "^\\W*ODWOŁANIE\\W*$",
+              "Prezes\\w*\\s+Krajowej",
+              "wnoszę"
+            ],
+            "include_start": true,
+            "max_chars": 1500,
+            "within": null
+          },
+          {
+            "name": "czynnosc",
+            "start": [
+              "Zamawiający\\s+w\\s+dniu"
+            ],
+            "end": [
+              "(?<!\\sr)(?<!\\sust)(?<!\\sart)(?<!\\spkt)(?<!\\bsp)(?<!\\.[a-zA-Z])\\.(?=\\s|$)"
+            ],
+            "include_start": true,
+            "max_chars": 300,
+            "within": null
+          },
+          {
+            "name": "zarzuty",
+            "start": [
+              "Zarzut\\w*\\s+nr\\s*1",
+              "zarzucam",
+              "^\\W*ZARZUTY"
+            ],
+            "end": [],
+            "include_start": true,
+            "max_chars": 1500,
+            "within": null
+          }
+        ],
+        "lists": [
+          {
+            "path": "Odwolujacy",
+            "min_items": 1,
+            "max_items": 1,
+            "instruction": "Dokładnie jeden element - Odwołujący. Przy konsorcjum tylko Lider konsorcjum, bez partnerów."
+          },
+          {
+            "path": "Zamawiajacy",
+            "min_items": 1,
+            "max_items": null,
+            "instruction": "Zamawiający, każdy jako osobny element (zwykle jeden)."
+          }
+        ],
+        "groups": [
+          {
+            "name": "odwolanie",
+            "instruction": "Odczytaj nagłówek pisma, strony postępowania (Odwołujący, Zamawiający) i dane zamówienia. Ustal też zaskarżoną czynność zamawiającego na podstawie PIERWSZEGO zarzutu albo zdania opisującego czynność, której dotyczy odwołanie, oraz datę tej czynności.",
+            "sections": [],
+            "max_chars": 14000,
+            "llm_profile": null
+          }
+        ],
+        "fields": [
+          {
+            "path": "OdwolanieKIO.data",
+            "type": "date",
+            "instruction": "Data pisma z nagłówka pierwszej strony, z linii typu 'Miejscowość, dnia DD.MM.RRRR' albo 'Miejscowość, D miesiąca RRRR'. Nie bierz innych dat z treści. Brak takiej linii = null.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "(?<![\\w.])[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+|\\s+(?:nad|pod|na)\\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?,\\s*(?:dnia\\s+)?(\\d{1,2}(?:\\.\\d{1,2}\\.|\\s+[a-ząćęłńóśźż]+\\s+)\\d{4})",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": false,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "date_iso",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "none",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "OdwolanieKIO.czynnosc_dzien",
+            "type": "date",
+            "instruction": "Data czynności zamawiającego, której dotyczy PIERWSZY zarzut (np. data publikacji SWZ, odrzucenia oferty, unieważnienia). Brak wiarygodnej daty = null.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "(\\d{1,2}\\s+[a-ząćęłńóśźż]+\\s+\\d{4}|\\d{1,2}\\.\\d{1,2}\\.\\d{4}|\\d{4}-\\d{2}-\\d{2})",
+                "group": 1,
+                "section": "czynnosc",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "llm_first",
+            "normalizers": [
+              {
+                "name": "date_iso",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "none",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "OdwolanieKIO.czynnosc_powod_id",
+            "type": "integer",
+            "instruction": "Identyfikator powodu odwołania (1-12) ustalony WYŁĄCZNIE na podstawie pierwszego zarzutu, według słownika poniżej.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "dictionary_match",
+                "pattern": null,
+                "group": 1,
+                "section": "czynnosc",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": "powody_czynnosci",
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [],
+            "validators": [],
+            "derive": null,
+            "enum": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            "dictionary": "powody_czynnosci",
+            "grounding": "none",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "OdwolanieKIO.czynnosc_opis",
+            "type": "string",
+            "instruction": "",
+            "group": null,
+            "rules": [],
+            "strategy": "llm_first",
+            "normalizers": [],
+            "validators": [],
+            "derive": {
+              "kind": "dictionary_lookup",
+              "source": "OdwolanieKIO.czynnosc_powod_id",
+              "dictionary": "powody_czynnosci",
+              "key": "id",
+              "value": "opis",
+              "if_true": 1,
+              "if_false": 0,
+              "cases": [],
+              "default": null,
+              "constant": null,
+              "min_count": 2
+            },
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "OdwolanieKIO.miejscowosc",
+            "type": "string",
+            "instruction": "Miejscowość z nagłówka pierwszej strony, z linii typu 'Miejscowość, dnia ...' albo 'Miejscowość DD.MM.RRRR'. Brak takiej linii = null.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "(?<![\\w.])((?:(?:Zielona|Jelenia|Kamienna|Stalowa|Nowa|Nowy|Nowe|Stara|Stary|Stare|Biała|Wysokie)[ \\t]+)?[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+|\\s+(?:nad|pod|na)\\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+|[ \\t]+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]*(?:ski|ska|skie|cki|cka|ckie|icza|iczy))?),\\s*(?:dnia\\s+)?\\d{1,2}(?:\\.\\d{1,2}\\.|\\s+[a-ząćęłńóśźż]+\\s+)\\d{4}",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": false,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "collapse_ws",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "Odwolujacy[].krs",
+            "type": "string",
+            "instruction": "Numer KRS Odwołującego albo Lidera konsorcjum (10 cyfr), jeśli jawnie podany jako KRS (brak = null; nie wpisuj numeru NIP).",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "KRS\\W{0,3}(\\d{10})",
+                "group": 1,
+                "section": "odwolujacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "digits_only",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [
+              {
+                "name": "pattern",
+                "args": {
+                  "re": "\\d{10}"
+                },
+                "severity": "error"
+              },
+              {
+                "name": "krs",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "Odwolujacy[].nazwa",
+            "type": "string",
+            "instruction": "Pełna nazwa Odwołującego (wykonawcy wnoszącego odwołanie). Przy konsorcjum nazwa Lidera konsorcjum. Bez adresu.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "Lider\\w*\\s+Konsorcjum\\s*:\\s*(?:#+\\s*)?([^\\n]+?)\\s*(?:,?\\s+(?:ul\\.|al\\.|pl\\.|os\\.)\\s|\\s+\\d{2}-\\d{3}\\s|\\n|$)",
+                "group": 1,
+                "section": "odwolujacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "Odwołując\\w*[ \\t]*:[ \\t]*(?:#+[ \\t]*)?((?!Prezes|Konsorcj)[^\\n]+?)[ \\t]*(?:,?[ \\t]+(?:ul\\.|al\\.|pl\\.|os\\.)\\s|[ \\t]+\\d{2}-\\d{3}\\s|\\n|$)",
+                "group": 1,
+                "section": "odwolujacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "(?:^|\\n)[ \\t]*(?:#+[ \\t]*)?((?!Prezes|adres|tel\\.|reprezent|KRS|NIP|REGON|ul\\.|al\\.|Odwołując|Zamawiając|[A-ZŁŚŻŹĆ]\\w+,\\s*dnia)[^\\n]{3,150}?)[ \\t]*,?\\s*(?:ul\\.|al\\.|pl\\.|os\\.)\\s",
+                "group": 1,
+                "section": "odwolujacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "llm_first",
+            "normalizers": [
+              {
+                "name": "collapse_ws",
+                "args": {},
+                "severity": "warning"
+              },
+              {
+                "name": "strip_punct",
+                "args": {
+                  "chars": " ,;:"
+                },
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "fuzzy",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "Odwolujacy[].nip",
+            "type": "string",
+            "instruction": "NIP Odwołującego albo Lidera konsorcjum, same cyfry.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "NIP\\W{0,3}(\\d[\\d\\- ]{8,12}\\d)",
+                "group": 1,
+                "section": "odwolujacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "digits_only",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [
+              {
+                "name": "pattern",
+                "args": {
+                  "re": "\\d{10}"
+                },
+                "severity": "error"
+              },
+              {
+                "name": "nip",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "Odwolujacy[].regon",
+            "type": "string",
+            "instruction": "REGON Odwołującego albo Lidera konsorcjum, same cyfry.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "REGON\\W{0,3}(\\d{9}(?:\\d{5})?)",
+                "group": 1,
+                "section": "odwolujacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "digits_only",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [
+              {
+                "name": "pattern",
+                "args": {
+                  "re": "\\d{9}|\\d{14}"
+                },
+                "severity": "error"
+              },
+              {
+                "name": "regon",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "Odwolujacy[].przez-pelnomocnika",
+            "type": "string",
+            "instruction": "",
+            "group": null,
+            "rules": [],
+            "strategy": "llm_first",
+            "normalizers": [],
+            "validators": [],
+            "derive": {
+              "kind": "present",
+              "source": "Odwolujacy[].pelnomocnik.imie_nazwisko",
+              "dictionary": null,
+              "key": "id",
+              "value": "opis",
+              "if_true": 1,
+              "if_false": 0,
+              "cases": [],
+              "default": null,
+              "constant": null,
+              "min_count": 2
+            },
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "Odwolujacy[].pelnomocnik.imie_nazwisko",
+            "type": "string",
+            "instruction": "Imię i nazwisko pierwszego pełnomocnika Odwołującego, w mianowniku, bez tytułu (adw., r. pr.). Imię zakończone na -a przy nazwisku bez końcówki przypadka (np. 'Aleksandra Rybak') to kobieta w mianowniku – przepisz bez zmian.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "(?:reprezentowan\\w*|działając\\w*)\\s+przez\\s*:?\\s*(?:adw\\.|adwokat\\w*|r\\.\\s*pr\\.|radc\\w+\\s+prawn\\w+|mec\\.|apl\\.\\s*adw\\.)?\\s*(?!Kancelari)([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)",
+                "group": 1,
+                "section": "odwolujacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": false,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "llm_first",
+            "normalizers": [
+              {
+                "name": "collapse_ws",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "token_prefix",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "Odwolujacy[].pelnomocnik.nazwa",
+            "type": "string",
+            "instruction": "Nazwa podmiotu zatrudniającego pełnomocnika (np. kancelarii) z adresu do korespondencji. Bez adresu.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "adres\\w*\\s+do\\s+korespondencji\\s*:\\s*([\\s\\S]{3,160}?),\\s*(?:ul\\.|al\\.|pl\\.|os\\.)",
+                "group": 1,
+                "section": "odwolujacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "llm_first",
+            "normalizers": [
+              {
+                "name": "collapse_ws",
+                "args": {},
+                "severity": "warning"
+              },
+              {
+                "name": "strip_punct",
+                "args": {
+                  "chars": " ,;:"
+                },
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "fuzzy",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "Odwolujacy[].pelnomocnik.mail",
+            "type": "string",
+            "instruction": "Adres e-mail kontaktowy pełnomocnika Odwołującego.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "([\\w.+-]+@[\\w-]+(?:\\.[\\w-]+)+)",
+                "group": 1,
+                "section": "odwolujacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "email",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "Zamawiajacy[].krs",
+            "type": "string",
+            "instruction": "Numer KRS Zamawiającego, tylko jeśli jawnie podany jako KRS przy Zamawiającym (brak = null; nie wpisuj numeru NIP).",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "KRS\\W{0,3}(\\d{10})",
+                "group": 1,
+                "section": "zamawiajacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "digits_only",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [
+              {
+                "name": "pattern",
+                "args": {
+                  "re": "\\d{10}"
+                },
+                "severity": "error"
+              },
+              {
+                "name": "krs",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "Zamawiajacy[].nazwa",
+            "type": "string",
+            "instruction": "Pełna nazwa Zamawiającego. Bez adresu.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "Zamawiając\\w*[ \\t]*:[ \\t]*(?:#+[ \\t]*)?((?!Prezes)[^\\n]+?)[ \\t]*(?:,?[ \\t]+(?:ul\\.|al\\.|pl\\.|os\\.)\\s|[ \\t]+\\d{2}-\\d{3}\\s|\\n|$)",
+                "group": 1,
+                "section": "zamawiajacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "(?:^|\\n)[ \\t]*(?:#+[ \\t]*)?((?!Prezes|adres|tel\\.|KRS|NIP|REGON|ul\\.|al\\.|Odwołując|Zamawiając|[A-ZŁŚŻŹĆ]\\w+,\\s*dnia)[^\\n]{3,150}?)[ \\t]*,?\\s*(?:ul\\.|al\\.|pl\\.|os\\.)\\s",
+                "group": 1,
+                "section": "zamawiajacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "llm_first",
+            "normalizers": [
+              {
+                "name": "collapse_ws",
+                "args": {},
+                "severity": "warning"
+              },
+              {
+                "name": "strip_punct",
+                "args": {
+                  "chars": " ,;:"
+                },
+                "severity": "warning"
+              }
+            ],
+            "validators": [
+              {
+                "name": "pattern",
+                "args": {
+                  "re": "(?!(?:Prezes\\b|Krajow\\w+\\s+Izb\\w+\\s+Odwoławcz))[\\s\\S]+"
+                },
+                "severity": "error"
+              }
+            ],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "fuzzy",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "Zamawiajacy[].nip",
+            "type": "string",
+            "instruction": "NIP Zamawiającego, tylko jeśli jawnie podany przy Zamawiającym. Same cyfry.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "NIP\\W{0,3}(\\d[\\d\\- ]{8,12}\\d)",
+                "group": 1,
+                "section": "zamawiajacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "digits_only",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [
+              {
+                "name": "pattern",
+                "args": {
+                  "re": "\\d{10}"
+                },
+                "severity": "error"
+              },
+              {
+                "name": "nip",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "Zamawiajacy[].regon",
+            "type": "string",
+            "instruction": "REGON Zamawiającego, tylko jeśli jawnie podany przy Zamawiającym. Same cyfry.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "REGON\\W{0,3}(\\d{9}(?:\\d{5})?)",
+                "group": 1,
+                "section": "zamawiajacy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "digits_only",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [
+              {
+                "name": "pattern",
+                "args": {
+                  "re": "\\d{9}|\\d{14}"
+                },
+                "severity": "error"
+              },
+              {
+                "name": "regon",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "Zamawiajacy[].prowadzacy_postepowanie",
+            "type": "integer",
+            "instruction": "null gdy jest jeden zamawiający; przy kilku zamawiających 1 dla oznaczonego jako prowadzący postępowanie lub lider, 0 dla pozostałych.",
+            "group": "odwolanie",
+            "rules": [],
+            "strategy": "llm_only",
+            "normalizers": [],
+            "validators": [],
+            "derive": null,
+            "enum": [
+              0,
+              1
+            ],
+            "dictionary": null,
+            "grounding": "none",
+            "default": null,
+            "only_if_list_size_at_least": 2
+          },
+          {
+            "path": "ZamowieniePubliczne.numer_bzp",
+            "type": "string",
+            "instruction": "Numer ogłoszenia w Biuletynie Zamówień Publicznych w formacie 'RRRR/BZP",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "(\\d{4}\\s*/\\s*BZP\\s*\\d{5,10}(?:\\s*/\\s*\\d{1,2})?)",
+                "group": 1,
+                "section": "dotyczy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "bzp_number",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "tokens",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "ZamowieniePubliczne.numer_postepowania",
+            "type": "string",
+            "instruction": "Numer referencyjny / numer postępowania / znak sprawy nadany przez zamawiającego, np. 'ZP.039.2025', 'DZP.260.11.2025'.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "(?:nr|numer|znak)\\w*\\s+(?:referencyjn\\w*|postępowania|sprawy)(?:\\s+sprawy)?\\s*:?\\s*([A-Za-z0-9][\\w./\\-]*\\d[\\w./\\-]*)",
+                "group": 1,
+                "section": "dotyczy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "strip_punct",
+                "args": {
+                  "chars": " .,;:"
+                },
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "ZamowieniePubliczne.numer_ted",
+            "type": "string",
+            "instruction": "Numer ogłoszenia w Dzienniku Urzędowym UE (TED) w formacie 'NNNNNN-RRRR'. Zapis 'RRRR/S",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "(\\d{4}\\s*/\\s*S\\s*\\d{1,3}\\s*-\\s*\\d{4,7}|(?<![\\d/])\\d{5,7}-20\\d{2}(?!\\d))",
+                "group": 1,
+                "section": "dotyczy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "ted_number",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "tokens",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "ZamowieniePubliczne.tytul",
+            "type": "string",
+            "instruction": "Tytuł (nazwa) zamówienia lub postępowania, bez cudzysłowów.",
+            "group": "odwolanie",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "pn\\.?\\s*[\"„“”]([^\"„“”]{5,400})[\"”“]",
+                "group": 1,
+                "section": "dotyczy",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "collapse_ws",
+                "args": {},
+                "severity": "warning"
+              },
+              {
+                "name": "strip_quotes",
+                "args": {},
+                "severity": "warning"
+              },
+              {
+                "name": "strip_punct",
+                "args": {
+                  "chars": " ,;:"
+                },
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "fuzzy",
+            "default": null,
+            "only_if_list_size_at_least": null
+          }
+        ]
+      },
+      {
+        "code": "pelnomocnictwo",
+        "name": "Pełnomocnictwo do reprezentowania wykonawcy w postępowaniu odwoławczym",
+        "classification": {
+          "patterns": [
+            {
+              "pattern": "^\\W*P\\s?E\\s?[ŁL]\\s?N\\s?O\\s?M\\s?O\\s?C\\s?N\\s?I\\s?C\\s?T\\s?W\\s?O\\b",
+              "weight": 2.0,
+              "first_chars": 2500
+            },
+            {
+              "pattern": "Mocodawc",
+              "weight": 1.0,
+              "first_chars": null
+            },
+            {
+              "pattern": "ustanawiam|udzielam\\s+pełnomocnictwa|upoważniam|umocowan",
+              "weight": 1.0,
+              "first_chars": null
+            },
+            {
+              "pattern": "do\\s+reprezentowania",
+              "weight": 1.0,
+              "first_chars": null
+            },
+            {
+              "pattern": "\\A\\W*Ogłoszenie\\s+o\\s+(?:zamówieniu|zmianie\\s+ogłoszenia|wyniku\\s+postępowania|wykonaniu\\s+umowy|zamiarze\\s+zawarcia\\s+umowy|konkursie|wynikach\\s+konkursu)",
+              "weight": -3.0,
+              "first_chars": 300
+            }
+          ],
+          "filename_patterns": [],
+          "min_score": 3.5,
+          "description": "Dokument, w którym mocodawca (wykonawca) udziela pełnomocnictwa adwokatowi lub radcy prawnemu."
+        },
+        "conversion_profile": "default",
+        "sections": [
+          {
+            "name": "mocodawca",
+            "start": [
+              "Mocodawc\\w*\\s+jest",
+              "MOCODAWCA",
+              "niżej\\s+podpisan",
+              "Mocodawca\\s*:"
+            ],
+            "end": [
+              "PEŁNOMOCNIK\\b",
+              "ustanawiam",
+              "udzielam",
+              "niniejszym"
+            ],
+            "include_start": true,
+            "max_chars": 1500,
+            "within": null
+          },
+          {
+            "name": "pelnomocnicy",
+            "start": [
+              "ustanawiam",
+              "udzielam\\s+pełnomocnictwa",
+              "PEŁNOMOCNIK\\b",
+              "Pełnomocnik\\s*:"
+            ],
+            "end": [
+              "do\\s+reprezentowania",
+              "Pełnomocnictwo\\s+dotyczy",
+              "§\\s*3",
+              "w\\s+postępowaniu",
+              "Pełnomocnictwo\\s+udzielone"
+            ],
+            "include_start": true,
+            "max_chars": 1200,
+            "within": null
+          },
+          {
+            "name": "podpisy",
+            "start": [
+              "\\.{8,}"
+            ],
+            "end": [
+              "Pełnomocnictwo\\s+przyjmuję",
+              "Przyjmuję\\s+pełnomocnictwo"
+            ],
+            "include_start": true,
+            "max_chars": null,
+            "within": null
+          }
+        ],
+        "lists": [
+          {
+            "path": "mocodawca",
+            "min_items": 1,
+            "max_items": null,
+            "instruction": "Mocodawcy, czyli podmioty udzielające pełnomocnictwa (więcej niż jeden przy konsorcjum udzielającym wspólnie)."
+          },
+          {
+            "path": "mocodawca[].podpisujacy",
+            "min_items": 0,
+            "max_items": null,
+            "instruction": "Osoby podpisujące pełnomocnictwo w imieniu tego mocodawcy."
+          },
+          {
+            "path": "pelnomocnicy",
+            "min_items": 1,
+            "max_items": null,
+            "instruction": "Osoby otrzymujące pełnomocnictwo, każda jako osobny element."
+          }
+        ],
+        "groups": [
+          {
+            "name": "pelnomocnictwo",
+            "instruction": "Odczytaj mocodawców, osoby podpisujące w ich imieniu i ustanowionych pełnomocników.",
+            "sections": [],
+            "max_chars": 12000,
+            "llm_profile": null
+          }
+        ],
+        "fields": [
+          {
+            "path": "mocodawca[].data.imie_nazwisko",
+            "type": "string",
+            "instruction": "Imię i nazwisko mocodawcy w mianowniku, tylko gdy jest osobą fizyczną (np. jednoosobowa działalność gospodarcza). Dla osoby prawnej null.",
+            "group": "pelnomocnictwo",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "niżej\\s+podpisan\\w*\\s+([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": false,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "llm_first",
+            "normalizers": [
+              {
+                "name": "collapse_ws",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "token_prefix",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "mocodawca[].data.krs",
+            "type": "string",
+            "instruction": "Numer KRS mocodawcy będącego osobą prawną (10 cyfr), tylko jeśli jawnie podany jako KRS (brak = null; nie wpisuj numeru NIP).",
+            "group": "pelnomocnictwo",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "KRS\\W{0,3}(\\d{10})",
+                "group": 1,
+                "section": "mocodawca",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "KRS\\W{0,3}(\\d{10})",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "digits_only",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [
+              {
+                "name": "pattern",
+                "args": {
+                  "re": "\\d{10}"
+                },
+                "severity": "error"
+              },
+              {
+                "name": "krs",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "mocodawca[].data.nazwa",
+            "type": "string",
+            "instruction": "Pełna nazwa mocodawcy (firma), bez adresu.",
+            "group": "pelnomocnictwo",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "pod\\s+firmą\\s+([\\s\\S]{3,160}?),\\s*(?:ul\\.|al\\.|pl\\.|os\\.|z\\s+siedzibą)",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "Mocodawc\\w*\\s+jest\\s+([\\s\\S]{3,160}?),\\s*(?:ul\\.|al\\.|pl\\.|os\\.|z\\s+siedzibą)",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "MOCODAWCA\\s+([^\\n|]{3,160}?)\\s+(?:ul\\.|al\\.|pl\\.|os\\.)\\s",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": false,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "Mocodawca\\s*\\|\\s*([^|\\n]{3,160}?)\\s*,?\\s+(?:ul\\.|al\\.|pl\\.|os\\.)\\s",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "do\\s+reprezentacji\\s+([\\s\\S]{3,160}?)\\s*(?:\\(|,|z\\s+siedzibą)",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "(?:w\\s+imieniu|imieniem)\\s+((?!Mocodawcy|Wykonawcy)[\\s\\S]{3,160}?)\\s*(?:,|\\(|z\\s+siedzibą)",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "\\A\\s*(?:#+[ \\t]*)?((?!P\\s?E\\s?Ł|[A-ZŁŚŻŹĆ]\\w+,\\s)[^\\n]{3,120}?)[ \\t]*\\n\\s*(?:ul\\.|al\\.|pl\\.|os\\.)\\s",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "llm_first",
+            "normalizers": [
+              {
+                "name": "collapse_ws",
+                "args": {},
+                "severity": "warning"
+              },
+              {
+                "name": "strip_quotes",
+                "args": {},
+                "severity": "warning"
+              },
+              {
+                "name": "strip_punct",
+                "args": {
+                  "chars": " ,;:"
+                },
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "fuzzy",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "mocodawca[].data.nip",
+            "type": "string",
+            "instruction": "NIP mocodawcy, same cyfry.",
+            "group": "pelnomocnictwo",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "NIP\\W{0,3}(\\d[\\d\\- ]{8,12}\\d)",
+                "group": 1,
+                "section": "mocodawca",
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "NIP\\W{0,3}(\\d[\\d\\- ]{8,12}\\d)",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "llm_only",
+            "normalizers": [
+              {
+                "name": "digits_only",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [
+              {
+                "name": "pattern",
+                "args": {
+                  "re": "\\d{10}"
+                },
+                "severity": "error"
+              },
+              {
+                "name": "nip",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "mocodawca[].data.typ",
+            "type": "string",
+            "instruction": "",
+            "group": null,
+            "rules": [],
+            "strategy": "llm_first",
+            "normalizers": [],
+            "validators": [],
+            "derive": {
+              "kind": "present",
+              "source": "mocodawca[].data.imie_nazwisko",
+              "dictionary": null,
+              "key": "id",
+              "value": "opis",
+              "if_true": "osoba_fizyczna",
+              "if_false": "osoba_prawna",
+              "cases": [],
+              "default": null,
+              "constant": null,
+              "min_count": 2
+            },
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "mocodawca[].podpisujacy[].imie_nazwisko",
+            "type": "string",
+            "instruction": "Imię i nazwisko osoby podpisującej w imieniu mocodawcy (np. członek zarządu, prokurent, właściciel), w mianowniku. Nie wpisuj tu pełnomocnika przyjmującego pełnomocnictwo.",
+            "group": "pelnomocnictwo",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)\\s*[,–-]?\\s*(?:Prezes|Wiceprezes|Członek|Dyrektor|Prokurent|Właściciel|Wspólnik|Pełnomocnik\\s+Zarządu)",
+                "group": 1,
+                "section": null,
+                "occurrence": "all",
+                "unique": true,
+                "ignore_case": false,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "(?:^|\\|)[ \\t]*([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?[ \\t]+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)[ \\t]*(?:\\||$)",
+                "group": 1,
+                "section": "podpisy",
+                "occurrence": "all",
+                "unique": true,
+                "ignore_case": false,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "llm_only",
+            "normalizers": [
+              {
+                "name": "collapse_ws",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "token_prefix",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "pelnomocnicy[].imie_nazwisko",
+            "type": "string",
+            "instruction": "Imię i nazwisko pełnomocnika w mianowniku, bez tytułu (adw., r. pr.). Imię zakończone na -a przy nazwisku bez końcówki przypadka (np. 'Aleksandra Rybak') to kobieta w mianowniku – przepisz bez zmian.",
+            "group": "pelnomocnictwo",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "(?:adw\\.|adwokat\\w*|r\\.\\s*pr\\.|radc\\w+\\s+prawn\\w+|mec\\.|apl\\.\\s*adw\\.)\\s*([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)",
+                "group": 1,
+                "section": "pelnomocnicy",
+                "occurrence": "all",
+                "unique": true,
+                "ignore_case": false,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "(?:adw\\.|adwokat\\w*|r\\.\\s*pr\\.|radc\\w+\\s+prawn\\w+|mec\\.|apl\\.\\s*adw\\.)\\s*([A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?\\s+[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+(?:-[A-ZŁŚŻŹĆ][a-ząćęłńóśźż]+)?)",
+                "group": 1,
+                "section": null,
+                "occurrence": "all",
+                "unique": true,
+                "ignore_case": false,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "llm_first",
+            "normalizers": [
+              {
+                "name": "collapse_ws",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "token_prefix",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "pelnomocnicy[].pesel",
+            "type": "string",
+            "instruction": "PESEL pełnomocnika (11 cyfr), jeśli podany.",
+            "group": "pelnomocnictwo",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "PESEL\\W{0,3}(\\d{11})",
+                "group": 1,
+                "section": null,
+                "occurrence": "all",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "digits_only",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [
+              {
+                "name": "pesel",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          }
+        ]
+      },
+      {
+        "code": "przelew",
+        "name": "Potwierdzenie przelewu bankowego",
+        "classification": {
+          "patterns": [
+            {
+              "pattern": "PRZELEW",
+              "weight": 2.0,
+              "first_chars": 1500
+            },
+            {
+              "pattern": "potwierdzeni\\w*\\s+(?:wykonania\\s+|realizacji\\s+)?(?:przelewu|operacji|transakcji|płatności|zlecenia)",
+              "weight": 1.0,
+              "first_chars": 1500
+            },
+            {
+              "pattern": "(?:PL)?\\s?\\d{2}(?:\\s?\\d{4}){6}",
+              "weight": 1.0,
+              "first_chars": null
+            },
+            {
+              "pattern": "Rachun\\w+\\s+(?:odbiorcy|beneficjenta|obciążany|zleceniodawcy|nadawcy)|na\\s+rachunek",
+              "weight": 1.0,
+              "first_chars": null
+            },
+            {
+              "pattern": "Tytuł\\w*|Tytułem|OPIS\\s*:",
+              "weight": 1.0,
+              "first_chars": null
+            },
+            {
+              "pattern": "data\\s+(?:transakcji|wykonania|operacji|realizacji|księgowania|zlecenia)",
+              "weight": 0.5,
+              "first_chars": null
+            },
+            {
+              "pattern": "\\bPLN\\b|\\bzł\\b",
+              "weight": 0.5,
+              "first_chars": null
+            },
+            {
+              "pattern": "^\\W*FAKTURA\\b",
+              "weight": -3.0,
+              "first_chars": 600
+            },
+            {
+              "pattern": "\\bwadi(?:um|ów|a|em)\\b",
+              "weight": -2.0,
+              "first_chars": null
+            },
+            {
+              "pattern": "\\A\\W*Ogłoszenie\\s+o\\s+(?:zamówieniu|zmianie\\s+ogłoszenia|wyniku\\s+postępowania|wykonaniu\\s+umowy|zamiarze\\s+zawarcia\\s+umowy|konkursie|wynikach\\s+konkursu)",
+              "weight": -3.0,
+              "first_chars": 300
+            }
+          ],
+          "filename_patterns": [],
+          "min_score": 3.0,
+          "description": "Potwierdzenie wykonania przelewu bankowego wygenerowane przez bank."
+        },
+        "conversion_profile": "default",
+        "sections": [],
+        "lists": [],
+        "groups": [
+          {
+            "name": "przelew",
+            "instruction": "Odczytaj dane wykonanego przelewu bankowego.",
+            "sections": [],
+            "max_chars": 8000,
+            "llm_profile": null
+          }
+        ],
+        "fields": [
+          {
+            "path": "przelew_bankowy.data_operacji",
+            "type": "date",
+            "instruction": "Data wykonania (realizacji) operacji przelewu.",
+            "group": "przelew",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "(?:data\\s+(?:transakcji|wykonania|operacji|realizacji|księgowania|zlecenia)|w\\s+dniu)[\\s:.|…]*(\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[.\\-/]\\d{1,2}[.\\-/]\\d{4}|\\d{1,2}\\s+[a-ząćęłńóśźż]+\\s+\\d{4})",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "\\b(20\\d{2}-\\d{2}-\\d{2})\\b",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "date_iso",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "none",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "przelew_bankowy.kwota",
+            "type": "number",
+            "instruction": "Kwota przelewu jako liczba (np. 10000.00), bez waluty.",
+            "group": "przelew",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "(?:kwot\\w*(?:\\s+(?:operacji|przelewu))?|wartość)[ \\t:.|…]*(\\d[\\d  .,]*\\d)",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "((?!0+[.,]00\\b)\\d[\\d  ]*[.,]\\d{2})\\s*(?:PLN|zł)",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "amount_decimal",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "none",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "przelew_bankowy.na_rachunek",
+            "type": "string",
+            "instruction": "Numer rachunku odbiorcy (beneficjenta), same cyfry bez prefiksu PL.",
+            "group": "przelew",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "(?:[rz]ac[hn]un\\w+\\s+(?:odbiorcy|beneficjenta|adresata|kontrahenta|uznawan\\w*)|na\\s+rachunek(?:\\s+nr)?)[\\s\\S]{0,200}?((?:PL)?\\s?\\d{2}(?:\\s?\\d{4}){6})",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "(?:Beneficjent\\w*|Odbiorc\\w*|Adresat\\w*|Kontrahent\\w*)[\\s\\S]{0,200}?((?:PL)?\\s?\\d{2}(?:\\s?\\d{4}){6})",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "llm_first",
+            "normalizers": [
+              {
+                "name": "iban_digits",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [
+              {
+                "name": "iban_pl",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "przelew_bankowy.numer_transakcji",
+            "type": "string",
+            "instruction": "Numer referencyjny / identyfikator transakcji nadany przez bank.",
+            "group": "przelew",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "(?:nr\\.?\\s*ref\\w*\\.?|numer\\s+(?:referencyjny|transakcji)(?:\\s+(?:operacji|transakcji))?|identyfikator\\s+(?:operacji|transakcji)|id\\s+transakcji)[\\s:.|…]*((?=[A-Z0-9]*\\d)[A-Z]{2,}[A-Z0-9]{6,}|\\d{8,})",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "strip",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [
+              {
+                "name": "pattern",
+                "args": {
+                  "re": "[A-Z0-9]{6,}"
+                },
+                "severity": "error"
+              }
+            ],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "przelew_bankowy.tytul",
+            "type": "string",
+            "instruction": "Tytuł przelewu dokładnie jak w dokumencie, bez cudzysłowów.",
+            "group": "przelew",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "Tytuł\\w*(?:\\s+przelewu)?\\s*:\\s*[\"„“]([^\"”“]{3,400})[\"”“]",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "Tytu[łlt]\\w*(?:\\s+przelewu)?\\s*(?:[:|]|\\n)\\s*\\|?\\s*\\n*\\s*(?:(?:Kanał|Status|Kwota|Opis|Waluta|Opłata|Typ\\s+\\w+|Serwis\\s+\\w+)\\s*:?\\s*\\n+\\s*)*([^\\n|]{3,400}(?:\\n\\n(?-i:[a-ząćęłńóśźż])[^\\n|]{0,300})?)",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "Szczeg[óo][łlit1]y\\s+p[łlit1]atno[śs]ci\\b[\\s\\S]{0,600}?[^\\S\\n]*\\d[\\d .,]*\\s*(?:PLN|zł|EUR)[ \\t]*\\n+\\s*(?:(?:zwyk[łli]y|natychmiastowy|ekspresowy|elixir|sorbnet|express)[ \\t]*\\n+\\s*)?\\d{1,4}[.\\-/ ]+\\d{1,2}[.\\-/ ]+\\d{2,4}[ \\t]*\\n+\\s*(?!(?:Signature\\s+Not|Dokument\\s+(?:podpisany|sporządzony|wygenerowany)|Data\\s+wystawienia))([^\\n|]{3,400}(?:\\n\\n(?-i:[a-ząćęłńóśźż])[^\\n|]{0,300})?)",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "Szczeg[óo][łlit1]y\\s+p[łlit1]atno[śs]ci\\s*(?:[:|]|\\n)\\s*\\|?\\s*\\n*\\s*(?!(?:(?:PL)?\\s*\\d{2}(?:\\s*\\d{4}){6}\\b|\\d[\\d .,]*\\s*(?:PLN|zł|EUR)\\b|Signature\\s+Not|Dokument\\s+(?:podpisany|sporządzony|wygenerowany)|Data\\s+wystawienia))([^\\n|]{3,400}(?:\\n\\n(?-i:[a-ząćęłńóśźż])[^\\n|]{0,300})?)",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "Opis\\s*(?:[:|]|\\n)\\s*\\|?\\s*\\n*\\s*(?!(?:Kwota|Typ\\b|Data\\b|Waluta|Status|Kanał|PRZELEW\\s+(?:ELIXIR|INTERNETOWY|KRAJOWY|ZWYKŁY|SORBNET|EXPRESS)))([^\\n|]{3,400}(?:\\n\\n(?-i:[a-ząćęłńóśźż])[^\\n|]{0,300})?)",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "collapse_ws",
+                "args": {},
+                "severity": "warning"
+              },
+              {
+                "name": "remove_prefix",
+                "args": {
+                  "patterns": [
+                    "Typ\\s+operacji",
+                    "Status",
+                    "Kanał",
+                    "Tytuł\\s+przelewu",
+                    "Tytułem",
+                    "Szczeg[óo][łlt]y\\s+p[łlt]atno[śs]ci"
+                  ]
+                },
+                "severity": "warning"
+              },
+              {
+                "name": "regex_replace",
+                "args": {
+                  "pattern": "\\s+[A-ZŁŚŻŹĆĘĄÓŃ]{2,}\\.?(?:\\s+[A-ZŁŚŻŹĆĘĄÓŃ]{2,}\\.?)*\\s*[.…]{3,}.*$",
+                  "repl": "",
+                  "ignore_case": false
+                },
+                "severity": "warning"
+              },
+              {
+                "name": "strip_quotes",
+                "args": {},
+                "severity": "warning"
+              },
+              {
+                "name": "strip_punct",
+                "args": {
+                  "chars": " ,;:|"
+                },
+                "severity": "warning"
+              }
+            ],
+            "validators": [],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "fuzzy",
+            "default": null,
+            "only_if_list_size_at_least": null
+          },
+          {
+            "path": "przelew_bankowy.z_rachunku",
+            "type": "string",
+            "instruction": "Numer rachunku zleceniodawcy (płatnika), same cyfry bez prefiksu PL.",
+            "group": "przelew",
+            "rules": [
+              {
+                "kind": "regex",
+                "pattern": "(?:[rz]ac[hn]un\\w+\\s+(?:obciążany|zleceniodawcy|z[il]ecen\\w*|nadawcy|płatnika|źródłowy)|z\\s+rachunku(?:\\s+nr)?)[\\s\\S]{0,200}?((?:PL)?\\s?\\d{2}(?:\\s?\\d{4}){6})",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              },
+              {
+                "kind": "regex",
+                "pattern": "(?:Płatnik\\w*|Zleceniodawc\\w*|Nadawc\\w*)[\\s\\S]{0,200}?((?:PL)?\\s?\\d{2}(?:\\s?\\d{4}){6})",
+                "group": 1,
+                "section": null,
+                "occurrence": "first",
+                "unique": false,
+                "ignore_case": true,
+                "dictionary": null,
+                "value_key": "id"
+              }
+            ],
+            "strategy": "rules_first",
+            "normalizers": [
+              {
+                "name": "iban_digits",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "validators": [
+              {
+                "name": "iban_pl",
+                "args": {},
+                "severity": "warning"
+              }
+            ],
+            "derive": null,
+            "enum": null,
+            "dictionary": null,
+            "grounding": "required",
+            "default": null,
+            "only_if_list_size_at_least": null
+          }
+        ]
+      }
+    ]
+  }
+}

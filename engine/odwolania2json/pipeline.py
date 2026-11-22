@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+import time
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -70,12 +71,13 @@ class Engine:
         return LlmClient(prof, None).describe()
 
     # --- etapy ---------------------------------------------------------------
-    def prepare(self, pdf: Path, rel: Path, conv: Converted | None = None) -> Prepared:
+    def prepare(self, pdf: Path, rel: Path, conv: Converted | None = None,
+                profile: ConversionProfile | None = None) -> Prepared:
         """Konwersja (chyba że `conv` przyszedł z procesu konwersji), klasyfikacja i reguły."""
         prep = Prepared(pdf=pdf, rel=rel)
         try:
             # profil konwersji zależy od typu, a typ od treści: konwertujemy profilem domyślnym
-            prof = self.release.conversion_profile("default")
+            prof = profile or self.release.conversion_profile("default")
             prep.conv = conv if conv is not None else self.converter.convert(pdf, prof)
             if prep.conv.scanned:
                 prep.conv.markdown = fix_ocr_pl(prep.conv.markdown)
@@ -431,12 +433,30 @@ class Engine:
             if llm_pool is not None:
                 llm_jobs.append(llm_pool.submit(self.run_llm, prep))
 
+        budget_s = self.release.settings.batch_time_budget_s
+        t_start = time.monotonic()
+        cur_tier = 0
+
+        def next_profile(done: int) -> ConversionProfile:
+            nonlocal cur_tier
+            elapsed = time.monotonic() - t_start
+            p_next, tier = select_budget_profile(prof, budget_s, elapsed, done, len(pdfs))
+            if tier != cur_tier:
+                msg = (f"Budżet czasu ({budget_s:.0f} s): po {done}/{len(pdfs)} dok. ({elapsed:.0f} s) -> "
+                       f"poziom {tier} (scanned_max_pages={p_next.scanned_max_pages}, ocr={p_next.ocr_model_size})")
+                if tier > cur_tier:
+                    log.warning(msg)
+                else:
+                    log.info(msg)
+                cur_tier = tier
+            return p_next
+
         try:
             if n_workers > 1:
-                self._prepare_parallel(pdfs, input_dir, n_workers, prepared)
+                self._prepare_parallel(pdfs, input_dir, n_workers, prepared, next_profile)
             else:
-                for pdf in pdfs:
-                    prepared(self.prepare(pdf, pdf.relative_to(input_dir)))
+                for i, pdf in enumerate(pdfs):
+                    prepared(self.prepare(pdf, pdf.relative_to(input_dir), profile=next_profile(i)))
             for job in llm_jobs:
                 job.result()
         finally:
@@ -460,14 +480,15 @@ class Engine:
         return summary
 
     def _prepare_parallel(self, pdfs: list[Path], input_dir: Path, n_workers: int,
-                          prepared: Callable[[Prepared], None]) -> None:
+                          prepared: Callable[[Prepared], None],
+                          next_profile: Callable[[int], ConversionProfile] | None = None) -> None:
         """Konwersja w `n_workers` procesach; klasyfikacja, reguły i LLM w procesie głównym.
 
         Najdłuższe dokumenty idą pierwsze, żeby na końcu partii nie czekać na jeden długi skan. Gdy proces
         konwersji padnie (np. brak pamięci), pozostałe dokumenty są konwertowane po kolei w tym procesie.
         """
         import multiprocessing as mp
-        from concurrent.futures import ProcessPoolExecutor, as_completed
+        from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
         from concurrent.futures.process import BrokenProcessPool
 
         from odwolania2json.convert import page_count, worker_convert, worker_init
@@ -475,30 +496,79 @@ class Engine:
         prof = self.release.conversion_profile("default")
         order = sorted(pdfs, key=lambda p: page_count(p, prof.max_pages), reverse=True)
         left = set(pdfs)
+        done = 0
         try:
             # "spawn" także na Linuksie: tak samo jak na Windows i bez kopiowania wątków LLM przez fork()
             with ProcessPoolExecutor(max_workers=n_workers, mp_context=mp.get_context("spawn"),
                                      initializer=worker_init,
                                      initargs=(str(self.cache_dir) if self.cache_dir else None,)) as ex:
-                jobs = {ex.submit(worker_convert, str(p), prof.model_dump_json()): p for p in order}
-                for job in as_completed(jobs):
-                    pdf = jobs[job]
-                    try:
-                        conv = job.result()
-                    except BrokenProcessPool:
-                        raise
-                    except Exception as e:  # jeden zły plik nie zatrzymuje całej partii
-                        log.error("błąd konwersji %s: %s: %s", pdf, type(e).__name__, e)
+                it = iter(order)
+                jobs: dict[Future[Converted], tuple[Path, ConversionProfile]] = {}
+
+                def submit_one() -> bool:
+                    p = next(it, None)
+                    if p is None:
+                        return False
+                    cp = next_profile(done) if next_profile else prof
+                    jobs[ex.submit(worker_convert, str(p), cp.model_dump_json())] = (p, cp)
+                    return True
+
+                for _ in range(n_workers):
+                    if not submit_one():
+                        break
+                while jobs:
+                    finished, _ = wait(jobs, return_when=FIRST_COMPLETED)
+                    for job in finished:
+                        pdf, used_prof = jobs.pop(job)
+                        done += 1
                         left.discard(pdf)
-                        prepared(Prepared(pdf=pdf, rel=pdf.relative_to(input_dir),
-                                          errors=[f"{type(e).__name__}: {e}"]))
-                        continue
-                    left.discard(pdf)
-                    prepared(self.prepare(pdf, pdf.relative_to(input_dir), conv=conv))
+                        try:
+                            conv = job.result()
+                        except BrokenProcessPool:
+                            raise
+                        except Exception as e:  # jeden zły plik nie zatrzymuje całej partii
+                            log.error("błąd konwersji %s: %s: %s", pdf, type(e).__name__, e)
+                            prepared(Prepared(pdf=pdf, rel=pdf.relative_to(input_dir),
+                                              errors=[f"{type(e).__name__}: {e}"]))
+                        else:
+                            prepared(self.prepare(pdf, pdf.relative_to(input_dir), conv=conv, profile=used_prof))
+                        submit_one()
         except BrokenProcessPool:
             log.warning("proces konwersji przerwany (np. brak pamięci); pozostałe %d dokumentów po kolei", len(left))
             for pdf in sorted(left):
-                prepared(self.prepare(pdf, pdf.relative_to(input_dir)))
+                cp = next_profile(done) if next_profile else prof
+                done += 1
+                prepared(self.prepare(pdf, pdf.relative_to(input_dir), profile=cp))
+
+
+def select_budget_profile(base: ConversionProfile, budget_s: float | None, elapsed_s: float,
+                          done: int, total: int) -> tuple[ConversionProfile, int]:
+    """Dobiera profil konwersji pod budżet czasu partii (np. 40 min przy limicie 45 min).
+
+    Zwraca (profil, poziom 0..3):
+    0 = ustawienia bazowe, 1 = skany max 2 str., 2 = skany max 1 str., 3 = awaryjnie 1 str. + model tiny.
+    """
+    if budget_s is None or total <= 0:
+        return base, 0
+    min_done = min(10, max(3, total // 10))
+    if done < min_done or elapsed_s < min(30.0, 0.25 * budget_s):
+        return base, 0
+    rem = total - done
+    if rem <= 0:
+        return base, 0
+    avg_s = elapsed_s / done
+    rem_budget = budget_s - elapsed_s
+    rem_projected = rem * avg_s
+    per_doc_budget = rem_budget / rem
+    cur_pages = base.scanned_max_pages or base.max_pages
+
+    if avg_s > max(per_doc_budget, 5.0) and per_doc_budget < 5.0:
+        return base.model_copy(update={"scanned_max_pages": 1, "ocr_model_size": "tiny"}), 3
+    if rem_projected > rem_budget:
+        return base.model_copy(update={"scanned_max_pages": min(cur_pages, 1)}), 2
+    if rem_projected > 0.85 * rem_budget:
+        return base.model_copy(update={"scanned_max_pages": min(cur_pages, 2)}), 1
+    return base, 0
 
 
 def resolve_workers(value: int, n_docs: int) -> int:

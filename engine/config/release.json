@@ -1,12 +1,13 @@
 {
-  "version": "2026.11.22-dev.4",
+  "version": "2026.11.22-dev.5",
   "settings": {
     "unsupported_output": "{}",
     "default_llm_profile": "eden-qwen3.5-9b",
     "llm_concurrency": 4,
     "ocr_tolerant_grounding": true,
     "ocr_restore_diacritics": true,
-    "convert_workers": 1
+    "convert_workers": 1,
+    "batch_time_budget_s": 2400.0
   },
   "conversion_profiles": [
     {
